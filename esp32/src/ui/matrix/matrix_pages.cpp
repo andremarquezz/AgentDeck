@@ -206,6 +206,42 @@ static void drawOfficialMatrixGlyph(CRGB* leds, int x0, const uint8_t* alpha,
             setPixel(leds, x0 + col, row, color);
         }
     }
+    // Source feature masks preserve eyes and terminal marks rather than treating
+    // every opaque source pixel as the same body tint. Fixed flash data only.
+    const OfficialDotGlyphs::FeatureLayer* layers = nullptr;
+    size_t count = 0;
+    if (alpha == OfficialDotGlyphs::CLAUDE_CODE) {
+        layers = OfficialDotGlyphs::CLAUDE_CODE_FEATURES;
+        count = OfficialDotGlyphs::CLAUDE_CODE_FEATURE_COUNT;
+    } else if (alpha == OfficialDotGlyphs::CODEX) {
+        layers = OfficialDotGlyphs::CODEX_FEATURES;
+        count = OfficialDotGlyphs::CODEX_FEATURE_COUNT;
+    } else if (alpha == OfficialDotGlyphs::OPEN_CLAW) {
+        layers = OfficialDotGlyphs::OPEN_CLAW_FEATURES;
+        count = OfficialDotGlyphs::OPEN_CLAW_FEATURE_COUNT;
+    }
+    uint8_t brightness = bodyColor.r;
+    if (bodyColor.g > brightness) brightness = bodyColor.g;
+    if (bodyColor.b > brightness) brightness = bodyColor.b;
+    for (size_t i = 0; i < count; ++i) {
+        const auto& layer = layers[i];
+        for (int y = 0; y < layer.height; ++y) {
+            for (int x = 0; x < layer.width; ++x) {
+                const uint8_t a = layer.alpha[y * layer.width + x];
+                if (a == 0) continue;
+                const int idx = xyToIdx(x0 + layer.x + x, layer.y + y);
+                if (idx < 0) continue;
+                const CRGB feature(uint16_t(layer.red) * brightness / 255,
+                                   uint16_t(layer.green) * brightness / 255,
+                                   uint16_t(layer.blue) * brightness / 255);
+                const CRGB body = leds[idx];
+                // Alpha composite black features too; black never means absent.
+                leds[idx] = CRGB((uint16_t(feature.r) * a + uint16_t(body.r) * (255 - a)) / 255,
+                                 (uint16_t(feature.g) * a + uint16_t(body.g) * (255 - a)) / 255,
+                                 (uint16_t(feature.b) * a + uint16_t(body.b) * (255 - a)) / 255);
+            }
+        }
+    }
 }
 
 // Tiny state dot in bottom-right corner of USAGE page (row 7, col 31)

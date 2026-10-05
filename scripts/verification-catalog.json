@@ -236,6 +236,21 @@
       ]
     },
     {
+      "id": "esp32-host-policy",
+      "name": "ESP32 host policy assertions",
+      "level": ["unit", "contract"],
+      "where": "Local host with a C++17 compiler",
+      "workflow": null,
+      "job": null,
+      "trigger": "Optional local firmware verification",
+      "blocking": false,
+      "required": false,
+      "command": "bash esp32/sim/run-tests.sh",
+      "evidence": ["esp32/sim/run-tests.sh", "esp32/sim/tests/creature_glyph_selection_test.cpp"],
+      "proves": ["firmware policy headers execute on the host, including strict unknown-agent glyph refusal and source feature selection"],
+      "does_not_prove": ["pixel output, physical firmware memory pressure, or an installed board update"]
+    },
+    {
       "id": "esp32-sim",
       "name": "ESP32 firmware host build",
       "level": ["compile"],

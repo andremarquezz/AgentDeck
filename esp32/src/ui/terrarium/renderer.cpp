@@ -1,5 +1,6 @@
 #include "renderer.h"
 #include "draw.h"
+#include "creature_glyphs_generated.h"
 #include "water.h"
 #include "terrain.h"
 #include "kelp.h"
@@ -132,7 +133,7 @@ static void drawCiCompanion(float x, float y, const CiCueSnapshot& cue, float no
     for (auto& candidate : ciMemos) if (candidate.occupied && candidate.key == cue.key) { memo = &candidate; break; }
     if (!memo) for (auto& candidate : ciMemos) if (!candidate.occupied) { memo = &candidate; break; }
     if (!memo || !CiCompanion::visible(*memo, cue.key, cue.phase, now) || !paint) return;
-    const int minSide = min(canvasW, canvasH);
+    const int minSide = min(int(canvasW), int(canvasH));
     const int side = max(int(sizeof(CiWaitVisual::GITHUB)), int(minSide * TerrariumRules::CiCompanionSizeFrac));
     // Creature footprints use the existing layout radii. A helper clears the
     // owner rather than covering its face; it never adds a controllable resident.
@@ -824,6 +825,21 @@ namespace Draw {
     void alphaMask(const uint8_t* mask, int maskW, int maskH, int x0, int y0,
                    int dstW, int dstH, uint32_t color24, uint8_t alpha) {
         fillAlphaMask(mask, maskW, maskH, x0, y0, dstW, dstH, color24, alpha);
+    }
+    void featureLayers(const CreatureGlyphs::FeatureLayer* layers, size_t count, int maskW, int maskH,
+                       int x0, int y0, int dstW, int dstH, uint8_t alpha) {
+        if (maskW <= 0 || maskH <= 0 || dstW <= 0 || dstH <= 0 || alpha == 0) return;
+        for (size_t i = 0; i < count; ++i) {
+            const auto& layer = layers[i];
+            const int left = layer.x * dstW / maskW;
+            const int top = layer.y * dstH / maskH;
+            const int right = (layer.x + layer.width) * dstW / maskW;
+            const int bottom = (layer.y + layer.height) * dstH / maskH;
+            const uint32_t color = (uint32_t(layer.red) << 16) | (uint32_t(layer.green) << 8) | layer.blue;
+            // Black is a real source feature, so draw it just like white coverage.
+            fillAlphaMask(layer.alpha, layer.width, layer.height, x0 + left, y0 + top,
+                          max(1, right - left), max(1, bottom - top), color, alpha);
+        }
     }
     void alphaMaskGradient(const uint8_t* mask, int maskW, int maskH, int x0, int y0,
                            int dstW, int dstH, uint32_t colorTop, uint32_t colorBottom, uint8_t alpha) {
