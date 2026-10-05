@@ -92,6 +92,16 @@ asked for anything beyond that.
 | OpenClaw | `icons/openclaw.svg` | the OpenClaw project |
 | z.ai | `https://z-cdn.chatglm.cn/z-ai/static/logo.svg` (captured 2026-09-20; `zai.svg` stores the Z strokes verbatim, mark without the upstream app-icon plate) | Z.ai / Zhipu AI |
 | Hermes Agent / Nous girl | `icons/hermesagent.svg` | Nous Research |
+| GitHub CI helper / Invertocat | [Official logo archive](https://brand.github.com/GitHub_Logos.zip), `GitHub Logos/SVG/GitHub_Invertocat_Black.svg`, captured 2026-10-05; `design/brand/github.svg` is byte-identical | GitHub, Inc. |
+
+The GitHub source is the current Invertocat integration mark linked from the
+[GitHub Brand Toolkit](https://brand.github.com/foundations/logo). Its SHA-256 is
+`693d7abe6f899646cc2e96856723b45e95f71885a54910b2749f6decdf7e1ee1`;
+the downloaded archive is
+`e2a67d6cc51d990a52c46c1cf6bcab688db4830982174bca50e0be7a5c2f3194`.
+Keep the source geometry and aspect ratio intact when generating compact CI
+helper masks. The helper represents GitHub CI associated with an existing
+session; it is not an agent or a separately controllable session.
 
 Hermes was verified against the same pinned tarball on 2026-09-30. The
 current upstream desktop brand component and icon generator use the Nous girl
