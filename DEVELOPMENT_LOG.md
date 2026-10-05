@@ -183,8 +183,11 @@ violations (the built tree adds three ignored Ulanzi output records).
 The actual GitHub provider probe read PR #460 as nine passed/one failed before
 pushing the iOS fix; this verifies the live provider path, not an agent-hook
 receipt. Blender render and matrix/e-ink host renders are simulated/source
-receipts, not hardware validation. Local XCTest runner execution is being
-verified separately; build success is not a passing test claim.
+receipts, not hardware validation. Two local XCTest attempts built but never began executing tests; both were
+cancelled, and the test hosts exited. The same command/lifecycle/accounting
+fixtures passed through a compiled standalone Swift executable. Remote native
+CI remains required. The simulator's default scene list referenced an absent
+`decision` scene; it now exercises the new `ci-wait` scene instead.
 
 [RELEASING.md](RELEASING.md) retains all eight open issues and their concrete
 acceptance gaps. Hermes CI command evidence, real agent-hook replay, station
