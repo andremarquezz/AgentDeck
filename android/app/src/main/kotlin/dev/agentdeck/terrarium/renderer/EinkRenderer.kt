@@ -24,9 +24,11 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntSize
-import dev.agentdeck.terrarium.ciStationQueue
-import dev.agentdeck.terrarium.ciStationPosition
-import dev.agentdeck.terrarium.drawCiStation
+import dev.agentdeck.terrarium.ciCompanionPosition
+import dev.agentdeck.terrarium.ciCompanionActive
+import dev.agentdeck.terrarium.ciCompanionBitmap
+import dev.agentdeck.terrarium.drawCiCompanion
+import dev.agentdeck.terrarium.TerrariumRules
 import dev.agentdeck.terrarium.aquariumResidents
 import dev.agentdeck.terrarium.CrayfishVisualState
 import dev.agentdeck.terrarium.CreatureGeometry
@@ -98,6 +100,7 @@ fun EinkTerrariumView(
         // Capture hosting Android View — postInvalidate() flushes the LAYER_TYPE_SOFTWARE
         // cache in the parent EinkRefreshZone FrameLayout, ensuring animation frames reach the EPD.
         val hostView = LocalView.current
+        val ciSprite=remember(hostView.context){ciCompanionBitmap(hostView.context)}
         val physicalEink = remember(hostView) { EinkRefreshHelper.isPhysicalEink(hostView) }
         val habitat = remember(hostView, physicalEink) {
             AquariumHabitat.load(hostView.context, einkColorEnabled, physicalEink)
@@ -123,7 +126,7 @@ fun EinkTerrariumView(
                 // caller decide whether that frame warrants an EPD refresh.
                 val bmp = reusableBitmap?.takeIf { it.width == widthPx && it.height == heightPx }
                     ?: Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888).also { reusableBitmap = it }
-                renderedBitmap = renderEinkFrame(currentState, widthPx, heightPx, 0f, bmp, fishSchool = fishSchool, habitat = habitat, textScale = density.density)
+                renderedBitmap = renderEinkFrame(currentState, widthPx, heightPx, 0f, bmp, fishSchool = fishSchool, habitat = habitat, textScale = density.density,ciSprite = ciSprite)
                 hostView.postInvalidate()
                 onFrameRendered?.invoke(false)
                 return@LaunchedEffect
@@ -145,7 +148,7 @@ fun EinkTerrariumView(
                     fishSchool.update(streaming, frameAdvance,
                         hovering = s.tetra == TetraVisualState.HOVERING)
                     renderedBitmap = renderEinkFrame(currentState, widthPx, heightPx, animFrame, bmp,
-                        skipDither = true, fishSchool = fishSchool, habitat = habitat, textScale = density.density)
+                        skipDither = true, fishSchool = fishSchool, habitat = habitat, textScale = density.density,ciSprite = ciSprite)
                     hostView.postInvalidate()
                     onFrameRendered?.invoke(true)
                 } catch (e: Exception) {
@@ -165,7 +168,7 @@ fun EinkTerrariumView(
             val bmp = reusableBitmap?.takeIf { it.width == widthPx && it.height == heightPx }
                 ?: Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888).also { reusableBitmap = it }
             val frame = if (snapshotMode) 0f else animFrame
-            renderedBitmap = renderEinkFrame(currentState, widthPx, heightPx, frame, bmp, fishSchool = fishSchool, habitat = habitat, textScale = density.density)
+            renderedBitmap = renderEinkFrame(currentState, widthPx, heightPx, frame, bmp, fishSchool = fishSchool, habitat = habitat, textScale = density.density,ciSprite = ciSprite)
             hostView.postInvalidate()
             onFrameRendered?.invoke(false)
         }
@@ -175,7 +178,7 @@ fun EinkTerrariumView(
             if (renderedBitmap == null || renderedBitmap?.width != widthPx || renderedBitmap?.height != heightPx) {
                 val bmp = reusableBitmap?.takeIf { it.width == widthPx && it.height == heightPx }
                     ?: Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888).also { reusableBitmap = it }
-                renderedBitmap = renderEinkFrame(state, widthPx, heightPx, 0f, bmp, fishSchool = fishSchool, habitat = habitat, textScale = density.density)
+                renderedBitmap = renderEinkFrame(state, widthPx, heightPx, 0f, bmp, fishSchool = fishSchool, habitat = habitat, textScale = density.density,ciSprite = ciSprite)
                 hostView.postInvalidate()
                 onFrameRendered?.invoke(false)
             }
@@ -203,6 +206,7 @@ internal fun renderEinkFrame(
     fishSchool: EinkFishSchool? = null,
     habitat: AquariumHabitat? = null,
     textScale: Float = 1f,
+    ciSprite: Bitmap? = null,
 ): Bitmap {
     val bitmap = if (target != null && target.width == width && target.height == height) {
         target.eraseColor(0)
@@ -214,6 +218,7 @@ internal fun renderEinkFrame(
     val paint = Paint().apply { isAntiAlias = habitat != null }
 
     einkTagQueue.set(mutableListOf())
+    einkCiAnchors.get().clear()
 
     if (Log.isLoggable("EinkFrame", Log.VERBOSE)) {
         Log.v("EinkFrame", "agents=${state.agents.size} clouds=${state.cloudCreatures.size} oc=${state.openCodeCreatures.size} cf=${state.crayfish} frame=$animFrame")
@@ -228,9 +233,6 @@ internal fun renderEinkFrame(
     // Back-layer fish (behind creatures for 3D depth)
     drawEinkDataParticles(canvas, paint, width, height, state.tetra, state.agents.size, state.crayfish, animFrame, layer = 0, fishSchool = fishSchool)
 
-    val ciQueue = ciStationQueue(state, aquariumResidents(state).filter { it.state != OctopusVisualState.ASKING }.map { it.id }.toSet())
-    val ciPositions = ciQueue.mapIndexed { slot,id -> id to ciStationPosition(slot,state.ciWaits[id]) }.toMap()
-
     // Creatures (4-frame cycle for limb animation)
     if (state.agents.isEmpty()) {
         // No agents — skip octopus drawing
@@ -244,15 +246,14 @@ internal fun renderEinkFrame(
                 state.agents[i].visualState, state.agents[i].agentType,
                 centerXFraction = slot.centerXFraction, centerYFraction = slot.centerYFraction,
                 scaleFactor = slot.scaleFactor, animFrame = animFrame,
-                swimFrame = animFrame, displayName = state.agents[i].displayName,
-                stationPosition = ciPositions[state.agents[i].sessionId])
+                swimFrame = animFrame, displayName = state.agents[i].displayName)
         }
     } else {
         // Use agent's own visualState (not state.octopus which reflects daemon's state)
         val agent = state.agents[0]
         drawEinkOctopus(canvas, paint, width, height, agent.visualState, agent.agentType,
             animFrame = animFrame, swimFrame = animFrame,
-            displayName = agent.displayName, stationPosition = ciPositions[agent.sessionId])
+            displayName = agent.displayName)
     }
     // Pop burst particles (1-frame effect when leaving ASKING state)
     if (state.popBurstPositions.isNotEmpty()) {
@@ -286,8 +287,7 @@ internal fun renderEinkFrame(
                 animFrame = animFrame,
                 swimFrame = animFrame,
                 allowHorizontalWander = state.cloudCreatures.size == 1,
-                displayName = state.cloudCreatures[i].displayName,
-                stationPosition = ciPositions[state.cloudCreatures[i].sessionId])
+                displayName = state.cloudCreatures[i].displayName)
         }
     }
 
@@ -304,8 +304,7 @@ internal fun renderEinkFrame(
                 animFrame = animFrame,
                 swimFrame = animFrame,
                 agentType = state.openCodeCreatures[i].agentType,
-                displayName = state.openCodeCreatures[i].displayName,
-                stationPosition = ciPositions[state.openCodeCreatures[i].sessionId])
+                displayName = state.openCodeCreatures[i].displayName)
         }
     }
 
@@ -321,13 +320,21 @@ internal fun renderEinkFrame(
                 scaleFactor = slot.scaleFactor,
                 animFrame = animFrame,
                 swimFrame = animFrame,
-                displayName = state.antigravityCreatures[i].displayName,
-                stationPosition = ciPositions[state.antigravityCreatures[i].sessionId])
+                displayName = state.antigravityCreatures[i].displayName)
         }
     }
 
-    drawCiStation(canvas,paint,state,ciQueue,ciPositions.mapValues { (_,p) -> p.first*width to p.second*height },
-        animFrame*EINK_MOTION_UNIT_MS/1000f,textScale = textScale,ink = if (einkColorEnabled) null else GRAY_CREATURE)
+    if(ciSprite!=null) {
+        val all=state.agents+state.cloudCreatures+state.openCodeCreatures+state.antigravityCreatures
+        for(item in all) {
+            val wait=state.ciWaits[item.sessionId] ?: continue
+            if(!ciCompanionActive(wait) || item.visualState==OctopusVisualState.ASKING)continue
+            // Preserve each renderer's actual rest/swim home rather than relocating it.
+            val center=einkCiAnchors.get().getOrNull(all.indexOf(item)) ?: continue
+            drawCiCompanion(canvas,paint,ciSprite,center,ciCompanionPosition(center,TerrariumRules.CI_COMPANION_STATIC_ANGLE,width.toFloat(),height.toFloat()),
+                wait,textScale=textScale,ink=if(einkColorEnabled)null else GRAY_CREATURE)
+        }
+    }
 
     // Name tags, resolved together after the last creature (DESIGN.md §6.4).
     val queuedTags = einkTagQueue.get()
@@ -652,7 +659,6 @@ private fun drawEinkOctopus(
     animFrame: Float = 0f,
     swimFrame: Float = 0f,
     displayName: String? = null,
-    stationPosition: Pair<Float, Float>? = null,
 ) {
     // WORKING: slow horizontal wander (sin-based, stateless)
     val wanderX = if (state == OctopusVisualState.WORKING) {
@@ -660,16 +666,18 @@ private fun drawEinkOctopus(
         0.08f * kotlin.math.sin(phase * kotlin.math.PI / 16.0).toFloat()
     } else 0f
 
-    val cx = w * (stationPosition?.first ?: (centerXFraction + wanderX))
+    val cx = w * (centerXFraction + wanderX)
     // Y-position by state — staggered by X position for natural multi-session variety
     val standingOffset = (centerXFraction - 0.38f) * 0.25f
-    val cy = stationPosition?.let { h*it.second } ?: when (state) {
+    val cy = when (state) {
         OctopusVisualState.SLEEPING -> h * (0.78f + standingOffset * 0.5f)
         OctopusVisualState.FLOATING -> h * (0.76f + standingOffset).coerceAtMost(0.80f)
         OctopusVisualState.ASKING -> h * (0.76f + standingOffset).coerceAtMost(0.80f)
         OctopusVisualState.WORKING -> h * (centerYFraction +
             0.02f * kotlin.math.sin(animFrame * kotlin.math.PI / 8).toFloat())
     }
+
+    einkCiAnchors.get().add(cx/w to cy/h)
 
     // Canonical 24×24 Claude Code robot SVG path (EvenOdd eye cutouts) — shared
     // with the tablet renderer via CreatureGeometry, replacing the old 12×8 block grid.
@@ -829,7 +837,6 @@ private fun drawEinkCloud(
     swimFrame: Float = 0f,
     displayName: String? = null,
     allowHorizontalWander: Boolean = true,
-    stationPosition: Pair<Float, Float>? = null,
 ) {
     // Horizontal wander when WORKING (same pattern as octopus)
     val wanderX = if (allowHorizontalWander && state == OctopusVisualState.WORKING) {
@@ -837,7 +844,7 @@ private fun drawEinkCloud(
         0.06f * kotlin.math.sin(phase * kotlin.math.PI / 16.0).toFloat()
     } else 0f
 
-    val cx = w * (stationPosition?.first ?: (centerXFraction + wanderX))
+    val cx = w * (centerXFraction + wanderX)
     // State-based Y: WORKING uses layout swim slot (top),
     // IDLE/SLEEPING rests near ground so idle sessions don't hover up top.
     // homeY-relative (not a shared constant) so idle Cloud creatures rest in
@@ -859,7 +866,9 @@ private fun drawEinkCloud(
         OctopusVisualState.WORKING -> h * 0.02f *
             kotlin.math.sin(animFrame * kotlin.math.PI / 8).toFloat()
     }
-    val cy = stationPosition?.let { h*it.second } ?: (h * baseYFraction + bobY)
+    val cy = h * baseYFraction + bobY
+
+    einkCiAnchors.get().add(cx/w to cy/h)
 
     // Breath animation — subtle scale pulse for active states
     val breathScale = when (state) {
@@ -942,7 +951,6 @@ private fun drawEinkOpenCode(
     swimFrame: Float = 0f,
     agentType: String? = "opencode",
     displayName: String? = null,
-    stationPosition: Pair<Float, Float>? = null,
 ) {
     val isKiro = agentType == "kiro-cli" || agentType == "kiro-ide"
     val isHermes = agentType == "hermes"
@@ -955,7 +963,7 @@ private fun drawEinkOpenCode(
     // sits at x 0.75) — the band's right edge otherwise lands on its claws.
     val anchorX = if (state == OctopusVisualState.WORKING) centerXFraction
     else centerXFraction.coerceAtMost(TerrariumLayout.CRAYFISH_CLEAR_MAX_X)
-    val cx = w * (stationPosition?.first ?: (anchorX + wanderX))
+    val cx = w * (anchorX + wanderX)
     // State-based Y: WORKING uses layout swim slot (mid-upper),
     // IDLE/SLEEPING rests near ground so idle sessions don't hover in the water.
     // homeY-relative (not a shared constant) so idle OpenCode creatures rest in
@@ -977,7 +985,9 @@ private fun drawEinkOpenCode(
         OctopusVisualState.WORKING -> h * 0.02f *
             kotlin.math.sin(animFrame * kotlin.math.PI / 8).toFloat()
     }
-    val cy = stationPosition?.let { h*it.second } ?: (h * baseYFraction + bobY)
+    val cy = h * baseYFraction + bobY
+
+    einkCiAnchors.get().add(cx/w to cy/h)
 
     // Canonical OpenCode ring, Kiro ghost or Hermes Nous girl. They share the
     // motion/layout mechanics, but never substitute one agent's silhouette for
@@ -1108,14 +1118,13 @@ private fun drawEinkAntigravity(
     animFrame: Float = 0f,
     swimFrame: Float = 0f,
     displayName: String? = null,
-    stationPosition: Pair<Float, Float>? = null,
 ) {
     val wanderX = if (state == OctopusVisualState.WORKING) {
         val phase = swimFrame + ((centerXFraction * 100).toInt() * 7)
         0.06f * kotlin.math.sin(phase * kotlin.math.PI / 16.0).toFloat()
     } else 0f
 
-    val cx = w * (stationPosition?.first ?: (centerXFraction + wanderX))
+    val cx = w * (centerXFraction + wanderX)
     val restY = (centerYFraction + 0.08f + (centerXFraction - 0.7f) * 0.04f)
         .coerceIn(0.24f, 0.48f)
     val baseYFraction = when (state) {
@@ -1134,7 +1143,9 @@ private fun drawEinkAntigravity(
         OctopusVisualState.WORKING -> h * 0.02f *
             kotlin.math.sin(animFrame * kotlin.math.PI / 8).toFloat()
     }
-    val cy = stationPosition?.let { h*it.second } ?: (h * baseYFraction + bobY)
+    val cy = h * baseYFraction + bobY
+
+    einkCiAnchors.get().add(cx/w to cy/h)
 
     // Peak/arc mark — filled silhouette of the canonical Antigravity path.
     val markSize = w * 0.052f * scaleFactor * if (einkColorEnabled) 2.15f else 1.8f
@@ -1726,3 +1737,5 @@ private fun drawEinkHermesMermaid(canvas: android.graphics.Canvas, paint: Paint,
     paint.shader = null
     paint.color = headColor
 }
+
+private val einkCiAnchors=ThreadLocal.withInitial { mutableListOf<Pair<Float,Float>>() }

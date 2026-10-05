@@ -24,9 +24,8 @@ final class OpenCodeCreature: Creature {
     var scale: Float
 
     private var time: Float = 0
-    var stationPosition: SIMD2<Float>?
-    var currentX: Float { stationPosition?.x ?? simulationX }
-    var currentY: Float { stationPosition?.y ?? simulationY }
+    var currentX: Float { simulationX }
+    var currentY: Float { simulationY }
     var simulationPosition: SIMD2<Float> { [simulationX, simulationY] }
     private(set) var simulationX: Float
     private(set) var simulationY: Float

@@ -14,8 +14,8 @@
 // same commit. Note: Kotlin-side parser workarounds (e.g. normalizeSvgArcFlags)
 // don't change path geometry and only need a pin bump.
 // SYNC-HASH android/app/src/main/kotlin/dev/agentdeck/terrarium/CreatureGeometry.kt cec9fad8e298145c7a380ba2c5a0b1b79ac7eda6
-// SYNC-HASH android/app/src/main/kotlin/dev/agentdeck/terrarium/creature/CloudCreature.kt f32918ca58783afbfc91504bbe280100f5f13e51
-// SYNC-HASH android/app/src/main/kotlin/dev/agentdeck/terrarium/creature/OpenCodeCreature.kt a19aac0b84ce3ef2126efd93b62ee2a7d4a19929
+// SYNC-HASH android/app/src/main/kotlin/dev/agentdeck/terrarium/creature/CloudCreature.kt d6ce724f034da3bc2fe11c418aaaeca280351c73
+// SYNC-HASH android/app/src/main/kotlin/dev/agentdeck/terrarium/creature/OpenCodeCreature.kt d0d4d202f814ce1d01c575d2ee32766919b86ace
 //
 // Faithful scope: the Kotlin SSOT defines path geometry for the agent marks —
 //   • Octopus / Claude Code robot        (claudecode.svg,   viewBox 24)

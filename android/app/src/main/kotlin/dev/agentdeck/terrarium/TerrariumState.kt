@@ -386,7 +386,7 @@ fun DashboardState.toTerrariumState(
             .mapNotNull { s -> s.waitingOn?.let { s.id to it } }.toMap(),
         ciWaitingIds = siblingSessions.filter { (it.waitingOn?.agentWaiting == true || (it.waitingOn?.phase == "failed" && it.state == "idle")) && it.state?.startsWith("awaiting") != true && it.id !in permissionIds }.map { it.id }.toSet(),
         ciWaitLabels = siblingSessions.filter { it.waitingOn != null && it.state?.startsWith("awaiting") != true && it.id !in permissionIds }
-            .mapNotNull { session -> session.waitingOn?.let { session.id to ciStationLabel(it) } }.toMap(),
+            .mapNotNull { session -> session.waitingOn?.let { session.id to ciCompanionLabel(it) } }.toMap(),
         octopus = octopus,
         crayfish = effectiveCrayfish,
         tetra = tetra,

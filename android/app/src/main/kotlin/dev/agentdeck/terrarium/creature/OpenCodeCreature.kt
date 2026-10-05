@@ -101,9 +101,8 @@ class OpenCodeCreature(
     }
 
     /** Current live position for tetra attractor tracking. */
-    var stationPosition: Pair<Float, Float>? = null
     fun simulationPosition(): Pair<Float, Float> = currentX to currentY
-    fun currentPosition(): Pair<Float, Float> = stationPosition ?: simulationPosition()
+    fun currentPosition(): Pair<Float, Float> = simulationPosition()
 
     /** Whether this OpenCode is currently working (swimming, scattering data). */
     fun isWorking(): Boolean = visualState == OctopusVisualState.WORKING
@@ -198,7 +197,7 @@ class OpenCodeCreature(
 
         val bodySize = baseWidth * BODY_SIZE_FRACTION * scaleFactor
 
-        val centerX = w * (stationPosition?.first ?: currentX)
+        val centerX = w * currentX
 
         // Bob animation
         val bobOffset = when (visualState) {
@@ -207,7 +206,7 @@ class OpenCodeCreature(
             OctopusVisualState.FLOATING -> sin(time * 0.5f) * h * 0.003f
             else -> 0f
         }
-        val centerY = h * (stationPosition?.second ?: currentY) + bobOffset
+        val centerY = h * currentY + bobOffset
 
         val bodyAlpha = when (visualState) {
             OctopusVisualState.SLEEPING -> 0.35f

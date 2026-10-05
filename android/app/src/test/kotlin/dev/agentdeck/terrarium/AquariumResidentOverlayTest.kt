@@ -15,56 +15,49 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class AquariumResidentOverlayTest {
 
-    @Test fun `CI visits are bounded and return to simulation home`() {
-        val visits = CiStationVisits { 1L }
-        val originals = (0..47).associate { "s$it" to (.5f to .6f) }
-        val waits = originals.mapValues { (id,_) -> dev.agentdeck.net.CiWaitStatus(phase = "running",agentWaiting = true,openedAt = id.drop(1).toLong()) }
-        val state = TerrariumState(OctopusVisualState.FLOATING,CrayfishVisualState.DORMANT,TetraVisualState.CIRCLING,EnvironmentVisualState.CALM,
-            ciWaits = waits,ciWaitingIds = waits.keys)
-        val positions = visits.update(state,originals,animate = false).toMap()
-        assertEquals(TerrariumRules.NATIVE_RESIDENT_LIMIT,visits.queue.size)
-        assertEquals(ciStationPosition(0,waits["s0"]),positions["s0"])
-        assertEquals(listOf("s0","s1","s2","s3","s4","s5","s6","s7"),visits.queue)
-        val cleared = state.copy(ciWaits = emptyMap(),ciWaitingIds = emptySet())
-        assertTrue(visits.update(cleared,originals,animate = false).isEmpty())
-        assertTrue(visits.queue.isEmpty())
-        val permission = AquariumResident("p","codex","Permission",OctopusVisualState.ASKING)
-        val running = AquariumResident("s0","codex","Work",OctopusVisualState.FLOATING,ciWait = waits["s0"])
-        assertEquals(permission,visibleAquariumResidents(listOf(running,permission),null).first())
+    @Test fun `CI orbit keeps identity and passive results expire while motion is paused`() {
+        assertEquals(.1723f,ciCompanionSeed("hello"),.00001f)
+        assertEquals(.1909f,ciCompanionSeed("ci:한글"),.00001f)
+        val motion=CiCompanionMotion("ci")
+        val unknown=dev.agentdeck.net.CiWaitStatus(phase="unknown",agentWaiting=true)
+        val first=motion.angle
+        motion.update(unknown,1f,now=10.0)
+        assertTrue(motion.angle!=first)
+        val last=motion.angle
+        val result=unknown.copy(phase="passed",agentWaiting=false)
+        motion.update(result,0f,now=11.0)
+        assertEquals(last,motion.angle,0f)
+        assertTrue(motion.visible(result,now=12.0))
+        assertFalse(motion.visible(result,now=16.0))
+        for(phase in listOf("queued","running","unknown","passed","failed"))assertFalse(ciCompanionActive(unknown.copy(phase=phase,agentWaiting=false)))
+        for(phase in listOf("unknown","queued","running")) {
+            val fresh=CiCompanionMotion("ci")
+            fresh.update(result,0f,now=20.0)
+            val inactive=unknown.copy(phase=phase,agentWaiting=false,openedAt=2)
+            fresh.update(inactive,0f,now=21.0)
+            assertFalse(fresh.visible(inactive,now=21.0))
+        }
     }
 
-    @Test fun `CI uncertainty stays neutral and only running moves its inspection sweep`() {
-        fun snapshot(phase: String?, time: Float, textScale: Float = 1f): IntArray {
-            val state = TerrariumState(OctopusVisualState.FLOATING,CrayfishVisualState.DORMANT,TetraVisualState.CIRCLING,EnvironmentVisualState.CALM,
-                ciWaits = phase?.let { mapOf("s" to dev.agentdeck.net.CiWaitStatus(phase = it,agentWaiting = true,
-                    checks = dev.agentdeck.net.CiWaitChecks(10,7,0,3),pr = 432)) } ?: emptyMap())
-            val bitmap = Bitmap.createBitmap(1000,700,Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap); canvas.drawColor(TerrariumColors.DeepSea.toArgb())
-            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                typeface = android.graphics.Typeface.createFromAsset(RuntimeEnvironment.getApplication().assets,"fonts/IBMPlexSans-Regular.ttf")
-            }
-            drawCiStation(canvas,paint,state,if (phase == null) emptyList() else listOf("s"),mapOf("s" to (140f to 322f)),time,textScale = textScale)
-            System.getenv("AGENTDECK_CI_VISUAL_OUTPUT")?.let { output ->
-                val file = java.io.File(output,"android-station-${phase ?: "asleep"}-$time.png"); file.parentFile.mkdirs()
-                file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) }
-            }
-            return IntArray(bitmap.width*bitmap.height).also { bitmap.getPixels(it,0,bitmap.width,0,0,bitmap.width,bitmap.height); bitmap.recycle() }
+    @Test fun `original Octocat helper remains neutral for unknown and readable at device density`() {
+        fun snapshot(phase: String,time: Float,textScale: Float=1f): IntArray {
+            val wait=dev.agentdeck.net.CiWaitStatus(phase=phase,agentWaiting=phase !in listOf("passed","failed"),checks=dev.agentdeck.net.CiWaitChecks(10,7,0,3))
+            val bitmap=Bitmap.createBitmap(1000,700,Bitmap.Config.ARGB_8888)
+            val canvas=Canvas(bitmap)
+            canvas.drawColor(TerrariumColors.DeepSea.toArgb())
+            val context=RuntimeEnvironment.getApplication() as android.content.Context
+            val paint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+            val center=.5f to .5f
+            val angle=if(ciCompanionActive(wait))time else TerrariumRules.CI_COMPANION_STATIC_ANGLE
+            drawCiCompanion(canvas,paint,ciCompanionBitmap(context),center,ciCompanionPosition(center,angle,1000f,700f),wait,textScale)
+            return IntArray(bitmap.width*bitmap.height).also { bitmap.getPixels(it,0,bitmap.width,0,0,bitmap.width,bitmap.height);bitmap.recycle() }
         }
-        val unknown = snapshot("unknown",0f)
-        assertFalse(unknown.any { it == DesignTokens.UI.ok.toArgb() })
-        assertArrayEquals(unknown,snapshot("unknown",1f))
-        assertTrue(snapshot("passed",0f).any { it == DesignTokens.UI.ok.toArgb() })
-        assertTrue(snapshot("failed",0f).any { it == DesignTokens.Session.error.toArgb() })
-        assertFalse(snapshot("running",0f).contentEquals(snapshot("running",1f)))
-        assertFalse(snapshot(null,0f).contentEquals(unknown))
-        assertFalse(snapshot("queued",0f).contentEquals(unknown))
-        val regular = snapshot("passed",0f)
-        val dense = snapshot("passed",0f,textScale = 2f)
-        val success = DesignTokens.UI.ok.toArgb()
-        assertTrue("High-density captions must remain readable",dense.count { it == success } > regular.count { it == success }*2)
-        assertFalse("Caption stays above the Timeline/floor band",dense.withIndex().any {
-            it.value == success && it.index/1000 >= 700*TerrariumRules.FLOOR_REST_Y_MAX
-        })
+        assertFalse(snapshot("unknown",0f).any { it==DesignTokens.UI.ok.toArgb() })
+        assertFalse(snapshot("unknown",0f).contentEquals(snapshot("unknown",1f)))
+        assertTrue(snapshot("passed",0f).any { it==DesignTokens.UI.ok.toArgb() })
+        val regular=snapshot("passed",0f)
+        val dense=snapshot("passed",0f,2f)
+        assertTrue(dense.count { it==DesignTokens.UI.ok.toArgb() }>regular.count { it==DesignTokens.UI.ok.toArgb() })
     }
 
     private val painter get() = AquariumResidentOverlay(RuntimeEnvironment.getApplication())

@@ -8,10 +8,9 @@ final class HermesCreature: Creature {
     private var swim: HermesSwim
     private var activity: HermesSwim.Activity = .idle
     private var title = "Hermes"
-    var stationPosition: SIMD2<Float>?
     var simulationPosition: SIMD2<Float> { [0.5 + swim.position.x / 8, 0.82 - swim.position.y / 7] }
-    var currentX: Float { stationPosition?.x ?? simulationPosition.x }
-    var currentY: Float { stationPosition?.y ?? simulationPosition.y }
+    var currentX: Float { simulationPosition.x }
+    var currentY: Float { simulationPosition.y }
 
     init(id: String, index: Int, count: Int) {
         self.id = id

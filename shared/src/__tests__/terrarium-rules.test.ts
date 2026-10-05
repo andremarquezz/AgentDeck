@@ -32,7 +32,7 @@ describe('terrarium rules invariants', () => {
   it('identity phase uses deterministic unsigned FNV-1a over UTF-8', () => {
     expect(ciCompanionSeed('hello')).toBe(0.1723);
     expect(ciCompanionSeed('')).toBe(0.6261);
-    expect(ciCompanionSeed('ci:한글')).toBe(ciCompanionSeed('ci:한글'));
+    expect(ciCompanionSeed('ci:한글')).toBe(0.1909);
     expect(ciCompanionSeed('ci:한글')).not.toBe(ciCompanionSeed('ci:다른'));
   });
 

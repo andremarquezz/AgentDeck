@@ -2,10 +2,14 @@ package dev.agentdeck.terrarium.renderer
 
 import dev.agentdeck.terrarium.CreatureNameTagLayer
 import dev.agentdeck.terrarium.CreatureNameTagRequest
-import dev.agentdeck.terrarium.CiStationVisits
+import dev.agentdeck.terrarium.CiCompanionMotion
+import dev.agentdeck.terrarium.ciCompanionPosition
+import dev.agentdeck.terrarium.ciCompanionBitmap
+import dev.agentdeck.terrarium.ciCompanionActive
+import dev.agentdeck.terrarium.drawCiCompanion
+import androidx.compose.ui.platform.LocalContext
 import dev.agentdeck.terrarium.aquariumResidents
 import dev.agentdeck.terrarium.visibleAquariumResidents
-import dev.agentdeck.terrarium.drawCiStation
 import androidx.compose.runtime.remember
 import dev.agentdeck.ui.theme.DesignTokens
 import dev.agentdeck.terrarium.TerrariumRules
@@ -72,7 +76,10 @@ fun ColorTerrariumCanvas(
     drawMainCrayfish: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
-    val ciVisits = remember { CiStationVisits() }
+    val context = LocalContext.current
+    val ciSprite = remember(context) { ciCompanionBitmap(context) }
+    val ciMotions = remember { mutableMapOf<String,CiCompanionMotion>() }
+    var lastCiFrame = remember { longArrayOf(0L) }
     val ciPaint = remember { Paint(Paint.ANTI_ALIAS_FLAG) }
     Canvas(modifier = modifier) {
         val w = size.width
@@ -109,13 +116,9 @@ fun ColorTerrariumCanvas(
         openCodeCreatures.forEachIndexed { i,c -> state.openCodeCreatures.getOrNull(i)?.let { originals[it.sessionId] = c.simulationPosition() } }
         antigravityCreatures.forEachIndexed { i,c -> state.antigravityCreatures.getOrNull(i)?.let { originals[it.sessionId] = c.simulationPosition() } }
         originals.keys.retainAll(visibleIDs)
-        val ciPositions = ciVisits.update(state, originals)
-        octopuses.forEachIndexed { i,c -> c.stationPosition = state.agents.getOrNull(i)?.let { ciPositions[it.sessionId] } }
-        cloudCreatures.forEachIndexed { i,c -> c.stationPosition = state.cloudCreatures.getOrNull(i)?.let { ciPositions[it.sessionId] } }
-        openCodeCreatures.forEachIndexed { i,c -> c.stationPosition = state.openCodeCreatures.getOrNull(i)?.let { ciPositions[it.sessionId] } }
-        antigravityCreatures.forEachIndexed { i,c -> c.stationPosition = state.antigravityCreatures.getOrNull(i)?.let { ciPositions[it.sessionId] } }
-        drawCiStation(drawContext.canvas.nativeCanvas, ciPaint, state, ciVisits.queue,
-            (originals+ciPositions).mapValues { (_,p) -> p.first*w to p.second*h }, ciVisits.time, textScale = density)
+        val now=System.nanoTime();val dt=if(lastCiFrame[0]==0L)0f else ((now-lastCiFrame[0])/1_000_000_000f).coerceIn(0f,.05f);lastCiFrame[0]=now
+        ciMotions.keys.retainAll(originals.keys.intersect(state.ciWaits.keys))
+        for ((id,_) in originals) state.ciWaits[id]?.let { wait -> ciMotions.getOrPut(id){CiCompanionMotion(id)}.update(wait,dt) }
 
         // Layer 6.5: Back-layer fish (behind creatures for 3D depth)
         dataParticles.drawBackLayer(this)
@@ -164,6 +167,13 @@ fun ColorTerrariumCanvas(
         // Layer 9.45: name tags, resolved together so none hides a resident.
         CreatureNameTagLayer.active = null
         CreatureNameTagLayer.flush(this, nameTags)
+        for ((id,motion) in ciMotions) {
+            val wait=state.ciWaits[id] ?: continue;val center=originals[id] ?: continue
+            if(!motion.visible(wait))continue
+            val angle=motion.angle
+            drawCiCompanion(drawContext.canvas.nativeCanvas,ciPaint,ciSprite,center,ciCompanionPosition(center,angle,w,h),wait,textScale=density)
+        }
+
 
         // Layer 9.5: Front-layer fish (in front of creatures for 3D depth)
         dataParticles.drawFrontLayer(this)

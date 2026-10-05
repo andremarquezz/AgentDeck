@@ -28,7 +28,7 @@ struct TerrariumView: View {
                 let dt = renderer.deltaTime(now: timeline.date)
 
                 renderer.animateHermes = !reduceMotion
-                renderer.animateStation = !reduceMotion
+                renderer.animateCompanions = !reduceMotion
                 renderer.update(dt: dt, state: terrariumState)
                 renderer.draw(context: &context, size: size, includeHabitat: includeHabitat)
 

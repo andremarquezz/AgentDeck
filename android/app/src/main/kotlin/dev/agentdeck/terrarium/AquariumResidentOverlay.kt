@@ -16,9 +16,10 @@ internal class AquariumResidentOverlay(context: Context) {
     private val bold = Typeface.create(regular, Typeface.BOLD)
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    fun drawStation(canvas: Canvas, state: TerrariumState, queue: List<String>, positions: Map<String, Pair<Float, Float>>, time: Float, x: Float, y: Float) {
-        paint.typeface = regular
-        drawCiStation(canvas, paint, state, queue, positions, time, x, y, 60f*density, drawResident = false, textScale = density)
+    fun drawCompanionCaption(canvas: Canvas,wait: dev.agentdeck.net.CiWaitStatus,x: Float,y: Float,size: Float) {
+        paint.typeface=regular;paint.textAlign=Paint.Align.CENTER;paint.textSize=11f*density
+        paint.color=ciCompanionColor(wait).toArgb();paint.alpha=255;paint.style=Paint.Style.FILL
+        canvas.drawText(ciCompanionBadge(wait),x,y+size/2+8f*density,paint)
     }
 
     /** Selection rails and the working bars — body cues, drawn whether or not tags are. */
@@ -35,7 +36,7 @@ internal class AquariumResidentOverlay(context: Context) {
             }
         }
         if (item.ciWait != null && item.state != OctopusVisualState.ASKING) {
-            paint.color = ciStationColor(item.ciWait).toArgb()
+            paint.color = ciCompanionColor(item.ciWait).toArgb()
             paint.textAlign = Paint.Align.CENTER; paint.typeface = bold; paint.textSize = max(12f*density, unit*.3f)
             val mark = when (item.ciWait.phase) { "passed" -> "✓"; "failed" -> "!"; "unknown" -> "?"; else -> "CI" }
             canvas.drawText(mark, bodyX+unit*.8f, bodyY, paint)
@@ -64,7 +65,7 @@ internal class AquariumResidentOverlay(context: Context) {
     } + if (item.helpers > 0) " · ${item.helpers} agents" else "")
 
     /** Session state colour (DESIGN.md §2.7), never the marketing Status palette. */
-    private fun stateColor(item: AquariumResident) = (if (item.state != OctopusVisualState.ASKING && item.ciWait != null) ciStationColor(item.ciWait) else when (item.state) {
+    private fun stateColor(item: AquariumResident) = (if (item.state != OctopusVisualState.ASKING && item.ciWait != null) ciCompanionColor(item.ciWait) else when (item.state) {
         OctopusVisualState.WORKING -> DesignTokens.Session.working
         OctopusVisualState.ASKING -> DesignTokens.Session.awaiting
         else -> DesignTokens.Session.idle

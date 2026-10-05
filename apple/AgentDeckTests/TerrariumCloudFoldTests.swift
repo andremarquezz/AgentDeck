@@ -773,30 +773,61 @@ final class TerrariumCloudFoldTests: XCTestCase {
         XCTAssertEqual(terrarium.creatures.count, 3, "Claude Code sessions must remain unfolded")
     }
     @MainActor
-    func testCiNativeStationAssetSleepsScansAndReturnsResidents() async throws {
+    func testNativeCiCompanionUsesOriginalAssetAndRealSessionParentWithoutRelocation() async throws {
         let scene = AquariumResidents()
-        scene.loadTemplates(try await Entity(contentsOf: XCTUnwrap(Bundle.main.url(forResource: "3d-residents", withExtension: "usdz"))))
-        scene.loadHermesTemplate(try await Entity(contentsOf: XCTUnwrap(Bundle.main.url(forResource: "hermes-mermaid", withExtension: "usdz"))))
-        XCTAssertEqual(scene.templateCount, 7)
-        scene.loadCiStation(try await Entity(contentsOf: XCTUnwrap(Bundle.main.url(forResource: "ci-station", withExtension: "usdz"))))
+        scene.loadTemplates(try await Entity(contentsOf: XCTUnwrap(Bundle.main.url(forResource:"3d-residents",withExtension:"usdz"))))
+        scene.loadCiCompanion(try await Entity(contentsOf: XCTUnwrap(Bundle.main.url(forResource:"ci-companion",withExtension:"usdz"))))
         scene.animate = false
-        scene.sync(TerrariumState(),aspect: 1.6)
-        let station = try XCTUnwrap(scene.root.findEntity(named: "ci-station"))
-        XCTAssertTrue(station.isEnabled)
-        XCTAssertEqual(station.components[OpacityComponent.self]?.opacity,TerrariumRules.ciStationAsleepOpacity)
-        XCTAssertFalse(try XCTUnwrap(scene.root.findEntity(named: "ci-inspection")).isEnabled)
+        scene.sync(TerrariumState(),aspect:1.6)
+        XCTAssertNil(scene.root.findEntity(named:"ci-companion"),"No permanent resident without CI")
         var state = TerrariumState()
-        state.cloudCreatures = [.init(id: "ci",projectName: "Work",modelName: nil,state: .drifting,homeX: 0.4,homeY: 0.5,scale: 1)]
-        state.ciWaits = ["ci": ciWait("running")]; state.ciWaitingIDs = ["ci"]
-        scene.sync(state,aspect: 1.6)
+        state.cloudCreatures = [.init(id:"ci",projectName:"Work",modelName:nil,state:.drifting,homeX:0.4,homeY:0.5,scale:1)]
+        scene.sync(state,aspect:1.6)
         let resident = try XCTUnwrap(scene.residents["ci"])
-        XCTAssertTrue(try XCTUnwrap(scene.root.findEntity(named: "ci-inspection")).isEnabled)
-        XCTAssertNotNil(resident.findEntity(named: "ci-cue"),"CI phase stays visible when labels hide")
-        let queued = resident.position
-        state.ciWaits["ci"] = ciWait("passed",waiting: false); state.ciWaitingIDs = []
-        scene.sync(state,aspect: 1.6)
-        XCTAssertNotEqual(resident.position,queued)
-        XCTAssertFalse(try XCTUnwrap(scene.root.findEntity(named: "ci-inspection")).isEnabled)
+        let home = resident.position
+        state.ciWaits = ["ci":ciWait("unknown")]
+        scene.sync(state,aspect:1.6)
+        XCTAssertEqual(resident.position,home)
+        let companion = try XCTUnwrap(resident.findEntity(named:"ci-companion"))
+        XCTAssertEqual(AquariumResidents.sessionID(for:companion),"ci")
+        XCTAssertFalse(companion.visualBounds(relativeTo:resident).isEmpty)
+        var clock: TimeInterval = 10
+        scene.ciClock = { clock }
+        state.ciWaits = ["ci":ciWait("passed",waiting:false)]
+        scene.sync(state,aspect:1.6)
+        XCTAssertTrue(companion.isEnabled)
+        clock = 15
+        scene.step(0)
+        XCTAssertFalse(companion.isEnabled,"Paused native controller still expires the result cue")
+        state.ciWaits = [:]
+        scene.sync(state,aspect:1.6)
+        XCTAssertNil(resident.findEntity(named:"ci-companion"))
+    }
+
+    func testCiOrbitUsesUtf8IdentityAndPassiveBoundedResultsWhenMotionIsPaused() {
+        XCTAssertEqual(CiCompanionPresentation.seed("hello"),0.1723,accuracy:0.00001)
+        XCTAssertEqual(CiCompanionPresentation.seed("ci:한글"),0.1909,accuracy:0.00001)
+        var motion = CiCompanionMotion(id:"ci")
+        let unknown = ciWait("unknown")
+        let initial = motion.angle
+        motion.update(unknown,dt:1,now:10)
+        XCTAssertNotEqual(motion.angle,initial,"An evidenced unknown wait moves without claiming success")
+        let last = motion.angle
+        let passed = ciWait("passed",waiting:false)
+        motion.update(passed,dt:0,now:11)
+        XCTAssertEqual(motion.angle,last,"Result keeps the final orbit pose")
+        XCTAssertTrue(motion.visible(passed,now:12))
+        XCTAssertFalse(motion.visible(passed,now:16),"Expiry is independent of animation dt")
+        XCTAssertFalse(CiCompanionPresentation.active(ciWait("failed",waiting:false)))
+        XCTAssertFalse(CiCompanionPresentation.active(ciWait("running",waiting:false)))
+        XCTAssertFalse(CiCompanionPresentation.active(ciWait("queued",waiting:false)))
+        for phase in ["unknown", "queued", "running"] {
+            var fresh = CiCompanionMotion(id: "ci")
+            fresh.update(passed,dt:0,now:20)
+            let inactive=ciWait(phase,waiting:false,openedAt:2)
+            fresh.update(inactive,dt:0,now:21)
+            XCTAssertFalse(fresh.visible(inactive,now:21),"Old result cannot leak into a different nonwaiting record")
+        }
     }
 
     private func ciWait(_ phase: String, waiting: Bool = true, openedAt: Int = 1) -> CiWaitStatus {
@@ -829,39 +860,58 @@ final class TerrariumCloudFoldTests: XCTestCase {
         XCTAssertEqual(Set(state.cloudCreatures.map(\.id)), ["a", "b", "permission"])
         XCTAssertEqual(state.ciWaitingIDs, ["a", "b"])
         XCTAssertNil(state.ciWaitLabels["permission"])
-        XCTAssertEqual(CiStationPresentation.queue(state, visibleIDs: ["a", "b", "permission"]), ["b", "a"])
+        XCTAssertEqual(Set(state.ciWaits.keys),["a","b"])
         XCTAssertEqual(state.ciWaitLabels["a"], "CI RUNNING #432 · 7/10")
         let items = AquariumResident.project(state)
         XCTAssertEqual(AquariumResident.foreground(items, focusedID: nil).first?.id, "permission")
     }
 
     @MainActor
-    func testCiCanvasVisitsRemainSelectableAndReturnAfterOutcome() {
-        let renderer = TerrariumRenderer()
-        renderer.animateStation = false
+    func testCanvasCiCompanionLeavesSessionAtItsNormalHomeAndClearsOnNull() {
+        let plain = TerrariumRenderer(), waiting = TerrariumRenderer()
+        plain.animateHermes = false; waiting.animateHermes = false; waiting.animateCompanions = false
         var state = TerrariumState()
-        state.creatures = [.init(id: "ci", projectName: "Work", modelName: nil, state: .floating, homeX: 0.5, homeY: 0.6, scale: 1)]
-        state.ciWaits = ["ci": ciWait("running")]; state.ciWaitingIDs = ["ci"]
-        renderer.update(dt: 0.05, state: state)
-        let position = CiStationPresentation.position(slot: 0, wait: state.ciWaits["ci"])
-        XCTAssertEqual(renderer.creatureAtPoint(nx: position.x, ny: position.y), "ci")
-        state.ciWaits["ci"] = ciWait("passed", waiting: false); state.ciWaitingIDs = []
-        renderer.update(dt: 0.05, state: state)
-        XCTAssertNil(renderer.creatureAtPoint(nx: position.x, ny: position.y))
+        state.hermesCreatures = [.init(id:"ci",projectName:"Work",activity:.idle)]
+        plain.update(dt:0,state:state)
+        state.ciWaits = ["ci":ciWait("unknown")]
+        waiting.update(dt:0,state:state)
+        XCTAssertEqual(plain.creatureAtPoint(nx:0.5,ny:0.82-2.5/7),"ci")
+        XCTAssertEqual(waiting.creatureAtPoint(nx:0.5,ny:0.82-2.5/7),"ci")
+        state.ciWaits = [:]; waiting.update(dt:0,state:state)
+        XCTAssertEqual(waiting.creatureAtPoint(nx:0.5,ny:0.82-2.5/7),"ci")
     }
 
     @MainActor
-    func testCiStationCanvasCrowdsRenderEveryPhaseAndAsleep() throws {
+    func testOriginalOctocatCanvasMotionPreviewAndSpriteResource() throws {
+        XCTAssertEqual(CiCompanionPresentation.sprite?.width,896)
+        let renderer = TerrariumRenderer()
+        var state = TerrariumState()
+        state.creatures = [.init(id:"ci-preview",projectName:"Agent session",modelName:nil,state:.floating,homeX:0.50,homeY:0.50,scale:1)]
+        state.ciWaits = ["ci-preview":ciWait("running")]
+        let folder = URL(fileURLWithPath:"/tmp/ci-orbit-preview",isDirectory:true)
+        try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
+        for frame in 0..<32 {
+            for _ in 0..<10 { renderer.update(dt:0.025,state:state) }
+            let image = ImageRenderer(content:Canvas { c,size in renderer.draw(context:&c,size:size) }.frame(width:800,height:500))
+            image.scale = 1
+            let data = try XCTUnwrap(image.nsImage?.tiffRepresentation)
+            let png = try XCTUnwrap(NSBitmapImageRep(data:data)?.representation(using:.png,properties:[:]))
+            try png.write(to:folder.appendingPathComponent(String(format:"canvas-%02d.png",frame)))
+        }
+    }
+
+    @MainActor
+    func testCiCompanionCanvasCrowdsRenderEveryPhaseAndAbsent() throws {
         for count in [0, 1, 8, 48] {
             for phase in ["unknown", "queued", "running", "passed", "failed"] {
                 for (width,height) in [(1200,750), (600,900)] {
                     let renderer = TerrariumRenderer()
-                    renderer.animateStation = false; renderer.animateHermes = false
+                    renderer.animateCompanions = false; renderer.animateHermes = false
                     var state = TerrariumState()
                     let slots = CreatureLayout.layoutOctopuses(count: count)
                     state.creatures = (0..<count).map { .init(id: "s\($0)", projectName: "Work \($0)", modelName: nil,
                         state: .floating, homeX: slots[$0].x, homeY: slots[$0].y, scale: slots[$0].scale) }
-                    state.ciWaits = Dictionary(uniqueKeysWithValues: state.creatures.map { ($0.id, ciWait(phase, waiting: phase != "passed", openedAt: Int($0.id.dropFirst()) ?? 0)) })
+                    state.ciWaits = Dictionary(uniqueKeysWithValues: state.creatures.map { ($0.id, ciWait(phase, waiting: phase != "passed" && phase != "failed", openedAt: Int($0.id.dropFirst()) ?? 0)) })
                     state.ciWaitingIDs = phase == "passed" ? [] : Set(state.creatures.map(\.id))
                     renderer.update(dt: 0, state: state)
                     let image = ImageRenderer(content: Canvas { context,size in renderer.draw(context: &context,size: size) }.frame(width: CGFloat(width),height: CGFloat(height)))
@@ -869,7 +919,7 @@ final class TerrariumCloudFoldTests: XCTestCase {
                     let bitmap = try XCTUnwrap(image.nsImage?.tiffRepresentation)
                     XCTAssertGreaterThan(bitmap.count, 100)
                     do {
-                        let output = ProcessInfo.processInfo.environment["AGENTDECK_CI_VISUAL_OUTPUT"] ?? "/tmp/ci-station-visuals"
+                        let output = ProcessInfo.processInfo.environment["AGENTDECK_CI_VISUAL_OUTPUT"] ?? "/tmp/ci-orbit-visuals"
                         let folder = URL(fileURLWithPath: output, isDirectory: true)
                         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
                         let data = try XCTUnwrap(NSBitmapImageRep(data: bitmap)?.representation(using: .png, properties: [:]))

@@ -150,7 +150,7 @@ extension DashboardState {
         var result = TerrariumState()
         for session in siblingSessions where session.waitingOn != nil && !(session.state ?? "").hasPrefix("awaiting") {
             result.ciWaits[session.id] = session.waitingOn
-            if let wait = session.waitingOn { result.ciWaitLabels[session.id] = CiStationPresentation.label(wait) }
+            if let wait = session.waitingOn { result.ciWaitLabels[session.id] = CiCompanionPresentation.label(wait) }
             if session.waitingOn?.agentWaiting == true || (session.waitingOn?.phase == "failed" && session.state == "idle") { result.ciWaitingIDs.insert(session.id) }
         }
 

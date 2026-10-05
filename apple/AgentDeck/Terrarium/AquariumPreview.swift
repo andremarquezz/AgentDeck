@@ -86,7 +86,7 @@ struct LivingAquariumScene: View {
                         guard residents.templateCount == 6 else { throw CocoaError(.fileReadCorruptFile) }
                         residents.loadHermesTemplate(loaded.hermes)
                         guard residents.templateCount == 7 else { throw CocoaError(.fileReadCorruptFile) }
-                        residents.loadCiStation(loaded.ciStation)
+                        residents.loadCiCompanion(loaded.ciCompanion)
                         content.add(residents.root)
                         residents.sync(terrariumState, aspect: Float(geometry.size.width / max(1, geometry.size.height)))
                         let subscription = content.subscribe(to: SceneEvents.Update.self) { [weak residents, weak cameraRig] event in
@@ -168,7 +168,8 @@ struct LivingAquariumScene: View {
     private func updatePlayback() {
         let playing = visible && !reduceMotion && scenePhase == .active
         residents.animate = playing
-        if playing, cancelUpdate == nil, let scene = residents.root.scene {
+        // Keep expiry checks alive on a retained visible scene even under Reduce Motion.
+        if visible && scenePhase == .active, cancelUpdate == nil, let scene = residents.root.scene {
             let subscription = scene.subscribe(to: SceneEvents.Update.self) { [weak residents, weak cameraRig] event in
                 residents?.step(event.deltaTime)
                 cameraRig?.step(event.deltaTime)
@@ -212,7 +213,7 @@ final class AquariumAssetLoader {
         let habitat: Entity
         let residents: Entity
         let hermes: Entity
-        let ciStation: Entity
+        let ciCompanion: Entity
     }
     private(set) var loaded: Assets?
     private(set) var failure: String?
@@ -238,9 +239,9 @@ final class AquariumAssetLoader {
             let residents = try await importEntity(url("3d-residents")); try checkCurrent()
             stage = "Hermes resident"
             let hermes = try await importEntity(url("hermes-mermaid")); try checkCurrent()
-            stage = "CI station"
-            let ciStation = try await importEntity(url("ci-station")); try checkCurrent()
-            loaded = Assets(habitat: habitat, residents: residents, hermes: hermes, ciStation: ciStation)
+            stage = "CI companion"
+            let ciCompanion = try await importEntity(url("ci-companion")); try checkCurrent()
+            loaded = Assets(habitat: habitat, residents: residents, hermes: hermes, ciCompanion: ciCompanion)
             aquariumAssetLogger.debug("Loaded all aquarium assets")
         } catch is CancellationError {
             aquariumAssetLogger.debug("Cancelled aquarium asset load at \(stage, privacy: .public)")

@@ -14,12 +14,10 @@ final class TerrariumRenderer {
     private var kiroCreatures: [String: KiroCreature] = [:]
     private var hermesCreatures: [String: HermesCreature] = [:]
     var animateHermes = true
-    var animateStation = true
-    private var ciDisplayPositions: [String: SIMD2<Float>] = [:]
-    private var ciPositions: [String: SIMD2<Float>] = [:]
-    private var ciQueue: [String] = []
-    private var ciTime: Float = 0
-    private var ciHops: [String: Float] = [:]
+    var animateCompanions = true
+    private var ciMotions: [String: CiCompanionMotion] = [:]
+    private var ciCenters: [String: SIMD2<Float>] = [:]
+    private var ciPoints: [String: SIMD2<Float>] = [:]
     private let crayfish = CrayfishCreature()
     private let tetra = DataParticleSystem()
     private let bubbles = BubbleSystem()
@@ -240,42 +238,19 @@ final class TerrariumRenderer {
         }
         crayfish.update(dt: dt, state: state)
 
-        let originals = octopuses.mapValues { $0.simulationPosition }
-            .merging(clouds.mapValues { $0.simulationPosition }) { a, _ in a }
-            .merging(opencodeCreatures.mapValues { $0.simulationPosition }) { a, _ in a }
-            .merging(antigravityCreatures.mapValues { $0.simulationPosition }) { a, _ in a }
-            .merging(kiroCreatures.mapValues { $0.simulationPosition }) { a, _ in a }
-            .merging(hermesCreatures.mapValues { $0.simulationPosition }) { a, _ in a }
-        ciQueue = CiStationPresentation.queue(state, visibleIDs: Set(originals.keys))
-        let step = animateStation ? dt : 0
-        ciTime += step
-        for (id, base) in originals {
-            if state.ciWaits[id]?.phase == "passed", lastState?.ciWaits[id]?.phase != "passed",
-               lastState?.ciWaits[id] != nil { ciHops[id] = TerrariumRules.ciStationHopSeconds }
-            var target = base
-            if let slot = ciQueue.firstIndex(of: id) {
-                target = CiStationPresentation.position(slot: slot, wait: state.ciWaits[id])
-            }
-            if let left = ciHops[id], left > 0 {
-                let age = TerrariumRules.ciStationHopSeconds - left
-                target.y -= max(0, sin(age / TerrariumRules.ciStationHopSeconds * .pi)) * TerrariumRules.ciStationHopHeight
-                ciHops[id] = max(0, left-step)
-            }
-            if ciPositions[id] != nil || ciQueue.contains(id) || (ciHops[id] ?? 0) > 0 {
-                let current = ciPositions[id] ?? base
-                ciPositions[id] = animateStation ? current + (target-current) * min(1, step*TerrariumRules.ciStationResponseRate) : target
-                if !ciQueue.contains(id), (ciHops[id] ?? 0) == 0, simd_distance(ciPositions[id]!, base) < 0.002 { ciPositions.removeValue(forKey: id) }
-            }
-            octopuses[id]?.stationPosition = ciPositions[id]
-            clouds[id]?.stationPosition = ciPositions[id]
-            opencodeCreatures[id]?.stationPosition = ciPositions[id]
-            antigravityCreatures[id]?.stationPosition = ciPositions[id]
-            kiroCreatures[id]?.stationPosition = ciPositions[id]
-            hermesCreatures[id]?.stationPosition = ciPositions[id]
+        ciCenters = octopuses.mapValues { [ $0.currentX,$0.currentY ] }
+            .merging(clouds.mapValues { [$0.currentX,$0.currentY] }) { a,_ in a }
+            .merging(opencodeCreatures.mapValues { [$0.currentX,$0.currentY] }) { a,_ in a }
+            .merging(antigravityCreatures.mapValues { [$0.currentX,$0.currentY] }) { a,_ in a }
+            .merging(kiroCreatures.mapValues { [$0.currentX,$0.currentY] }) { a,_ in a }
+            .merging(hermesCreatures.mapValues { [$0.currentX,$0.currentY] }) { a,_ in a }
+        for id in ciCenters.keys {
+            guard let wait = state.ciWaits[id] else { ciMotions.removeValue(forKey:id);continue }
+            var motion = ciMotions[id] ?? CiCompanionMotion(id:id)
+            motion.update(wait,dt:animateCompanions ? dt : 0)
+            ciMotions[id] = motion
         }
-        ciDisplayPositions = originals.merging(ciPositions) { _, visit in visit }
-        ciPositions = ciPositions.filter { originals[$0.key] != nil }
-        ciHops = ciHops.filter { originals[$0.key] != nil && $0.value > 0 }
+        ciMotions = ciMotions.filter { ciCenters[$0.key] != nil && state.ciWaits[$0.key] != nil }
         lastState = state
     }
 
@@ -322,10 +297,6 @@ final class TerrariumRenderer {
 
             // Layer 6.5: Back-layer fish (behind creatures for 3D depth)
             tetra.drawBackLayer(context: &context, size: size)
-        }
-
-        if let state = lastState {
-            CiStationPresentation.draw(context: &context, size: size, state: state, queue: ciQueue, positions: ciDisplayPositions, time: ciTime)
         }
 
         // Layer 6.7: Focus halo (drawn behind every creature so the sprite
@@ -378,6 +349,17 @@ final class TerrariumRenderer {
         // Layer 9.46: name tags, resolved together so none hides a resident.
         TerrariumNameTagLayer.active = nil
         nameTags.flush(context: &context)
+        ciPoints.removeAll()
+        if let state = lastState {
+            for (id,motion) in ciMotions {
+                guard let wait=state.ciWaits[id],motion.visible(wait),let center=ciCenters[id] else { continue }
+                let angle=motion.angle
+                let point=CiCompanionPresentation.position(center:center,angle:angle,size:size)
+                ciPoints[id]=point
+                CiCompanionPresentation.draw(context:&context,size:size,center:center,position:point,wait:wait)
+            }
+        }
+
 
         if includeHabitat {
             // Layer 9.5: Front-layer fish
@@ -863,6 +845,10 @@ final class TerrariumRenderer {
         for (id, k) in kiroCreatures {
             let distance = hypot(k.currentX-nx, k.currentY-ny)
             if distance < bestDist { bestId = id; bestDist = distance }
+        }
+        for (id,point) in ciPoints {
+            let distance=hypot(point.x-nx,point.y-ny)
+            if distance<bestDist { bestId=id;bestDist=distance }
         }
         return bestId
     }

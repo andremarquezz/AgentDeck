@@ -95,9 +95,8 @@ class OctopusCreature(
     }
 
     /** Current live position for tetra attractor tracking. */
-    var stationPosition: Pair<Float, Float>? = null
     fun simulationPosition(): Pair<Float, Float> = currentX to currentY
-    fun currentPosition(): Pair<Float, Float> = stationPosition ?: simulationPosition()
+    fun currentPosition(): Pair<Float, Float> = simulationPosition()
 
     /** Floor position after the shared spacing pass; null while swimming. */
     var restX: Float? = null
@@ -202,7 +201,7 @@ class OctopusCreature(
         val baseWidth = minOf(w, h * 2f)
 
         val bodyRadius = baseWidth * TerrariumLayout.OCTOPUS_BODY_RADIUS_FRACTION * scaleFactor
-        val centerX = w * (stationPosition?.first ?: currentX)
+        val centerX = w * currentX
 
         // Bob only when swimming (WORKING); standing states have no bob
         val bobOffset = when (visualState) {
@@ -210,7 +209,7 @@ class OctopusCreature(
                 h * TerrariumTiming.FLOAT_AMPLITUDE_FRACTION
             else -> 0f
         }
-        val centerY = h * (stationPosition?.second ?: currentY) + bobOffset
+        val centerY = h * currentY + bobOffset
 
         val bodyAlpha = if (visualState == OctopusVisualState.SLEEPING) 0.4f else 1f
 

@@ -9,23 +9,21 @@ import kotlin.math.hypot
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
 class EinkAnimationTimingTest {
-    @Test fun `e-ink renders four separated CI visitors in shared queue and returns them on clear`() {
-        val creatures = (0..3).map { dev.agentdeck.terrarium.AgentCreatureState("ci$it","hermes",dev.agentdeck.terrarium.OctopusVisualState.FLOATING,false,it,"CI QA $it") }
-        val state = dev.agentdeck.terrarium.TerrariumState(dev.agentdeck.terrarium.OctopusVisualState.FLOATING,dev.agentdeck.terrarium.CrayfishVisualState.DORMANT,
-            dev.agentdeck.terrarium.TetraVisualState.ABSENT,dev.agentdeck.terrarium.EnvironmentVisualState.CALM,openCodeCreatures = creatures,
-            ciWaits = creatures.associate { it.sessionId to dev.agentdeck.net.CiWaitStatus(phase = "unknown",agentWaiting = true,openedAt = it.layoutSlot.toLong()) },
-            ciWaitingIds = creatures.map { it.sessionId }.toSet())
-        val frame = renderEinkFrame(state,800,600,textScale = 2f)
-        val cleared = renderEinkFrame(state.copy(ciWaits = emptyMap(),ciWaitingIds = emptySet()),800,600,textScale = 2f)
-        for (slot in 0..3) {
-            val pos = dev.agentdeck.terrarium.ciStationPosition(slot,state.ciWaits["ci$slot"])
-            val x = (pos.first*800).toInt(); val y = (pos.second*600).toInt()
-            fun ink(bitmap: android.graphics.Bitmap) = (x-16..x+16).sumOf { px -> (y-18..y+18).count { py -> android.graphics.Color.red(bitmap.getPixel(px,py)) < 80 } }
-            assertTrue("Each queued resident has its own visible body: $slot",ink(frame) > 10)
-            assertTrue("Clearing the wait returns the body to its normal lane: $slot",ink(cleared) < ink(frame))
-        }
-        val output = java.io.File("/tmp/ad180-final-ci-qa/eink-render-4-unknown.png")
-        output.parentFile?.mkdirs(); output.outputStream().use { frame.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) }
+    @Test fun `e-ink static companion preserves actual resident homes and clears on null`() {
+        val creatures=(0..3).map { dev.agentdeck.terrarium.AgentCreatureState("ci$it","claude-code",dev.agentdeck.terrarium.OctopusVisualState.FLOATING,false,it,"CI QA $it") }
+        val state=dev.agentdeck.terrarium.TerrariumState(dev.agentdeck.terrarium.OctopusVisualState.FLOATING,dev.agentdeck.terrarium.CrayfishVisualState.DORMANT,
+            dev.agentdeck.terrarium.TetraVisualState.ABSENT,dev.agentdeck.terrarium.EnvironmentVisualState.CALM,agents=creatures,
+            ciWaits=creatures.associate { it.sessionId to dev.agentdeck.net.CiWaitStatus(phase="unknown",agentWaiting=true) })
+        val context=org.robolectric.RuntimeEnvironment.getApplication() as android.content.Context
+        val sprite=dev.agentdeck.terrarium.ciCompanionBitmap(context)
+        val frame=renderEinkFrame(state,800,600,textScale=2f,ciSprite=sprite)
+        val cleared=renderEinkFrame(state.copy(ciWaits=emptyMap()),800,600,textScale=2f,ciSprite=sprite)
+        val pixels=IntArray(800*600);val empty=IntArray(800*600)
+        frame.getPixels(pixels,0,800,0,0,800,600);cleared.getPixels(empty,0,800,0,0,800,600)
+        assertTrue(!pixels.contentEquals(empty))
+        val inactive=renderEinkFrame(state.copy(ciWaits=state.ciWaits.mapValues { it.value.copy(agentWaiting=false) }),800,600,textScale=2f,ciSprite=sprite)
+        inactive.getPixels(pixels,0,800,0,0,800,600)
+        assertTrue("Nonwaiting records do not create an orbital companion",pixels.contentEquals(empty))
     }
 
     @Test fun `e-ink refresh key notices CI changes when ordinary session state stays idle`() {

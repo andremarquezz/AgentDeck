@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.agentdeck.net.CiWaitStatus
-import dev.agentdeck.terrarium.ciStationLabel
+import dev.agentdeck.terrarium.ciCompanionLabel
 import dev.agentdeck.net.AgentState
 import dev.agentdeck.state.DashboardState
 import dev.agentdeck.state.TimelineEntry
@@ -199,7 +199,7 @@ internal fun paperMastheadSummary(board: PaperBoard): String = buildList {
 internal fun einkBoardState(state: DashboardState, session: dev.agentdeck.net.SessionInfo): AgentState =
     if (session.id == state.sessionId && state.agentType == session.agentType && state.agentState.isAwaiting()) state.agentState else mapSessionState(session)
 
-internal fun paperCiLine(session: BoardSession): String? = session.ciWait?.takeUnless { session.state.isAwaiting() }?.let(::ciStationLabel)
+internal fun paperCiLine(session: BoardSession): String? = session.ciWait?.takeUnless { session.state.isAwaiting() }?.let(::ciCompanionLabel)
 
 private fun AgentState.isAwaiting() = this == AgentState.AWAITING_PERMISSION ||
     this == AgentState.AWAITING_OPTION || this == AgentState.AWAITING_DIFF

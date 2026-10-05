@@ -249,7 +249,7 @@ final class HermesAquariumTests: XCTestCase {
         XCTAssertNil(loader.failure)
         let loaded = try XCTUnwrap(loader.loaded)
         XCTAssertFalse(loaded.habitat.visualBounds(relativeTo: nil).isEmpty)
-        XCTAssertFalse(loaded.ciStation.visualBounds(relativeTo: nil).isEmpty)
+        XCTAssertFalse(loaded.ciCompanion.visualBounds(relativeTo: nil).isEmpty)
         let scene = AquariumResidents()
         scene.loadTemplates(loaded.residents)
         scene.loadHermesTemplate(loaded.hermes)
