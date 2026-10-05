@@ -114,7 +114,9 @@ class CloudCreature(
     }
 
     /** Current live position for tetra attractor tracking. */
-    fun currentPosition(): Pair<Float, Float> = currentX to currentY
+    var stationPosition: Pair<Float, Float>? = null
+    fun simulationPosition(): Pair<Float, Float> = currentX to currentY
+    fun currentPosition(): Pair<Float, Float> = stationPosition ?: simulationPosition()
 
     /** Whether this cloud is currently working (swimming, scattering data). */
     fun isWorking(): Boolean = visualState == OctopusVisualState.WORKING
@@ -204,7 +206,7 @@ class CloudCreature(
         val baseWidth = minOf(w, h * 2f)
 
         val bodyRadius = baseWidth * TerrariumLayout.OCTOPUS_BODY_RADIUS_FRACTION * scaleFactor
-        val centerX = w * currentX
+        val centerX = w * (stationPosition?.first ?: currentX)
 
         // Bob animation
         val bobOffset = when (visualState) {
@@ -213,7 +215,7 @@ class CloudCreature(
             OctopusVisualState.FLOATING -> sin(time * 0.6f) * h * 0.003f
             else -> 0f
         }
-        val centerY = h * currentY + bobOffset
+        val centerY = h * (stationPosition?.second ?: currentY) + bobOffset
 
         val bodyAlpha = when (visualState) {
             OctopusVisualState.SLEEPING -> 0.35f

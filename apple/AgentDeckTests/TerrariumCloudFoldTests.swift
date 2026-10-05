@@ -1,6 +1,7 @@
 #if os(macOS)
 import XCTest
 import RealityKit
+import SwiftUI
 @testable import AgentDeck
 
 /// Verify the render-time Codex creature fold introduced to suppress phantom
@@ -773,6 +774,97 @@ final class TerrariumCloudFoldTests: XCTestCase {
 
         let terrarium = state.toTerrariumState()
         XCTAssertEqual(terrarium.creatures.count, 3, "Claude Code sessions must remain unfolded")
+    }
+    @MainActor
+    func testCiNativeStationAssetSleepsScansAndReturnsResidents() async throws {
+        let scene = AquariumResidents()
+        scene.loadTemplates(try await Entity(contentsOf: XCTUnwrap(Bundle.main.url(forResource: "3d-residents", withExtension: "usdz"))))
+        scene.loadHermesTemplate(try await Entity(contentsOf: XCTUnwrap(Bundle.main.url(forResource: "hermes-mermaid", withExtension: "usdz"))))
+        XCTAssertEqual(scene.templateCount, 7)
+        scene.loadCiStation(try await Entity(contentsOf: XCTUnwrap(Bundle.main.url(forResource: "ci-station", withExtension: "usdz"))))
+        scene.animate = false
+        scene.sync(TerrariumState(),aspect: 1.6)
+        let station = try XCTUnwrap(scene.root.findEntity(named: "ci-station"))
+        XCTAssertTrue(station.isEnabled)
+        XCTAssertEqual(station.components[OpacityComponent.self]?.opacity,TerrariumRules.ciStationAsleepOpacity)
+        XCTAssertFalse(try XCTUnwrap(scene.root.findEntity(named: "ci-inspection")).isEnabled)
+        var state = TerrariumState()
+        state.cloudCreatures = [.init(id: "ci",projectName: "Work",modelName: nil,state: .drifting,homeX: 0.4,homeY: 0.5,scale: 1)]
+        state.ciWaits = ["ci": ciWait("running")]; state.ciWaitingIDs = ["ci"]
+        scene.sync(state,aspect: 1.6)
+        let resident = try XCTUnwrap(scene.residents["ci"])
+        XCTAssertTrue(try XCTUnwrap(scene.root.findEntity(named: "ci-inspection")).isEnabled)
+        XCTAssertNotNil(resident.findEntity(named: "ci-cue"),"CI phase stays visible when labels hide")
+        let queued = resident.position
+        state.ciWaits["ci"] = ciWait("passed",waiting: false); state.ciWaitingIDs = []
+        scene.sync(state,aspect: 1.6)
+        XCTAssertNotEqual(resident.position,queued)
+        XCTAssertFalse(try XCTUnwrap(scene.root.findEntity(named: "ci-inspection")).isEnabled)
+    }
+
+    private func ciWait(_ phase: String, waiting: Bool = true, openedAt: Int = 1) -> CiWaitStatus {
+        .init(kind: "ci", provider: "github-actions", phase: phase, agentWaiting: waiting,
+              evidence: "github", openedAt: openedAt, checks: .init(total: 10, passed: 7, failed: 0, pending: 3), pr: 432)
+    }
+
+    func testCiStationVisitsKeepSeparateCodexIdentitiesAndPermissionPriority() {
+        var dashboard = DashboardState()
+        dashboard.state = .idle
+        dashboard.siblingSessions = [session(id: "a", project: "Same"), session(id: "b", project: "Same"), session(id: "permission", project: "Same", state: "awaiting_permission")]
+        for i in dashboard.siblingSessions.indices { dashboard.siblingSessions[i].waitingOn = ciWait("running", openedAt: 3-i) }
+        let state = dashboard.toTerrariumState()
+        XCTAssertEqual(Set(state.cloudCreatures.map(\.id)), ["a", "b", "permission"])
+        XCTAssertEqual(state.ciWaitingIDs, ["a", "b"])
+        XCTAssertNil(state.ciWaitLabels["permission"])
+        XCTAssertEqual(CiStationPresentation.queue(state, visibleIDs: ["a", "b", "permission"]), ["b", "a"])
+        XCTAssertEqual(state.ciWaitLabels["a"], "CI RUNNING #432 · 7/10")
+        let items = AquariumResident.project(state)
+        XCTAssertEqual(AquariumResident.foreground(items, focusedID: nil).first?.id, "permission")
+    }
+
+    @MainActor
+    func testCiCanvasVisitsRemainSelectableAndReturnAfterOutcome() {
+        let renderer = TerrariumRenderer()
+        renderer.animateStation = false
+        var state = TerrariumState()
+        state.creatures = [.init(id: "ci", projectName: "Work", modelName: nil, state: .floating, homeX: 0.5, homeY: 0.6, scale: 1)]
+        state.ciWaits = ["ci": ciWait("running")]; state.ciWaitingIDs = ["ci"]
+        renderer.update(dt: 0.05, state: state)
+        let position = CiStationPresentation.position(slot: 0, wait: state.ciWaits["ci"])
+        XCTAssertEqual(renderer.creatureAtPoint(nx: position.x, ny: position.y), "ci")
+        state.ciWaits["ci"] = ciWait("passed", waiting: false); state.ciWaitingIDs = []
+        renderer.update(dt: 0.05, state: state)
+        XCTAssertNil(renderer.creatureAtPoint(nx: position.x, ny: position.y))
+    }
+
+    @MainActor
+    func testCiStationCanvasCrowdsRenderEveryPhaseAndAsleep() throws {
+        for count in [0, 1, 8, 48] {
+            for phase in ["unknown", "queued", "running", "passed", "failed"] {
+                for (width,height) in [(1200,750), (600,900)] {
+                    let renderer = TerrariumRenderer()
+                    renderer.animateStation = false; renderer.animateHermes = false
+                    var state = TerrariumState()
+                    let slots = CreatureLayout.layoutOctopuses(count: count)
+                    state.creatures = (0..<count).map { .init(id: "s\($0)", projectName: "Work \($0)", modelName: nil,
+                        state: .floating, homeX: slots[$0].x, homeY: slots[$0].y, scale: slots[$0].scale) }
+                    state.ciWaits = Dictionary(uniqueKeysWithValues: state.creatures.map { ($0.id, ciWait(phase, waiting: phase != "passed", openedAt: Int($0.id.dropFirst()) ?? 0)) })
+                    state.ciWaitingIDs = phase == "passed" ? [] : Set(state.creatures.map(\.id))
+                    renderer.update(dt: 0, state: state)
+                    let image = ImageRenderer(content: Canvas { context,size in renderer.draw(context: &context,size: size) }.frame(width: CGFloat(width),height: CGFloat(height)))
+                    image.scale = 1
+                    let bitmap = try XCTUnwrap(image.nsImage?.tiffRepresentation)
+                    XCTAssertGreaterThan(bitmap.count, 100)
+                    do {
+                        let output = ProcessInfo.processInfo.environment["AGENTDECK_CI_VISUAL_OUTPUT"] ?? "/tmp/ci-station-visuals"
+                        let folder = URL(fileURLWithPath: output, isDirectory: true)
+                        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                        let data = try XCTUnwrap(NSBitmapImageRep(data: bitmap)?.representation(using: .png, properties: [:]))
+                        try data.write(to: folder.appendingPathComponent("canvas-\(count)-\(phase)-\(width)x\(height).png"))
+                    }
+                }
+            }
+        }
     }
 }
 #endif

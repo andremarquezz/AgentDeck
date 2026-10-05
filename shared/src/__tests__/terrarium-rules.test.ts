@@ -18,6 +18,17 @@ describe('terrarium rules invariants', () => {
     expect(crayfish.clearMaxX + resterMaxWidthFrac / 2).toBeLessThan(clawLeftEdge);
   });
 
+  it('CI station and its bounded queue stay out of crayfish floor territory', () => {
+    const { ciStation: station, crayfish, nativeResidentLimit } = TERRARIUM_RULES;
+    expect(station.y).toBeGreaterThanOrEqual(TERRARIUM_RULES.floorRestStrip.yMin);
+    expect(station.y).toBeLessThanOrEqual(TERRARIUM_RULES.floorRestStrip.yMax);
+    expect(station.x + station.widthFrac / 2).toBeLessThan(crayfish.clearMaxX);
+    expect(station.x + (station.queueColumns - 1) * station.queueGap + station.widthFrac / 2).toBeLessThan(crayfish.clearMaxX);
+    const rows = Math.ceil(nativeResidentLimit / station.queueColumns);
+    expect(station.queueY - (rows - 1) * station.queueRise - station.unknownDistance).toBeGreaterThan(0);
+    expect(station.nativeQueueGap).toBeGreaterThan(station.nativeQueueScale * 2);
+  });
+
   it('rest strips sit above the crayfish, below mid-water', () => {
     const { floorRestStrip, antigravityHoverStrip } = TERRARIUM_RULES;
     expect(floorRestStrip.yMin).toBeLessThan(floorRestStrip.yMax);

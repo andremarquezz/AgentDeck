@@ -74,8 +74,12 @@ final class OctopusCreature: Creature {
 
     // Animation state
     private var time: Float = 0
-    private(set) var currentX: Float
-    private(set) var currentY: Float
+    var stationPosition: SIMD2<Float>?
+    var currentX: Float { stationPosition?.x ?? simulationX }
+    var currentY: Float { stationPosition?.y ?? simulationY }
+    var simulationPosition: SIMD2<Float> { [simulationX, simulationY] }
+    private(set) var simulationX: Float
+    private(set) var simulationY: Float
     private var targetX: Float
     private var targetY: Float
     private var phaseOffset: Float
@@ -97,8 +101,8 @@ final class OctopusCreature: Creature {
         self.homeX = homeX
         self.homeY = homeY
         self.scale = scale
-        self.currentX = homeX
-        self.currentY = homeY
+        self.simulationX = homeX
+        self.simulationY = homeY
         self.targetX = homeX
         self.targetY = homeY
         self.phaseOffset = Float.random(in: 0...Float.pi * 2)
@@ -141,15 +145,15 @@ final class OctopusCreature: Creature {
         switch visualState {
         case .sleeping:
             let myDeepY = TerrariumLayout.standingYDeep + standingJitter * 0.5
-            currentX += (homeX - currentX) * dt * 4
-            currentY += (myDeepY - currentY) * dt * 4
+            simulationX += (homeX - simulationX) * dt * 4
+            simulationY += (myDeepY - simulationY) * dt * 4
 
         case .floating:
             let myStandingY = TerrariumLayout.standingY + standingJitter + depthOffset
             let breathBob = sin(time * 0.8) * 0.002
             let idleSway = sin(time * 0.3) * 0.005
-            currentX += (homeX + idleSway - currentX) * dt * 4
-            currentY += (myStandingY + breathBob - currentY) * dt * 4
+            simulationX += (homeX + idleSway - simulationX) * dt * 4
+            simulationY += (myStandingY + breathBob - simulationY) * dt * 4
 
         case .working:
             // Free swimming with waypoints
@@ -160,16 +164,16 @@ final class OctopusCreature: Creature {
                 pickNewWaypoint()
             }
             let rate = TerrariumTiming.swimLerpRate * dt
-            currentX += (targetX - currentX) * rate
-            currentY += (targetY - currentY) * rate
-            currentX = min(lane.maxX, max(lane.minX, currentX))
-            currentY = min(lane.maxY, max(lane.minY, currentY))
+            simulationX += (targetX - simulationX) * rate
+            simulationY += (targetY - simulationY) * rate
+            simulationX = min(lane.maxX, max(lane.minX, simulationX))
+            simulationY = min(lane.maxY, max(lane.minY, simulationY))
 
         case .asking:
             let myStandingY = TerrariumLayout.standingY + standingJitter + depthOffset
             let fidgetX = sin(time * 1.2) * 0.008
-            currentX += (homeX + fidgetX - currentX) * dt * 4
-            currentY += (myStandingY - currentY) * dt * 4
+            simulationX += (homeX + fidgetX - simulationX) * dt * 4
+            simulationY += (myStandingY - simulationY) * dt * 4
         }
     }
 
@@ -199,7 +203,7 @@ final class OctopusCreature: Creature {
 
     /// Current live position for tetra attractor tracking
     func currentPosition() -> (x: Float, y: Float) {
-        (currentX, currentY)
+        (simulationX, simulationY)
     }
 
     /// Whether this octopus is currently working

@@ -2,6 +2,7 @@
 // 17-layer rendering order matching Android ColorRenderer.kt
 
 import SwiftUI
+import simd
 
 final class TerrariumRenderer {
     // MARK: - Creatures
@@ -13,6 +14,12 @@ final class TerrariumRenderer {
     private var kiroCreatures: [String: KiroCreature] = [:]
     private var hermesCreatures: [String: HermesCreature] = [:]
     var animateHermes = true
+    var animateStation = true
+    private var ciDisplayPositions: [String: SIMD2<Float>] = [:]
+    private var ciPositions: [String: SIMD2<Float>] = [:]
+    private var ciQueue: [String] = []
+    private var ciTime: Float = 0
+    private var ciHops: [String: Float] = [:]
     private let crayfish = CrayfishCreature()
     private let tetra = DataParticleSystem()
     private let bubbles = BubbleSystem()
@@ -67,7 +74,16 @@ final class TerrariumRenderer {
 
     // MARK: - Update
 
-    func update(dt: Float, state: TerrariumState) {
+    func update(dt: Float, state sourceState: TerrariumState) {
+        var state = sourceState
+        let visibleIDs = Set(AquariumResident.foreground(AquariumResident.project(state), focusedID: state.focusedSessionId).map(\.id))
+        state.creatures = state.creatures.filter { visibleIDs.contains($0.id) }
+        state.cloudCreatures = state.cloudCreatures.filter { visibleIDs.contains($0.id) }
+        state.opencodeCreatures = state.opencodeCreatures.filter { visibleIDs.contains($0.id) }
+        state.antigravityCreatures = state.antigravityCreatures.filter { visibleIDs.contains($0.id) }
+        state.kiroCreatures = state.kiroCreatures.filter { visibleIDs.contains($0.id) }
+        state.hermesCreatures = state.hermesCreatures.filter { visibleIDs.contains($0.id) }
+        state.crayfishVisible = state.crayfishVisible && visibleIDs.contains("crayfish")
         // Environment state propagation
         envState = state.environment
         waterEffect.setState(envState)
@@ -224,6 +240,42 @@ final class TerrariumRenderer {
         }
         crayfish.update(dt: dt, state: state)
 
+        let originals = octopuses.mapValues { $0.simulationPosition }
+            .merging(clouds.mapValues { $0.simulationPosition }) { a, _ in a }
+            .merging(opencodeCreatures.mapValues { $0.simulationPosition }) { a, _ in a }
+            .merging(antigravityCreatures.mapValues { $0.simulationPosition }) { a, _ in a }
+            .merging(kiroCreatures.mapValues { $0.simulationPosition }) { a, _ in a }
+            .merging(hermesCreatures.mapValues { $0.simulationPosition }) { a, _ in a }
+        ciQueue = CiStationPresentation.queue(state, visibleIDs: Set(originals.keys))
+        let step = animateStation ? dt : 0
+        ciTime += step
+        for (id, base) in originals {
+            if state.ciWaits[id]?.phase == "passed", lastState?.ciWaits[id]?.phase != "passed",
+               lastState?.ciWaits[id] != nil { ciHops[id] = TerrariumRules.ciStationHopSeconds }
+            var target = base
+            if let slot = ciQueue.firstIndex(of: id) {
+                target = CiStationPresentation.position(slot: slot, wait: state.ciWaits[id])
+            }
+            if let left = ciHops[id], left > 0 {
+                let age = TerrariumRules.ciStationHopSeconds - left
+                target.y -= max(0, sin(age / TerrariumRules.ciStationHopSeconds * .pi)) * TerrariumRules.ciStationHopHeight
+                ciHops[id] = max(0, left-step)
+            }
+            if ciPositions[id] != nil || ciQueue.contains(id) || (ciHops[id] ?? 0) > 0 {
+                let current = ciPositions[id] ?? base
+                ciPositions[id] = animateStation ? current + (target-current) * min(1, step*TerrariumRules.ciStationResponseRate) : target
+                if !ciQueue.contains(id), (ciHops[id] ?? 0) == 0, simd_distance(ciPositions[id]!, base) < 0.002 { ciPositions.removeValue(forKey: id) }
+            }
+            octopuses[id]?.stationPosition = ciPositions[id]
+            clouds[id]?.stationPosition = ciPositions[id]
+            opencodeCreatures[id]?.stationPosition = ciPositions[id]
+            antigravityCreatures[id]?.stationPosition = ciPositions[id]
+            kiroCreatures[id]?.stationPosition = ciPositions[id]
+            hermesCreatures[id]?.stationPosition = ciPositions[id]
+        }
+        ciDisplayPositions = originals.merging(ciPositions) { _, visit in visit }
+        ciPositions = ciPositions.filter { originals[$0.key] != nil }
+        ciHops = ciHops.filter { originals[$0.key] != nil && $0.value > 0 }
         lastState = state
     }
 
@@ -270,6 +322,10 @@ final class TerrariumRenderer {
 
             // Layer 6.5: Back-layer fish (behind creatures for 3D depth)
             tetra.drawBackLayer(context: &context, size: size)
+        }
+
+        if let state = lastState {
+            CiStationPresentation.draw(context: &context, size: size, state: state, queue: ciQueue, positions: ciDisplayPositions, time: ciTime)
         }
 
         // Layer 6.7: Focus halo (drawn behind every creature so the sprite
@@ -804,6 +860,10 @@ final class TerrariumRenderer {
             if distance < bestDist { bestId = id; bestDist = distance }
         }
 
+        for (id, k) in kiroCreatures {
+            let distance = hypot(k.currentX-nx, k.currentY-ny)
+            if distance < bestDist { bestId = id; bestDist = distance }
+        }
         return bestId
     }
 

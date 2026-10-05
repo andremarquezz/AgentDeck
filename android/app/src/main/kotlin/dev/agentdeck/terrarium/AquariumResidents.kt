@@ -14,7 +14,7 @@ import kotlin.math.*
 
 /** Uses the canonical state projection, including its observed child census. */
 internal data class AquariumResident(val id: String, val kind: String, val title: String,
-    val state: OctopusVisualState, val helpers: Int = 0, val ciWaitLabel: String? = null)
+    val state: OctopusVisualState, val helpers: Int = 0, val ciWaitLabel: String? = null, val ciWait: dev.agentdeck.net.CiWaitStatus? = null)
 
 internal fun aquariumResidents(state: TerrariumState): List<AquariumResident> {
     fun project(item: AgentCreatureState, kind: String) = AquariumResident(
@@ -44,15 +44,15 @@ internal fun aquariumResidents(state: TerrariumState): List<AquariumResident> {
             CrayfishVisualState.WAITING -> OctopusVisualState.ASKING
             else -> OctopusVisualState.FLOATING
         }, state.workerCrayfishCount))
-    return (result + claw).distinctBy { it.id }.map { it.copy(ciWaitLabel = state.ciWaitLabels[it.id]) }
+    return (result + claw).distinctBy { it.id }.map { it.copy(ciWaitLabel = state.ciWaitLabels[it.id], ciWait = state.ciWaits[it.id]) }
 }
 
 /** Keep readable models bounded; every session remains accessible in the roster. */
 internal fun visibleAquariumResidents(items: List<AquariumResident>, focusedId: String?): List<AquariumResident> =
     items.sortedWith(compareBy<AquariumResident> {
         when { it.id == focusedId -> 0; it.state == OctopusVisualState.ASKING -> 1
-            it.state == OctopusVisualState.WORKING -> 2; else -> 3 }
-    }.thenBy { it.id }).take(TerrariumRules.NATIVE_RESIDENT_LIMIT)
+            it.ciWait?.agentWaiting == true || it.ciWait?.phase == "failed" -> 2; it.state == OctopusVisualState.WORKING -> 3; else -> 4 }
+    }.thenBy { if (it.ciWait?.agentWaiting == true || it.ciWait?.phase == "failed") it.ciWait?.openedAt ?: 0L else 0L }.thenBy { it.id }).take(TerrariumRules.NATIVE_RESIDENT_LIMIT)
 
 /** Filament resources live and die with the surface's engine, never with recomposition. */
 internal class AquariumResidents(private val context: Context, private val viewer: ModelViewer) {
@@ -65,11 +65,13 @@ internal class AquariumResidents(private val context: Context, private val viewe
     private data class Joint(val entity: Int, val name: String, val rest: FloatArray)
     private data class Body(val asset: FilamentAsset, val support: FilamentAsset?, val joints: List<Joint>,
         var item: AquariumResident, var phase: Float, var effort: Float = 0f,
-        var attention: Float = 0f, var size: Float = .78f, val footHeight: Float = 0f, var x: Float = 0f, var y: Float = 0f, var z: Float = 0f,
+        var attention: Float = 0f, var hop: Float = 0f, var initialized: Boolean = false, var size: Float = .78f, val footHeight: Float = 0f, var x: Float = 0f, var y: Float = 0f, var z: Float = 0f,
         /** Model-space silhouette bounds, for keeping tags off other residents. */
         val centerX: Float = 0f, val centerY: Float = 0f, val halfX: Float = .5f, val halfY: Float = .5f)
     private val bodies = linkedMapOf<String, Body>()
     private var ciQueue = emptyList<String>()
+    private var ciState: TerrariumState? = null
+    private var ciTime = 0f
     private var ciStation: FilamentAsset? = null
     private fun loadStation() {
         if (ciStation != null) return
@@ -152,11 +154,12 @@ internal class AquariumResidents(private val context: Context, private val viewe
 
     fun sync(state: TerrariumState, focus: String?) {
         val next = aquariumResidents(state)
-        val queue = visibleAquariumResidents(next, focus).filter { it.id in state.ciWaitingIds && it.state != OctopusVisualState.ASKING }.map { it.id }.sorted()
+        val queue = ciStationQueue(state, visibleAquariumResidents(next, focus).filter { it.state != OctopusVisualState.ASKING }.map { it.id }.toSet())
+        ciState = state
         if (all == next && focusedId == focus && ciQueue == queue) return
         ciQueue = queue
-        if (queue.isNotEmpty()) loadStation()
-        ciStation?.let { if (queue.isEmpty()) viewer.scene.removeEntities(it.entities) else viewer.scene.addEntities(it.entities) }
+        loadStation()
+        ciStation?.let { viewer.scene.addEntities(it.entities) }
         all = next
         focusedId = focus
         val visible = visibleAquariumResidents(all, focus)
@@ -170,6 +173,7 @@ internal class AquariumResidents(private val context: Context, private val viewe
         for (item in visible) {
             val existing = bodies[item.id]
             if (existing != null) {
+                if (item.ciWait?.phase == "passed" && existing.item.ciWait != null && existing.item.ciWait?.phase != "passed") existing.hop = TerrariumRules.CI_STATION_HOP_SECONDS
                 existing.item = item
                 existing.support?.let { if (item.id in ciQueue) viewer.scene.removeEntities(it.entities) else viewer.scene.addEntities(it.entities) }
                 continue
@@ -202,6 +206,7 @@ internal class AquariumResidents(private val context: Context, private val viewe
 
     fun step(delta: Float, aspect: Float) {
         val dt = delta.coerceIn(0f, .05f)
+        ciTime += dt
         ciStation?.let {
             Matrix.setIdentityM(matrix, 0)
             Matrix.translateM(matrix, 0, TerrariumRules.CI_STATION_NATIVE_X * min(1f, aspect), TerrariumRules.CI_STATION_NATIVE_Y, TerrariumRules.CI_STATION_NATIVE_Z)
@@ -217,7 +222,8 @@ internal class AquariumResidents(private val context: Context, private val viewe
         var groundIndex = 0
         var waterIndex = 0
         bodies.values.forEach { body ->
-            body.effort += ((if (body.item.state == OctopusVisualState.WORKING) 1f else 0f) - body.effort) * blend
+            val oldX = body.x; val oldY = body.y; val oldZ = body.z
+            body.effort += ((if (body.item.state == OctopusVisualState.WORKING && body.item.id !in ciQueue) 1f else 0f) - body.effort) * blend
             body.attention += ((if (body.item.state == OctopusVisualState.ASKING) 1f else 0f) - body.attention) * blend
             body.phase += dt * (TerrariumRules.NATIVE_ACTIVITY_IDLE_RATE + body.effort * TerrariumRules.NATIVE_ACTIVITY_WORK_RATE)
             val grounded = body.item.kind == "claudecode" || body.item.kind == "openclaw"
@@ -244,15 +250,25 @@ internal class AquariumResidents(private val context: Context, private val viewe
             val ciSlot = ciQueue.indexOf(body.item.id)
             if (ciSlot >= 0) {
                 val ciColumns = TerrariumRules.CI_STATION_QUEUE_COLUMNS.toInt()
-                scale *= min(1f, aspect)
+                scale = min(scale, TerrariumRules.CI_STATION_NATIVE_QUEUE_SCALE) * min(1f, aspect)
                 body.size = scale
                 body.x = (TerrariumRules.CI_STATION_NATIVE_X + (ciSlot % ciColumns) * TerrariumRules.CI_STATION_NATIVE_QUEUE_GAP) * min(1f, aspect)
-                body.y = TerrariumRules.CI_STATION_NATIVE_QUEUE_Y + (ciSlot / ciColumns) * TerrariumRules.CI_STATION_NATIVE_QUEUE_GAP
+                body.y = TerrariumRules.CI_STATION_NATIVE_QUEUE_Y + (ciSlot / ciColumns) * TerrariumRules.CI_STATION_NATIVE_QUEUE_GAP +
+                    (if (body.item.ciWait?.phase == "unknown") TerrariumRules.CI_STATION_UNKNOWN_DISTANCE * 7f else 0f)
                 body.z = TerrariumRules.CI_STATION_NATIVE_QUEUE_Z
             }
+            if (body.hop > 0f) {
+                val age = TerrariumRules.CI_STATION_HOP_SECONDS-body.hop
+                body.y += maxOf(0f, sin(age/TerrariumRules.CI_STATION_HOP_SECONDS*PI.toFloat()))*TerrariumRules.CI_STATION_HOP_HEIGHT*7f
+                body.hop = maxOf(0f, body.hop-dt)
+            }
+            if (body.initialized) {
+                body.x = oldX+(body.x-oldX)*blend; body.y = oldY+(body.y-oldY)*blend; body.z = oldZ+(body.z-oldZ)*blend
+            }
+            body.initialized = true
             Matrix.setIdentityM(matrix, 0)
             Matrix.translateM(matrix, 0, body.x, body.y, body.z)
-            val yaw = sin(body.phase * .5f) * if (grounded) body.effort * TerrariumRules.NATIVE_ACTIVITY_GROUND_YAW
+            val yaw = if (ciSlot >= 0) 0f else sin(body.phase * .5f) * if (grounded) body.effort * TerrariumRules.NATIVE_ACTIVITY_GROUND_YAW
                 else .20f + body.effort * TerrariumRules.NATIVE_ACTIVITY_WORK_YAW
             Matrix.rotateM(matrix, 0, Math.toDegrees(yaw.toDouble()).toFloat(), 0f, 1f, 0f)
             if (!grounded) {
@@ -310,6 +326,13 @@ internal class AquariumResidents(private val context: Context, private val viewe
         }
         for (p in onScreen) {
             overlay.drawCues(canvas, p.body.item, p.bodyX, p.bodyY, p.unit, p.body.phase, p.body.item.id == focusedId)
+        }
+        ciState?.let { state ->
+            if (project(canvas, TerrariumRules.CI_STATION_NATIVE_X*min(1f, canvas.width.toFloat()/canvas.height),
+                    TerrariumRules.CI_STATION_NATIVE_Y, TerrariumRules.CI_STATION_NATIVE_Z)) {
+                val positions = onScreen.filter { it.body.item.id in ciQueue }.associate { it.body.item.id to (it.bodyX to it.bodyY) }
+                overlay.drawStation(canvas, state, ciQueue, positions, ciTime, screenX, screenY)
+            }
         }
         if (!labelsVisible) return
         val byId = onScreen.associateBy { it.body.item.id }

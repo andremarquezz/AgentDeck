@@ -54,8 +54,9 @@ export const TERRARIUM_RULES = {
   nativeResidentLimit: 8,
   /** Original CI station stays left of the crayfish floor territory. Queue
    * rows rise into water; no provider is promoted to an agent/resident ID. */
-  ciStation: { x: 0.14, y: 0.63, widthFrac: 0.13, queueGap: 0.10, queueRise: 0.09, queueColumns: 4,
-    nativeX: -2.4, nativeY: 0.65, nativeZ: 1.9, nativeScale: 0.7, nativeQueueGap: 0.85, nativeQueueY: 1.8, nativeQueueZ: 0.1 },
+  ciStation: { x: 0.14, y: 0.63, widthFrac: 0.13, queueGap: 0.13, queueRise: 0.15, queueColumns: 4, queueY: 0.46, unknownDistance: 0.04,
+    responseRate: 4, scanRate: 1.4, asleepOpacity: 0.45, hopHeight: 0.035, hopSeconds: 1.2,
+    nativeX: -2.4, nativeY: 0.65, nativeZ: 1.9, nativeScale: 0.7, nativeQueueScale: 0.55, nativeQueueGap: 1.25, nativeQueueY: 1.8, nativeQueueZ: 0.1 },
   /** Shared native activity rhythm and cue geometry; screen-space label sizing remains surface-specific. */
   nativeActivity: {
     idleRate: 0.65,

@@ -115,6 +115,7 @@ struct HermesCreatureState: Identifiable {
 // MARK: - Terrarium State (aggregate)
 
 struct TerrariumState {
+    var ciWaits: [String: CiWaitStatus] = [:]
     var ciWaitLabels: [String: String] = [:]
     var ciWaitingIDs: Set<String> = []
     var creatures: [AgentCreatureState] = []
@@ -148,8 +149,9 @@ extension DashboardState {
     ) -> TerrariumState {
         var result = TerrariumState()
         for session in siblingSessions where session.waitingOn != nil && !(session.state ?? "").hasPrefix("awaiting") {
-            if let label = session.activity { result.ciWaitLabels[session.id] = label }
-            if session.waitingOn?.agentWaiting == true { result.ciWaitingIDs.insert(session.id) }
+            result.ciWaits[session.id] = session.waitingOn
+            if let wait = session.waitingOn { result.ciWaitLabels[session.id] = CiStationPresentation.label(wait) }
+            if session.waitingOn?.agentWaiting == true || (session.waitingOn?.phase == "failed" && session.state == "idle") { result.ciWaitingIDs.insert(session.id) }
         }
 
         // Primary session creature (skip daemon/openclaw/codex-cli/opencode/antigravity — they're not octopuses)
@@ -312,12 +314,12 @@ extension DashboardState {
 
         if let p = cloudPrimary {
             let type = agentType ?? "codex-cli"
-            let key = "\(type):\(cloudGroupKey(projectName: p.projectName))"
+            let key = result.ciWaits[p.id] != nil ? "ci:\(p.id)" : "\(type):\(cloudGroupKey(projectName: p.projectName))"
             cloudGroupOrder.append(key)
             cloudGroups[key, default: []].append((id: p.id, projectName: p.projectName, modelName: p.modelName, cloudState: p.cloudState, startedAt: p.startedAt))
         }
         for sibling in cloudSiblingsRaw {
-            let key = "\(sibling.agentType ?? "codex-cli"):\(cloudGroupKey(projectName: sibling.projectName))"
+            let key = sibling.waitingOn != nil ? "ci:\(sibling.id)" : "\(sibling.agentType ?? "codex-cli"):\(cloudGroupKey(projectName: sibling.projectName))"
             if cloudGroups[key] == nil { cloudGroupOrder.append(key) }
             cloudGroups[key, default: []].append((
                 id: sibling.id,
