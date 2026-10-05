@@ -35,7 +35,7 @@
         "bridge, shared, hooks, plugin, plugin-ulanzi, setup and scripts behave as their tests specify (the domain table below counts them)",
         "line/function/branch/statement coverage of bridge, shared, plugin and hooks stays above the floor in vitest.config.ts",
         "generated Swift/Kotlin/C++ mirrors match their TypeScript source of truth (contract tests)",
-        "CI wait command intent classification and generated Swift drift; identical command vectors execute in both TS and Swift on macOS, including strict JSON booleans, UTF-16 bounds and safe identity extraction; unsupported or ambiguous input is rejected"
+        "CI wait command intent classification and generated Swift drift; identical command vectors execute in both TS and Swift on macOS, including strict JSON booleans, UTF-16 bounds and safe identity extraction; unsupported or ambiguous input is rejected; Hermes normalized CI evidence is allow-listed, bounded and matched by opaque invocation ID in both trackers"
       ],
       "does_not_prove": [
         "anything about native apps, firmware or real devices",
@@ -57,6 +57,7 @@
       "evidence": ["tests/e2e/daemon-hub.e2e.test.ts"],
       "proves": [
         "the real agentdeck daemon start process boots in an empty HOME and answers /health",
+        "privacy-scrubbed real Hermes CI terminal callbacks open an unknown foreground wait and clear its matching invocation through actual daemon HTTP/WS; the capture used a local fixture watcher, not a GitHub verdict",
         "Claude hook events posted to /hooks/* drive the WebSocket state stream (idle → processing → idle)",
         "the exact hook shell snippet the installer writes finds the daemon through daemon.json and delivers events",
         "PreToolUse and Stop hooks answer immediately when no device can approve, so Claude never stalls",

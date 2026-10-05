@@ -5260,6 +5260,7 @@ export async function startDaemon(opts: DaemonOptions): Promise<void> {
    *  APME run closes, the same close a finalize would have given it. */
   function sweepDepartedHermes(now = Date.now()): void {
     for (const sid of hermesSessions.sweepDeparted(undefined, now)) {
+      ciWaits.forget(sid);
       if (apme?.collector.getRunId(sid)) {
         try { apme.collector.closeRun(sid); }
         catch (err) { debug('APME', `closeRun for departed hermes ${sid.slice(0, 15)} failed: ${String(err)}`); }
@@ -5269,6 +5270,7 @@ export async function startDaemon(opts: DaemonOptions): Promise<void> {
   }
   hookCodexSessions.onChanged = () => core.maybeBroadcastSessionsList();
   hermesSessions.onExpired = (sid) => {
+    ciWaits.forget(sid);
     // Retiring the row must also release the collector's live-run ownership.
     // Otherwise a quiet Gateway chat remains exempt from the abandoned-run reaper.
     core.bridgeTimeline.reapOrphanChatStarts(0, Date.now(), undefined, { onlySessionId: sid });

@@ -80,6 +80,30 @@ enum CiWaitRules {
               match(value, pattern) != nil else { return nil }
         return value
     }
+    static func normalized(_ value: Any?) -> CiWaitIntent? {
+        guard let v = value as? [String: Any],
+              Set(v.keys).isSubset(of: ["kind", "provider", "mode", "repo", "ref", "pr", "runId"]),
+              v["kind"] as? String == "ci", v["provider"] as? String == "github-actions",
+              let mode = v["mode"] as? String, ["watch", "poll"].contains(mode) else { return nil }
+        var intent = CiWaitIntent(mode: mode)
+        if let raw = v["repo"] {
+            guard let value = raw as? String, let repo = identity(value, repoPattern) else { return nil }
+            intent.repo = repo
+        }
+        if let raw = v["ref"] {
+            guard let value = raw as? String, let ref = identity(value, branchPattern) else { return nil }
+            intent.ref = ref
+        }
+        for key in ["pr", "runId"] {
+            if let raw = v[key] {
+                guard let value = raw as? NSNumber, CFGetTypeID(value) != CFBooleanGetTypeID(),
+                      value.doubleValue >= 1, value.doubleValue <= Double(maxId),
+                      value.doubleValue.rounded() == value.doubleValue else { return nil }
+                if key == "pr" { intent.pr = value.intValue } else { intent.runId = value.intValue }
+            }
+        }
+        return intent
+    }
     private static func segments(_ command: String) -> [[Token]]? {
         guard command.utf16.count <= maxCommandChars,
               command.rangeOfCharacter(from: forbidden) == nil else { return nil }
@@ -267,12 +291,14 @@ final class CiWaitTracker {
             guard let id = (json["tool_use_id"] ?? json["tool_call_id"] ?? json["call_id"]) as? String,
                   !id.isEmpty, id.utf16.count <= 255 else { return false }
             var waits = sessions[sid] ?? []
-            if event == "tool_start", let input = json["tool_input"] as? [String: Any] {
-                guard let tool = json["tool_name"] as? String,
-                      ["Bash", "bash", "shell", "shell_command", "exec_command"].contains(tool) else { return false }
-                let flag = input["run_in_background"] as? NSNumber
+            if event == "tool_start" {
+                let tool = json["tool_name"] as? String
+                let normalized = tool == "terminal" ? CiWaitRules.normalized(json["ci_wait_intent"]) : nil
+                let input = json["tool_input"] as? [String: Any]
+                guard normalized != nil || (input != nil && ["Bash", "bash", "shell", "shell_command", "exec_command"].contains(tool ?? "")) else { return false }
+                let flag = (normalized != nil ? json["ci_wait_background"] : input?["run_in_background"]) as? NSNumber
                 let background = flag.map { CFGetTypeID($0) == CFBooleanGetTypeID() && $0.boolValue } ?? false
-                guard let intent = CiWaitRules.classify(command: input["command"] ?? input["cmd"], runInBackground: true),
+                guard let intent = normalized ?? CiWaitRules.classify(command: input?["command"] ?? input?["cmd"], runInBackground: true),
                       background || intent.mode == "watch" else { return false }
                 if !waits.contains(where: { $0.id == id }) {
                     guard waits.count < 8,

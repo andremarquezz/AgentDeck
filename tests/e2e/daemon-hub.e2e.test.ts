@@ -303,6 +303,55 @@ describe.skipIf(DARWIN_BLOCKED)('daemon hub (real CLI process)', () => {
     }
   });
 
+  it('replays real Hermes CI tool callbacks through HTTP and clears the exact foreground wait', async () => {
+    const capture = JSON.parse(readFileSync(join(ROOT, 'bridge/src/__tests__/fixtures/hermes-live-ci.json'), 'utf8'));
+    const client = await connect(daemon.port);
+    const sid = capture.events[0].payload.session_id;
+    const observedId = `observed:hermes:${sid}`;
+    try {
+      for (const hook of capture.events) {
+        const from = client.frames.length;
+        const response = await postHook(daemon.port, hook.event, { ...hook.payload, pid: daemon.child.pid });
+        expect(response.status).toBe(200);
+        if (hook.event === 'hermes_tool_start' || hook.event === 'hermes_tool_end') {
+          const row = await waitFor('Hermes CI wait projection', () => {
+            for (const frame of client.frames.slice(from)) {
+              if (frame.type !== 'sessions_list') continue;
+              const session = (frame.sessions as Record<string, unknown>[]).find(s => s.id === observedId);
+              if (session && (hook.event === 'hermes_tool_start' ? session.waitingOn != null : session.waitingOn === null)) return session;
+            }
+            return undefined;
+          });
+          if (hook.event === 'hermes_tool_start') expect(row.waitingOn).toMatchObject({
+            kind: 'ci', provider: 'github-actions', repo: 'example/project', runId: 4242, phase: 'unknown', agentWaiting: true,
+          });
+          else expect(row.waitingOn).toBeNull();
+        }
+      }
+      await waitFor('Hermes CI finalized row retirement', () => {
+        const latest = client.frames.filter(f => f.type === 'sessions_list').at(-1);
+        return latest && !(latest.sessions as Record<string, unknown>[]).some(s => s.id === observedId) ? true : undefined;
+      });
+      const scheduled = client.frames.filter(f => f.type === 'timeline_event')
+        .map(f => f.entry as Record<string, unknown>).filter(e => e.sessionId === sid && e.type === 'scheduled');
+      expect(scheduled.some(e => e.raw === 'CI wait requested' && e.agentType === 'hermes')).toBe(true);
+      expect(scheduled.some(e => e.raw === 'CI wait ended · result unconfirmed')).toBe(true);
+      expect(JSON.stringify(client.frames)).not.toContain('fixture-private-invocation');
+      const page = await (await fetch(`http://127.0.0.1:${daemon.port}/apme/tasks?session=${encodeURIComponent(sid)}`,
+        { signal: AbortSignal.timeout(2000) })).json() as { tasks: Array<{ id: string }> };
+      expect(page.tasks).toHaveLength(1);
+      const detail = await (await fetch(`http://127.0.0.1:${daemon.port}/apme/tasks/${page.tasks[0].id}`,
+        { signal: AbortSignal.timeout(2000) })).json() as {
+          turns: Array<{ end_source: string; response: string; model_id: string }>;
+          sample: { events: Array<{ kind: string; evidence?: string; phase?: string }> };
+        };
+      expect(detail.turns).toHaveLength(1);
+      expect(detail.turns[0]).toMatchObject({ end_source: 'stop', response: 'HERMES_CI_COMPLETE', model_id: 'agentdeck-ci-fixture' });
+      expect(detail.sample.events.filter(e => e.kind === 'relation' && e.evidence === 'ci_wait_foreground').map(e => e.phase))
+        .toEqual(['open', 'closed']);
+
+    } finally { client.close(); }
+  });
   it('replays a real Hermes delegated turn through HTTP without a child roster row', async () => {
     const capture = JSON.parse(readFileSync(join(ROOT, 'bridge/src/__tests__/fixtures/hermes-live-child.json'), 'utf8'));
     const client = await connect(daemon.port);

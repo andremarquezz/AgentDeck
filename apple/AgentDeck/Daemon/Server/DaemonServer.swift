@@ -11753,6 +11753,21 @@ final class DaemonServer {
             DaemonLogger.shared.debug("Hook", "Hermes \(event) not admitted")
             return
         }
+        // Hermes bypasses the generic Claude/Codex handler. Admit the same
+        // normalized CI evidence here, using the bare id that roster encoding
+        // reads, and clear it on the same conversation boundaries.
+        let rawSid = ObservedAgentRules.rawSessionId(sessionId)
+        let timestamp = Self.wireEpochMs(now.timeIntervalSince1970 * 1000)
+        if ciWaits.note(rawSid, event: boundary, json: json, now: timestamp) {
+            let wait = ciWaits.snapshot(rawSid, now: timestamp)
+            var entry = DaemonTimelineEntry(ts: Double(timestamp), type: "scheduled",
+                raw: wait == nil ? "CI wait ended · result unconfirmed" : "CI wait requested",
+                detail: nil, approvalId: nil, status: nil,
+                agentType: "hermes", repeatCount: nil, automated: nil)
+            entry.sessionId = rawSid
+            entry.summaryKind = "none"
+            Task { await timelineStore.add(entry, bypassSuppression: true) }
+        }
         let apmeHook = Self.normalizeApmeObservedHook(
             event: event,
             json: apmeEnrichedHookPayload(json: json, sessionId: sessionId),
@@ -11806,6 +11821,7 @@ final class DaemonServer {
     }
 
     private func removeHermesRow(_ sessionId: String) {
+        ciWaits.forget(ObservedAgentRules.rawSessionId(sessionId))
         pushedSessionsById.removeValue(forKey: sessionId)
         cachedSessions.removeAll { $0.id == sessionId }
         lastHookAtByPushedSession.removeValue(forKey: sessionId)

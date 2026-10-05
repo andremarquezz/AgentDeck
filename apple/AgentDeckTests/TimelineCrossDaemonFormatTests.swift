@@ -23,6 +23,23 @@ import XCTest
 @testable import AgentDeck
 
 final class TimelineCrossDaemonFormatTests: XCTestCase {
+    @DaemonActor
+    func testSharedCiScheduledDedupVectors() async throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let data = try Data(contentsOf: root.appendingPathComponent("shared/timeline-ci-dedup-vectors.json"))
+        let vectors = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [[String: Any]])
+        for vector in vectors {
+            let store = DaemonTimelineStore(persistFile: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+            let before = try JSONSerialization.data(withJSONObject: XCTUnwrap(vector["before"] as? [String: Any]))
+            let incoming = try JSONSerialization.data(withJSONObject: XCTUnwrap(vector["incoming"] as? [String: Any]))
+            await store.add(try JSONDecoder().decode(DaemonTimelineEntry.self, from: before))
+            await store.add(try JSONDecoder().decode(DaemonTimelineEntry.self, from: incoming))
+            let actual = await store.getAll()
+            XCTAssertEqual(actual.count, vector["action"] as? String == "add" ? 2 : 1, vector["name"] as? String ?? "")
+        }
+    }
+
     private var dir: URL!
 
     override func setUpWithError() throws {

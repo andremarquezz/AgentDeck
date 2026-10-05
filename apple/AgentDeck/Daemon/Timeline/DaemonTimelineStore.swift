@@ -151,10 +151,13 @@ actor DaemonTimelineStore {
             // PTY-fallback / Stop-hook race that can leak two identical chat_response
             // entries when Claude Code's transcript flush lags spinner_stop by a few
             // seconds.
-            let recentWindow = entry.ts - 8000
-            if entries.last(where: { $0.ts > recentWindow && $0.type == entry.type && $0.raw == entry.raw }) != nil {
-                return
-            }
+            if entries.last(where: { existing in
+                guard abs(existing.ts - entry.ts) <= 8000, existing.type == entry.type, existing.raw == entry.raw else { return false }
+                // Same session-scoped scheduled evidence rule as shared/src/timeline.ts.
+                if entry.type == "scheduled", let sid = entry.sessionId, !sid.isEmpty,
+                   let other = existing.sessionId, !other.isEmpty, sid != other { return false }
+                return true
+            }) != nil { return }
         }
 
         insertSorted(entry)

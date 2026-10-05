@@ -198,6 +198,21 @@ export function classifyCiWaitIntent(command: unknown, runInBackground: unknown)
 }
 
 
+/** Content-minimized observer evidence. Invalid or extra fields fail closed;
+ * no command, environment, result, credential or free-form argument is kept. */
+export function normalizedCiWaitIntent(value: unknown): CiWaitIntent | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const v = value as Record<string, unknown>;
+  if (Object.keys(v).some(k => !['kind', 'provider', 'mode', 'repo', 'ref', 'pr', 'runId'].includes(k)) ||
+      v.kind !== 'ci' || v.provider !== 'github-actions' || typeof v.mode !== 'string' || !['watch', 'poll'].includes(v.mode)) return null;
+  if ((v.repo !== undefined && (typeof v.repo !== 'string' || !repo(v.repo))) ||
+      (v.ref !== undefined && (typeof v.ref !== 'string' || !branch(v.ref))) ||
+      ['pr', 'runId'].some(k => v[k] !== undefined && (typeof v[k] !== 'number' || !Number.isSafeInteger(v[k]) || Number(v[k]) < 1))) return null;
+  return { kind: 'ci', provider: 'github-actions', mode: v.mode as 'watch' | 'poll',
+    ...(v.repo !== undefined ? { repo: v.repo as string } : {}), ...(v.ref !== undefined ? { ref: v.ref as string } : {}),
+    ...(v.pr !== undefined ? { pr: v.pr as number } : {}), ...(v.runId !== undefined ? { runId: v.runId as number } : {}) };
+}
+
 /** Lifecycle bounds are shared with the generated native implementation. */
 export const CI_WAIT_LIFECYCLE = { maxSessions: 1024, maxTools: 8, maxSessionChars: 256, maxToolIdChars: 255, maxAgeMs: 24 * 60 * 60 * 1000, resultAgeMs: 30_000 } as const;
 import type { CiWaitStatus } from './protocol.js';
@@ -229,11 +244,13 @@ export class CiWaitTracker {
       if (typeof id !== 'string' || !id || id.length > CI_WAIT_LIFECYCLE.maxToolIdChars) return false;
       const input = json.tool_input as Record<string, unknown> | undefined;
       let waits = this.sessions.get(sessionId) ?? [];
-      if (event === 'tool_start' && input && typeof input === 'object') {
+      if (event === 'tool_start') {
         const tool = json.tool_name;
-        if (!['Bash', 'bash', 'shell', 'shell_command', 'exec_command'].includes(String(tool))) return false;
-        const background = input.run_in_background === true;
-        const intent = classifyCiWaitIntent(input.command ?? input.cmd, true);
+        const normalized = tool === 'terminal' ? normalizedCiWaitIntent(json.ci_wait_intent) : null;
+        if (!normalized && (!input || typeof input !== 'object' ||
+            !['Bash', 'bash', 'shell', 'shell_command', 'exec_command'].includes(String(tool)))) return false;
+        const background = normalized ? json.ci_wait_background === true : input?.run_in_background === true;
+        const intent = normalized ?? classifyCiWaitIntent(input?.command ?? input?.cmd, true);
         // Foreground one-shot reads and polling loops are not watch evidence.
         if (!intent || (!background && intent.mode !== 'watch')) return false;
         if (!waits.some(w => w.id === id)) {
