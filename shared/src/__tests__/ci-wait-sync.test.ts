@@ -1,17 +1,44 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, mkdtempSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import * as rules from '../ci-wait.js';
 import sharp from 'sharp';
+import projection from '../../ci-wait-projection-vectors.json';
 import { createHash } from 'node:crypto';
 import { CI_GITHUB_GLYPH, CI_GITHUB_GLYPH_SOURCE_SHA256 } from '../ci-github-glyph.generated.js';
 import { emitSwift, OUTPUT, emitKotlin, KOTLIN_OUTPUT, emitCpp, CPP_OUTPUT, emitHermesRules, HERMES_OUTPUT } from '../../../scripts/generate-ci-wait.mjs';
 const root = fileURLToPath(new URL('../../..', import.meta.url));
+const arduinoJson = join(root, 'esp32/.pio/libdeps/box_86/ArduinoJson/src');
 
 describe('Node/Swift CI wait command parity', () => {
+  it('clears inactive pending phase evidence while preserving terminal verdicts', () => {
+    for (const vector of projection) expect(rules.ciWaitPhaseId(vector.wait as never)).toBe(vector.expected);
+  });
+  it.skipIf(process.platform === 'win32' || !existsSync(join(arduinoJson, 'ArduinoJson.h')))(
+    'executes full-JSON firmware projection against the same compact evidence vectors', () => {
+      const dir = mkdtempSync(join(tmpdir(), 'agentdeck-ci-json-parity-'));
+      try {
+        const source = join(dir, 'projection.cpp');
+        writeFileSync(source, `#include <ArduinoJson.h>
+#include "esp32/src/state/ci_wait_generated.h"
+#include <fstream>
+#include <cassert>
+int main(int argc, char** argv) {
+    std::ifstream input(argv[1]); JsonDocument vectors;
+    assert(!deserializeJson(vectors, input));
+    for (auto vector : vectors.as<JsonArray>()) {
+        assert(CiWaitVisual::fromJsonWait(vector["wait"]) == vector["expected"].as<unsigned>());
+    }
+}
+`);
+        execFileSync('c++', ['-std=c++17', '-iquote', root, '-I', arduinoJson, source, '-o', join(dir, 'projection')], { timeout: 60_000 });
+        execFileSync(join(dir, 'projection'), [join(root, 'shared/ci-wait-projection-vectors.json')], { timeout: 10_000 });
+      } finally { rmSync(dir, { recursive: true, force: true }); }
+    }, 75_000,
+  );
   it('derives the CI helper from the official GitHub SVG and preserves its transparent face', async () => {
     const svg = readFileSync(join(root, 'design/brand/github.svg'));
     expect(createHash('sha256').update(svg).digest('hex')).toBe(CI_GITHUB_GLYPH_SOURCE_SHA256);
@@ -93,9 +120,14 @@ for vector in accounting {
         start: vector["start"] as! Int, end: vector["end"] as! Int)
     precondition(actual == vector["expected"] as! Int, "CI accounting mismatch")
 }
+let projectionData = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[5]))
+for vector in try JSONSerialization.jsonObject(with: projectionData) as! [[String: Any]] {
+    precondition(CiWaitVisual.compactPhase(vector["wait"] as? [String: Any]) == vector["expected"] as! Int,
+        "Full/compact waiting evidence projection mismatch")
+}
 `);
       execFileSync('swiftc', ['-swift-version', '6', join(root, OUTPUT), join(root, 'apple/AgentDeck/Daemon/Timeline/DaemonTimelineStore.swift'), main, '-o', join(dir, 'parity')], { timeout: 60_000 });
-      execFileSync(join(dir, 'parity'), [join(root, 'shared/ci-wait-vectors.json'), join(root, 'shared/ci-wait-lifecycle-vectors.json'), join(root, 'shared/ci-wait-accounting-vectors.json'), join(root, 'shared/timeline-ci-dedup-vectors.json')], { timeout: 10_000 });
+      execFileSync(join(dir, 'parity'), [join(root, 'shared/ci-wait-vectors.json'), join(root, 'shared/ci-wait-lifecycle-vectors.json'), join(root, 'shared/ci-wait-accounting-vectors.json'), join(root, 'shared/timeline-ci-dedup-vectors.json'), join(root, 'shared/ci-wait-projection-vectors.json')], { timeout: 10_000 });
     } finally { rmSync(dir, { recursive: true, force: true }); }
   }, 75_000);
 });

@@ -101,6 +101,9 @@ fun EinkTerrariumView(
         // cache in the parent EinkRefreshZone FrameLayout, ensuring animation frames reach the EPD.
         val hostView = LocalView.current
         val ciSprite=remember(hostView.context){ciCompanionBitmap(hostView.context)}
+        val ciTypeface = remember(hostView.context) {
+            dev.agentdeck.terrarium.ciCompanionTypeface(hostView.context)
+        }
         val physicalEink = remember(hostView) { EinkRefreshHelper.isPhysicalEink(hostView) }
         val habitat = remember(hostView, physicalEink) {
             AquariumHabitat.load(hostView.context, einkColorEnabled, physicalEink)
@@ -126,7 +129,7 @@ fun EinkTerrariumView(
                 // caller decide whether that frame warrants an EPD refresh.
                 val bmp = reusableBitmap?.takeIf { it.width == widthPx && it.height == heightPx }
                     ?: Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888).also { reusableBitmap = it }
-                renderedBitmap = renderEinkFrame(currentState, widthPx, heightPx, 0f, bmp, fishSchool = fishSchool, habitat = habitat, textScale = density.density,ciSprite = ciSprite)
+                renderedBitmap = renderEinkFrame(currentState, widthPx, heightPx, 0f, bmp, fishSchool = fishSchool, habitat = habitat, textScale = density.density,ciSprite = ciSprite, ciTypeface = ciTypeface)
                 hostView.postInvalidate()
                 onFrameRendered?.invoke(false)
                 return@LaunchedEffect
@@ -148,7 +151,7 @@ fun EinkTerrariumView(
                     fishSchool.update(streaming, frameAdvance,
                         hovering = s.tetra == TetraVisualState.HOVERING)
                     renderedBitmap = renderEinkFrame(currentState, widthPx, heightPx, animFrame, bmp,
-                        skipDither = true, fishSchool = fishSchool, habitat = habitat, textScale = density.density,ciSprite = ciSprite)
+                        skipDither = true, fishSchool = fishSchool, habitat = habitat, textScale = density.density,ciSprite = ciSprite, ciTypeface = ciTypeface)
                     hostView.postInvalidate()
                     onFrameRendered?.invoke(true)
                 } catch (e: Exception) {
@@ -168,7 +171,7 @@ fun EinkTerrariumView(
             val bmp = reusableBitmap?.takeIf { it.width == widthPx && it.height == heightPx }
                 ?: Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888).also { reusableBitmap = it }
             val frame = if (snapshotMode) 0f else animFrame
-            renderedBitmap = renderEinkFrame(currentState, widthPx, heightPx, frame, bmp, fishSchool = fishSchool, habitat = habitat, textScale = density.density,ciSprite = ciSprite)
+            renderedBitmap = renderEinkFrame(currentState, widthPx, heightPx, frame, bmp, fishSchool = fishSchool, habitat = habitat, textScale = density.density,ciSprite = ciSprite, ciTypeface = ciTypeface)
             hostView.postInvalidate()
             onFrameRendered?.invoke(false)
         }
@@ -178,7 +181,7 @@ fun EinkTerrariumView(
             if (renderedBitmap == null || renderedBitmap?.width != widthPx || renderedBitmap?.height != heightPx) {
                 val bmp = reusableBitmap?.takeIf { it.width == widthPx && it.height == heightPx }
                     ?: Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888).also { reusableBitmap = it }
-                renderedBitmap = renderEinkFrame(state, widthPx, heightPx, 0f, bmp, fishSchool = fishSchool, habitat = habitat, textScale = density.density,ciSprite = ciSprite)
+                renderedBitmap = renderEinkFrame(state, widthPx, heightPx, 0f, bmp, fishSchool = fishSchool, habitat = habitat, textScale = density.density,ciSprite = ciSprite, ciTypeface = ciTypeface)
                 hostView.postInvalidate()
                 onFrameRendered?.invoke(false)
             }
@@ -195,6 +198,14 @@ fun EinkTerrariumView(
     }
 }
 
+/** Repeated static captions overlap; the paper list retains each full CI status. */
+internal fun showEinkCiCompanionCaptions(state: TerrariumState): Boolean {
+    val residents = state.agents + state.cloudCreatures + state.openCodeCreatures + state.antigravityCreatures
+    return residents.count {
+        it.visualState != OctopusVisualState.ASKING && ciCompanionActive(state.ciWaits[it.sessionId])
+    } <= 1
+}
+
 /**
  * Render a single e-ink frame with optional animation. Reuses [target] bitmap to avoid allocation.
  * Live residents render with alpha over a cached habitat; the physical monochrome
@@ -207,6 +218,7 @@ internal fun renderEinkFrame(
     habitat: AquariumHabitat? = null,
     textScale: Float = 1f,
     ciSprite: Bitmap? = null,
+    ciTypeface: android.graphics.Typeface? = null,
 ): Bitmap {
     val bitmap = if (target != null && target.width == width && target.height == height) {
         target.eraseColor(0)
@@ -325,14 +337,16 @@ internal fun renderEinkFrame(
     }
 
     if(ciSprite!=null) {
+        val ciPaint = Paint(paint).apply { typeface = ciTypeface }
         val all=state.agents+state.cloudCreatures+state.openCodeCreatures+state.antigravityCreatures
         for(item in all) {
             val wait=state.ciWaits[item.sessionId] ?: continue
             if(!ciCompanionActive(wait) || item.visualState==OctopusVisualState.ASKING)continue
             // Preserve each renderer's actual rest/swim home rather than relocating it.
             val center=einkCiAnchors.get().getOrNull(all.indexOf(item)) ?: continue
-            drawCiCompanion(canvas,paint,ciSprite,center,ciCompanionPosition(center,TerrariumRules.CI_COMPANION_STATIC_ANGLE,width.toFloat(),height.toFloat()),
-                wait,textScale=textScale,ink=if(einkColorEnabled)null else GRAY_CREATURE)
+            drawCiCompanion(canvas,ciPaint,ciSprite,center,ciCompanionPosition(center,TerrariumRules.CI_COMPANION_STATIC_ANGLE,width.toFloat(),height.toFloat()),
+                wait,textScale=textScale,ink=if(einkColorEnabled)null else GRAY_CREATURE,
+                showCaption=showEinkCiCompanionCaptions(state))
         }
     }
 

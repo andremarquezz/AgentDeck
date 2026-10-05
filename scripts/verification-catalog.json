@@ -35,7 +35,8 @@
         "bridge, shared, hooks, plugin, plugin-ulanzi, setup and scripts behave as their tests specify (the domain table below counts them)",
         "line/function/branch/statement coverage of bridge, shared, plugin and hooks stays above the floor in vitest.config.ts",
         "generated Swift/Kotlin/C++ mirrors match their TypeScript source of truth (contract tests)",
-        "CI wait command intent classification and generated Swift drift; identical command vectors execute in both TS and Swift on macOS, including strict JSON booleans, UTF-16 bounds and safe identity extraction; unsupported or ambiguous input is rejected; Hermes normalized CI evidence is allow-listed, bounded and matched by opaque invocation ID in both trackers"
+        "CI wait command intent classification and generated Swift drift; identical command vectors execute in both TS and Swift on macOS, including strict JSON booleans, UTF-16 bounds and safe identity extraction; unsupported or ambiguous input is rejected; Hermes normalized CI evidence is allow-listed, bounded and matched by opaque invocation ID in both trackers",
+        "CI compact transport requires explicit agentWaiting=true for pending phases while preserving terminal verdicts; common vectors execute in Node and Swift, plus the firmware ArduinoJson projection when its build dependency is installed"
       ],
       "does_not_prove": [
         "anything about native apps, firmware or real devices",

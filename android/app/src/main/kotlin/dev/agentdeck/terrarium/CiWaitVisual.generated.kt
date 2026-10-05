@@ -9,6 +9,4 @@ object CiWaitVisual {
     const val PASSED = 4
     const val FAILED = 5
     val github = intArrayOf(60, 126, 195, 195, 195, 231, 70, 36)
-    @Deprecated("Use github; this compatibility name contains the GitHub mark")
-    val shrimp get() = github
 }

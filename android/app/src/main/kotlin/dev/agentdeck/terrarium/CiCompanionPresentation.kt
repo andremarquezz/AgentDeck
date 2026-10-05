@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.Typeface
 import android.content.Context
 import dev.agentdeck.R
 import dev.agentdeck.net.CiWaitStatus
@@ -59,13 +60,17 @@ internal fun ciCompanionPosition(center: Pair<Float,Float>,angle: Float,w: Float
     return (center.first+cos(angle)*TerrariumRules.CI_COMPANION_ORBIT_RADIUS_X*short/w).coerceIn(inset,1f-inset) to
         (center.second+sin(angle)*TerrariumRules.CI_COMPANION_ORBIT_RADIUS_Y*short/h).coerceIn(inset,1f-inset)
 }
+internal fun ciCompanionTypeface(context: Context): Typeface =
+    Typeface.createFromAsset(context.assets, "fonts/IBMPlexSans-Regular.ttf")
+
 internal fun ciCompanionBitmap(context: Context): Bitmap = BitmapFactory.decodeResource(context.resources,R.drawable.ci_companion)
-internal fun drawCiCompanion(canvas: Canvas,paint: Paint,bitmap: Bitmap,center: Pair<Float,Float>,position: Pair<Float,Float>,wait: CiWaitStatus,textScale: Float=1f,ink: Int?=null) {
+internal fun drawCiCompanion(canvas: Canvas,paint: Paint,bitmap: Bitmap,center: Pair<Float,Float>,position: Pair<Float,Float>,wait: CiWaitStatus,textScale: Float=1f,ink: Int?=null,showCaption: Boolean=true) {
     val width=min(canvas.width,canvas.height)*TerrariumRules.CI_COMPANION_SIZE_FRAC
     val x=position.first*canvas.width;val y=position.second*canvas.height
     paint.shader=null;paint.style=Paint.Style.FILL;paint.alpha=90;paint.color=ink ?: ciCompanionColor(wait).toArgb();paint.strokeWidth=1f
     canvas.drawLine(center.first*canvas.width,center.second*canvas.height,x,y,paint)
     paint.alpha=255;canvas.drawBitmap(bitmap,null,RectF(x-width/2,y-width/2,x+width/2,y+width/2),paint)
+    if (!showCaption) return
     paint.textAlign=Paint.Align.CENTER;paint.textSize=11f*textScale;paint.color=ink ?: ciCompanionColor(wait).toArgb()
     canvas.drawText(ciCompanionBadge(wait),x,y+width/2+8f*textScale,paint)
 }

@@ -88,7 +88,10 @@ final class PixooRenderer {
         let glyph: OfficialDotGlyph
         let state: CreatureState
         let toneIndex: Int
+        var sessionId: String? = nil
     }
+    private struct CiCueAnchor { let sessionId: String; let x: Double; let y: Double; let bodySize: Double }
+    private struct CiCueMemo { var phase: String; let openedAt: Int; var waiting: Bool; var changedAt: Double; var lastAt: Double; var angle: Double; var speed: Double }
 
     private struct Bubble {
         var x: Double
@@ -401,23 +404,69 @@ final class PixooRenderer {
     private var bubbles: [Bubble] = []
     private var dataParticles: [DataParticle] = []
     private var tetras: [TetraState]?
+    private var ciCueResults: [String: CiCueMemo] = [:]
 
-    private func drawCiCue(_ buf: inout [UInt8], size: Int, state: DashboardState, now: Double) {
-        guard !state.siblingSessions.contains(where: { $0.alive && ($0.state ?? "").hasPrefix("awaiting") }),
-              let wait = state.siblingSessions.first(where: { $0.alive && $0.waitingOn != nil })?.waitingOn,
-              Int(now) % CiWaitVisual.cycleMs >= CiWaitVisual.showAfterMs else { return }
-        let color = CiWaitVisual.rgb(wait.phase)
-        let markColor = CiWaitVisual.helperRGB
-        let top = size == 11 ? 1 : size - 9
-        for y in 0..<8 { for x in 0..<8 {
-            let offset = ((top + y) * size + x + 1) * 3
-            let lit = CiWaitVisual.github[y] & (1 << (7 - x)) != 0
-            buf[offset] = lit ? markColor.0 : 0
-            buf[offset + 1] = lit ? markColor.1 : 0
-            buf[offset + 2] = lit ? markColor.2 : 0
-        } }
-        let statusOffset = ((top + 7) * size + 8) * 3
-        buf[statusOffset] = color.0; buf[statusOffset + 1] = color.1; buf[statusOffset + 2] = color.2
+    private func ciCueSeed(_ id: String) -> Double {
+        var hash = TerrariumRules.ciCompanionSeedOffset
+        for byte in id.utf8 { hash = (hash ^ UInt32(byte)) &* TerrariumRules.ciCompanionSeedPrime }
+        return Double(hash % TerrariumRules.ciCompanionSeedModulus) / Double(TerrariumRules.ciCompanionSeedModulus)
+    }
+
+    private func drawCiCue(_ buf: inout [UInt8], size: Int, state: DashboardState, now: Double,
+                           anchors: [CiCueAnchor], tiny: Bool = false, bottom: Int? = nil) {
+        ciCueResults = ciCueResults.filter { id, _ in state.siblingSessions.contains { $0.alive && $0.id == id && $0.waitingOn != nil } }
+        guard !state.siblingSessions.contains(where: { $0.alive && ($0.state ?? "").hasPrefix("awaiting") }) else { return }
+        let glyphSize = CiWaitVisual.github.count
+        let lowerEdge = bottom ?? size
+        for anchor in anchors {
+            guard anchor.x + anchor.bodySize / 2 >= 0, anchor.x - anchor.bodySize / 2 < Double(size),
+                  anchor.y + anchor.bodySize / 2 >= 0, anchor.y - anchor.bodySize / 2 < Double(lowerEdge),
+                  let wait = state.siblingSessions.first(where: { $0.alive && $0.id == anchor.sessionId })?.waitingOn else { continue }
+            let moving = wait.agentWaiting && wait.phase != "passed" && wait.phase != "failed"
+            let terminal = wait.phase == "passed" || wait.phase == "failed"
+            if !moving && !terminal { ciCueResults.removeValue(forKey: anchor.sessionId); continue }
+            let speed = wait.phase == "queued" ? Double(TerrariumRules.ciCompanionQueuedSpeed)
+                : wait.phase == "unknown" ? Double(TerrariumRules.ciCompanionUnknownSpeed) : 1
+            var memo = ciCueResults[anchor.sessionId]
+            if memo == nil || memo?.openedAt != wait.openedAt || now < (memo?.lastAt ?? now) {
+                memo = CiCueMemo(phase: wait.phase, openedAt: wait.openedAt, waiting: moving, changedAt: now, lastAt: now,
+                    angle: ciCueSeed(anchor.sessionId) * .pi * 2 + (moving ? 0 : Double(TerrariumRules.ciCompanionStaticAngle)), speed: speed)
+            } else if var current = memo {
+                if current.waiting { current.angle += (now - current.lastAt) / 1000 * Double(TerrariumRules.ciCompanionRadiansPerSecond) * current.speed }
+                if current.phase != wait.phase || current.waiting != moving { current.changedAt = now }
+                current.phase = wait.phase; current.waiting = moving; current.lastAt = now; current.speed = speed
+                memo = current
+            }
+            ciCueResults[anchor.sessionId] = memo
+            if !moving && now - (memo?.changedAt ?? now) >= Double(TerrariumRules.ciCompanionResultSeconds) * 1000 { continue }
+            if tiny && Int(now) % CiWaitVisual.cycleMs < CiWaitVisual.showAfterMs { continue }
+            let angle = memo?.angle ?? 0
+            let clearance = sqrt(2) * (anchor.bodySize / 2 + Double(glyphSize) / 2 + 1)
+            let radiusX = max(Double(size) * Double(TerrariumRules.ciCompanionOrbitRadiusX), clearance)
+            let radiusY = max(Double(size) * Double(TerrariumRules.ciCompanionOrbitRadiusY), clearance)
+            var left = 1, top = 1
+            if !tiny {
+                var placed = false
+                for step in 0..<glyphSize {
+                    let a = angle + Double(step) * Double(TerrariumRules.ciCompanionStaticAngle)
+                    left = max(0, min(size - glyphSize, Int(round(anchor.x + cos(a) * radiusX - Double(glyphSize) / 2))))
+                    top = max(0, min(lowerEdge - glyphSize, Int(round(anchor.y + sin(a) * radiusY - Double(glyphSize) / 2))))
+                    let overlaps = anchors.contains { other in
+                        Double(left) < other.x + other.bodySize / 2 + 1 && Double(left + glyphSize) > other.x - other.bodySize / 2 - 1
+                        && Double(top) < other.y + other.bodySize / 2 + 1 && Double(top + glyphSize) > other.y - other.bodySize / 2 - 1
+                    }
+                    if !overlaps { placed = true; break }
+                }
+                if !placed { continue }
+            }
+            let color = CiWaitVisual.rgb(wait.phase), markColor = CiWaitVisual.helperRGB
+            for y in 0..<glyphSize { for x in 0..<glyphSize {
+                if CiWaitVisual.github[y] & (1 << (glyphSize - 1 - x)) != 0 {
+                    setPixel(&buf, left + x, top + y, markColor)
+                } else if tiny { setPixel(&buf, left + x, top + y, (0, 0, 0)) }
+            } }
+            setPixel(&buf, left + glyphSize - 1, top + glyphSize - 1, color)
+        }
     }
 
     func render(dashboardState: DashboardState) -> Data {
@@ -565,7 +614,17 @@ final class PixooRenderer {
             }
 
             drawUsageHUD(&output, dashboardState: dashboardState, animFrame: animFrame)
-            drawCiCue(&output, size: 64, state: dashboardState, now: nowMs + Double(i * intervalMs))
+            var ciAnchors = creatureOrder.compactMap { id -> CiCueAnchor? in
+                guard let creature = creatureInstances[id] else { return nil }
+                let (x, y) = worldToScreen(creature.worldX, creature.worldY, camera)
+                return CiCueAnchor(sessionId: id, x: x, y: y, bodySize: max(Double(CiWaitVisual.github.count), round(0.1875 * creature.sizeScale * camera.zoom * Double(Self.width))))
+            }
+            for s in dashboardState.siblingSessions where s.alive && s.agentType == "openclaw" {
+                let (x, y) = worldToScreen(Self.cfDefaultX, crayfishY, camera)
+                ciAnchors.append(CiCueAnchor(sessionId: s.id, x: x, y: y, bodySize: max(Double(CiWaitVisual.github.count), round(0.1875 * camera.zoom * Double(Self.width)))))
+            }
+            drawCiCue(&output, size: 64, state: dashboardState, now: nowMs + Double(i * intervalMs), anchors: ciAnchors,
+                      bottom: Self.width - hudCount * TerrariumRules.pixooUsageRowHeight)
             frames.append(Data(output))
         }
 
@@ -618,7 +677,9 @@ final class PixooRenderer {
         }
         MicroGlyphs.paintBeacon(&out, creature: creature, aggregate: aggregate, animFrame: animFrame)
 
-        drawCiCue(&out, size: n, state: dashboardState, now: Date().timeIntervalSince1970 * 1000)
+        let selected = dominant?.sessionId ?? dashboardState.siblingSessions.first { $0.alive && $0.agentType == "openclaw" }?.id
+        drawCiCue(&out, size: n, state: dashboardState, now: Date().timeIntervalSince1970 * 1000,
+                  anchors: selected.map { [CiCueAnchor(sessionId: $0, x: Double(n) / 2, y: Double(n) / 2, bodySize: Double(CiWaitVisual.github.count))] } ?? [], tiny: true)
         return Data(out)
     }
 
@@ -687,12 +748,13 @@ final class PixooRenderer {
         var marks = creatureOrder.compactMap { id -> CompactMark? in
             guard let c = creatureInstances[id] else { return nil }
             let tone = max(0, creatureOrder.firstIndex(of: id) ?? 0)
-            return CompactMark(glyph: glyph(for: c.creatureType), state: c.state, toneIndex: tone)
+            return CompactMark(glyph: glyph(for: c.creatureType), state: c.state, toneIndex: tone, sessionId: id)
         }
         let hasGateway = dashboardState.gatewayConnected || dashboardState.siblingSessions.contains { $0.agentType == "openclaw" }
         if hasGateway {
             let routing = dashboardState.siblingSessions.contains { $0.agentType == "openclaw" && $0.state == "processing" }
-            marks.append(CompactMark(glyph: .openClaw, state: routing ? .processing : .idle, toneIndex: 0))
+            marks.append(CompactMark(glyph: .openClaw, state: routing ? .processing : .idle, toneIndex: 0,
+                sessionId: dashboardState.siblingSessions.first { $0.alive && $0.agentType == "openclaw" }?.id))
         }
         marks.sort { priority($0.state) < priority($1.state) }
         marks = Array(marks.prefix(3))
@@ -801,6 +863,11 @@ final class PixooRenderer {
             if let raw = candidate.0 { telemetry.append((raw, candidate.1)) }
         }
         let firstRailY = 32 - telemetry.count
+        let ciAnchors = marks.enumerated().compactMap { index, mark -> CiCueAnchor? in
+            guard let id = mark.sessionId else { return nil }
+            return CiCueAnchor(sessionId: id, x: Double(slots[index].x), y: Double(slots[index].y), bodySize: Double(slots[index].size))
+        }
+        drawCiCue(&out, size: 32, state: dashboardState, now: Date().timeIntervalSince1970 * 1000, anchors: ciAnchors, bottom: firstRailY)
         for (row, item) in telemetry.enumerated() {
             let y = firstRailY + row
             for x in 0..<n { set(x, y, (5, 8, 14)) }
@@ -811,7 +878,6 @@ final class PixooRenderer {
             if width > 0 { for x in 3..<(3 + width) { set(x, y, color) } }
         }
 
-        drawCiCue(&out, size: 32, state: dashboardState, now: Date().timeIntervalSince1970 * 1000)
         return Data(out)
     }
 

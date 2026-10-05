@@ -55,6 +55,7 @@ for (const [key, fileStem] of OFFICIAL_GLYPHS) {
 // SVG and its 98:96 aspect ratio; only sample its coverage for compact devices.
 const githubSvg = readFileSync(resolve(__dirname, '../design/brand/github.svg'));
 const githubAlpha = await rasterizeOfficialGlyph('github', TC001_MASK_SIZE, 'contain');
+const githubStandard = await rasterizeOfficialGlyph('github', STANDARD_MASK_SIZE, 'contain');
 const githubRows = Array.from({ length: TC001_MASK_SIZE }, (_, y) => {
   let row = 0;
   for (let x = 0; x < TC001_MASK_SIZE; x++) {
@@ -69,7 +70,9 @@ writeFileSync(
     `// 8x8 alpha coverage >=128; MSB is the left pixel. Aspect ratio preserved.\n` +
     `export const CI_GITHUB_GLYPH_SOURCE_SHA256 = '${createHash('sha256').update(githubSvg).digest('hex')}';\n` +
     `export const CI_GITHUB_GLYPH_SIZE = ${TC001_MASK_SIZE};\n` +
-    `export const CI_GITHUB_GLYPH = [${githubRows.join(', ')}] as const;\n`,
+    `export const CI_GITHUB_GLYPH = [${githubRows.join(', ')}] as const;\n` +
+    `export const CI_GITHUB_ALPHA_SIZE = ${STANDARD_MASK_SIZE};\n` +
+    `export const CI_GITHUB_ALPHA = [${githubStandard.join(', ')}] as const;\n`,
 );
 
 function wrapNumbers(values, indent, perLine = 24) {

@@ -9,6 +9,26 @@ import kotlin.math.hypot
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
 class EinkAnimationTimingTest {
+    @Test fun `crowded static CI helpers rely on full row status without overlapping captions`() {
+        val creatures = (0..7).map {
+            dev.agentdeck.terrarium.AgentCreatureState("ci$it", "codex-cli",
+                dev.agentdeck.terrarium.OctopusVisualState.FLOATING, false, it)
+        }
+        val wait = dev.agentdeck.net.CiWaitStatus(phase = "unknown", agentWaiting = true)
+        val state = dev.agentdeck.terrarium.TerrariumState(
+            dev.agentdeck.terrarium.OctopusVisualState.FLOATING,
+            dev.agentdeck.terrarium.CrayfishVisualState.DORMANT,
+            dev.agentdeck.terrarium.TetraVisualState.ABSENT,
+            dev.agentdeck.terrarium.EnvironmentVisualState.CALM,
+            agents = creatures, ciWaits = creatures.associate { it.sessionId to wait })
+        assertTrue(!showEinkCiCompanionCaptions(state))
+        assertTrue(showEinkCiCompanionCaptions(state.copy(agents = creatures.take(1))))
+        val permission = creatures[1].copy(visualState = dev.agentdeck.terrarium.OctopusVisualState.ASKING)
+        assertTrue(showEinkCiCompanionCaptions(state.copy(agents = listOf(creatures[0], permission))))
+        assertTrue(showEinkCiCompanionCaptions(state.copy(
+            ciWaits = state.ciWaits.mapValues { it.value.copy(agentWaiting = false) })))
+    }
+
     @Test fun `e-ink static companion preserves actual resident homes and clears on null`() {
         val creatures=(0..3).map { dev.agentdeck.terrarium.AgentCreatureState("ci$it","claude-code",dev.agentdeck.terrarium.OctopusVisualState.FLOATING,false,it,"CI QA $it") }
         val state=dev.agentdeck.terrarium.TerrariumState(dev.agentdeck.terrarium.OctopusVisualState.FLOATING,dev.agentdeck.terrarium.CrayfishVisualState.DORMANT,

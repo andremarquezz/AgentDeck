@@ -686,5 +686,109 @@
         "expected": null
       }
     ]
+  },
+  {
+    "name": "opencode raw hook boundaries retain background wait through Stop and clear on interrupt",
+    "steps": [
+      {
+        "event": "opencode_session_start",
+        "payload": {},
+        "at": 90,
+        "expected": null
+      },
+      {
+        "event": "opencode_tool_start",
+        "payload": {
+          "tool_name": "bash",
+          "tool_use_id": "a",
+          "tool_input": {
+            "command": "gh pr checks 433 --watch",
+            "run_in_background": true
+          }
+        },
+        "at": 100,
+        "expected": {
+          "kind": "ci",
+          "provider": "github-actions",
+          "pr": 433,
+          "phase": "unknown",
+          "agentWaiting": true,
+          "evidence": "tool_input",
+          "openedAt": 100
+        }
+      },
+      {
+        "event": "opencode_stop",
+        "payload": {},
+        "at": 120,
+        "expected": {
+          "kind": "ci",
+          "provider": "github-actions",
+          "pr": 433,
+          "phase": "unknown",
+          "agentWaiting": true,
+          "evidence": "tool_input",
+          "openedAt": 100
+        }
+      },
+      {
+        "event": "opencode_interrupt",
+        "payload": {},
+        "at": 130,
+        "expected": null
+      }
+    ]
+  },
+  {
+    "name": "codex raw hook boundaries retain background wait through Stop and clear on interrupt",
+    "steps": [
+      {
+        "event": "codex_session_start",
+        "payload": {},
+        "at": 90,
+        "expected": null
+      },
+      {
+        "event": "codex_tool_start",
+        "payload": {
+          "tool_name": "bash",
+          "tool_use_id": "a",
+          "tool_input": {
+            "command": "gh pr checks 433 --watch",
+            "run_in_background": true
+          }
+        },
+        "at": 100,
+        "expected": {
+          "kind": "ci",
+          "provider": "github-actions",
+          "pr": 433,
+          "phase": "unknown",
+          "agentWaiting": true,
+          "evidence": "tool_input",
+          "openedAt": 100
+        }
+      },
+      {
+        "event": "codex_stop",
+        "payload": {},
+        "at": 120,
+        "expected": {
+          "kind": "ci",
+          "provider": "github-actions",
+          "pr": 433,
+          "phase": "unknown",
+          "agentWaiting": true,
+          "evidence": "tool_input",
+          "openedAt": 100
+        }
+      },
+      {
+        "event": "codex_interrupt",
+        "payload": {},
+        "at": 130,
+        "expected": null
+      }
+    ]
   }
 ]

@@ -20,8 +20,6 @@ enum CiWaitVisual {
     static let passed = 4
     static let failed = 5
     static let github: [UInt8] = [60, 126, 195, 195, 195, 231, 70, 36]
-    @available(*, deprecated, message: "Use github; this compatibility name contains the GitHub mark")
-    static let shrimp = github
     static func phase(_ value: String?) -> Int {
         switch value {
         case "unknown": return 1
@@ -31,6 +29,14 @@ enum CiWaitVisual {
         case "failed": return 5
         default: return unknown
         }
+    }
+    static func compactPhase(_ wait: [String: Any]?) -> Int {
+        guard let wait else { return none }
+        let id = phase(wait["phase"] as? String)
+        if id == passed || id == failed { return id }
+        guard let flag = wait["agentWaiting"] as? NSNumber,
+              CFGetTypeID(flag) == CFBooleanGetTypeID(), flag.boolValue else { return none }
+        return id
     }
 }
 
@@ -282,8 +288,10 @@ final class CiWaitTracker {
         return waits.first?.status
     }
     func forget(_ sid: String) { sessions.removeValue(forKey: sid) }
+    private static let hookEvents: [String: String] = ["SessionStart": "session_start", "SessionEnd": "session_end", "UserPromptSubmit": "user_prompt_submit", "PreToolUse": "tool_start", "PostToolUse": "tool_end", "PostToolUseFailure": "tool_failure", "Stop": "stop", "Interrupt": "interrupt", "codex_session_start": "session_start", "codex_session_end": "session_end", "codex_user_prompt_submit": "user_prompt_submit", "codex_tool_start": "tool_start", "codex_tool_end": "tool_end", "codex_tool_failure": "tool_failure", "codex_stop": "stop", "codex_interrupt": "interrupt", "codex_turn_complete": "stop", "opencode_session_start": "session_start", "opencode_session_end": "session_end", "opencode_user_prompt_submit": "user_prompt_submit", "opencode_tool_start": "tool_start", "opencode_tool_end": "tool_end", "opencode_tool_failure": "tool_failure", "opencode_stop": "stop", "opencode_interrupt": "interrupt", "opencode_turn_complete": "stop", "hermes_session_start": "session_start", "hermes_session_end": "session_end", "hermes_user_prompt_submit": "user_prompt_submit", "hermes_tool_start": "tool_start", "hermes_tool_end": "tool_end", "hermes_tool_failure": "tool_failure", "hermes_stop": "stop", "hermes_interrupt": "interrupt", "hermes_turn_complete": "stop"]
     @discardableResult
-    func note(_ sid: String, event: String, json: [String: Any], now: Int) -> Bool {
+    func note(_ sid: String, event rawEvent: String, json: [String: Any], now: Int) -> Bool {
+        let event = Self.hookEvents[rawEvent] ?? rawEvent
         guard !sid.isEmpty, sid.utf16.count <= 256, now >= 0, now <= 9007199254740991 else { return false }
         let before = snapshot(sid, now: now)
         if ["session_start", "session_end", "user_prompt_submit", "interrupt"].contains(event) {

@@ -80,7 +80,11 @@ fun ColorTerrariumCanvas(
     val ciSprite = remember(context) { ciCompanionBitmap(context) }
     val ciMotions = remember { mutableMapOf<String,CiCompanionMotion>() }
     var lastCiFrame = remember { longArrayOf(0L) }
-    val ciPaint = remember { Paint(Paint.ANTI_ALIAS_FLAG) }
+    val ciPaint = remember(context) {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = dev.agentdeck.terrarium.ciCompanionTypeface(context)
+        }
+    }
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height

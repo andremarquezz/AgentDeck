@@ -6211,18 +6211,16 @@ final class DaemonServer {
         // background jobs) is Node-only — the sandboxed daemon has no ps.
         noteCoordinationEvidence(event: event, json: json, sessionId: sessionId)
         if let sid = sessionId {
-            let ciEvent: String = ["SessionStart": "session_start", "SessionEnd": "session_end",
-                "UserPromptSubmit": "user_prompt_submit", "PreToolUse": "tool_start",
-                "PostToolUse": "tool_end", "PostToolUseFailure": "tool_failure", "Stop": "stop",
-                "Interrupt": "interrupt"][event] ?? event.replacingOccurrences(of: "codex_", with: "")
+            // The generated tracker normalizes every supported source family.
+            // A local Codex-only mapping previously discarded OpenCode waits.
             let rawSid = ObservedAgentRules.rawSessionId(sid)
             let now = Self.wireEpochMs(Date().timeIntervalSince1970 * 1000)
-            if ciWaits.note(rawSid, event: ciEvent == "turn_complete" ? "stop" : ciEvent, json: json, now: now) {
+            if ciWaits.note(rawSid, event: event, json: json, now: now) {
                 let wait = ciWaits.snapshot(rawSid, now: now)
                 var entry = DaemonTimelineEntry(ts: Double(now), type: "scheduled",
                     raw: wait == nil ? "CI wait ended · result unconfirmed" : "CI wait requested",
                     detail: nil, approvalId: nil, status: nil,
-                    agentType: isCodexEvent ? "codex-cli" : "claude-code", repeatCount: nil, automated: nil)
+                    agentType: isCodexEvent ? "codex-cli" : isOpenCodeEvent ? "opencode" : "claude-code", repeatCount: nil, automated: nil)
                 entry.sessionId = rawSid
                 entry.summaryKind = "none"
                 if await timelineStore.add(entry, bypassSuppression: true) {

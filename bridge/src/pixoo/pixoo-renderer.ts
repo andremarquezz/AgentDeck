@@ -1,5 +1,5 @@
 import { usageRgb } from '@agentdeck/shared';
-import { TERRARIUM_RULES } from '@agentdeck/shared';
+import { TERRARIUM_RULES, ciCompanionSeed } from '@agentdeck/shared';
 /**
  * Pixoo64 Frame Renderer — camera-based animated terrarium.
  *
@@ -903,7 +903,7 @@ function renderMicroFrame(
   sessions: SessionInfo[] | null,
   subagentActivity: SubagentActivityBySession,
   now: number,
-): void {
+): string | undefined {
   // Presence-driven SSOT: the crayfish renders iff the daemon emitted an
   // OpenClaw session — never from raw gateway flags. The daemon emits it iff
   // the Gateway is authenticated, so reachability/error alone won't draw it.
@@ -969,6 +969,7 @@ function renderMicroFrame(
       outputBuf[d] = base[s]; outputBuf[d + 1] = base[s + 1]; outputBuf[d + 2] = base[s + 2];
     }
   }
+  return dominant?.sessionId ?? sessions?.find(s => s.alive && s.agentType === 'openclaw')?.id;
 }
 
 /** Native 32×32 iDotMatrix identity stage. The panel gets saturated official
@@ -1013,7 +1014,8 @@ function renderCompact32Frame(
   }));
   if (hasOpenClawSession(sessions ?? [])) {
     const routing = sessions?.some((s) => s.agentType === 'openclaw' && s.state === 'processing') ?? false;
-    marks.push({ glyph: 'openClaw', state: routing ? 'processing' : 'idle' });
+    marks.push({ glyph: 'openClaw', state: routing ? 'processing' : 'idle',
+      sessionId: sessions?.find(s => s.alive && s.agentType === 'openclaw')?.id });
   }
   marks.sort((a, b) => priority(a.state) - priority(b.state));
   // One slot per DISTINCT agent before any agent gets a second one.
@@ -1138,6 +1140,8 @@ function renderCompact32Frame(
   rail(usageEvent?.zaiRateLimits?.primary?.stale === true
     ? undefined : usageEvent?.zaiRateLimits?.primary?.usedPercent, [31, 99, 236]);
   const firstRailY = 32 - telemetry.length;
+  drawCiCue(outputBuf, 32, sessions, now, marks.flatMap((mark, i) => mark.sessionId
+    ? [{ sessionId: mark.sessionId, x: slots[i].x, y: slots[i].y, bodySize: slots[i].size }] : []), false, firstRailY);
   telemetry.forEach(([raw, brand], row) => {
     const y = firstRailY + row;
     for (let x = 0; x < 32; x++) set(x, y, [5, 8, 14]);
@@ -1295,24 +1299,74 @@ function drawSubagentOrbits(
  * `'standard'` is the full terrarium.
  */
 /** A separate CI glyph; permission/error signals always keep priority. */
-function drawCiCue(buf: Uint8Array, size: number, sessions: SessionInfo[] | null, now: number): void {
-  if (sessions?.some(s => s.alive && s.state?.startsWith('awaiting'))) return;
-  const wait = sessions?.find(s => s.alive && s.waitingOn)?.waitingOn;
-  if (!wait || now % CI_WAIT_CUE.cycleMs < CI_WAIT_CUE.showAfterMs) return;
-  const value = CI_WAIT_CUE.colors[wait.phase];
-  const hex = typeof value === 'string' ? value : CI_WAIT_CUE.colors.unknown;
-  const color = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
-  const markColor = [1, 3, 5].map(i => parseInt(CI_WAIT_CUE.helperColor.slice(i, i + 2), 16));
-  const left = 1, top = size === 11 ? 1 : size - 9;
-  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
-    const offset = ((top + y) * size + left + x) * 3;
-    const lit = CI_WAIT_VISUAL.github[y] & (1 << (7 - x));
-    for (let channel = 0; channel < 3; channel++) buf[offset + channel] = lit ? markColor[channel] : 0;
+interface CiCueAnchor { sessionId: string; x: number; y: number; bodySize: number }
+const ciCueResults = new Map<string, { phase: string; openedAt: number; waiting: boolean; changedAt: number; lastAt: number; angle: number; speed: number }>();
+let ciCueSnapshot: Array<{ sessionId: string; left: number; top: number; moving: boolean; angle: number }> = [];
+
+/** Only actual displayed sessions own a helper. No provider/resident identity is created. */
+function drawCiCue(buf: Uint8Array, size: number, sessions: SessionInfo[] | null, now: number,
+  anchors: CiCueAnchor[], tiny = false, bottom = size): void {
+  ciCueSnapshot = [];
+  for (const id of ciCueResults.keys()) {
+    if (!sessions?.some(s => s.alive && s.id === id && s.waitingOn)) ciCueResults.delete(id);
   }
-  // Phase is separate from the unchanged monochrome GitHub mark.
-  const statusOffset = ((top + 7) * size + left + 7) * 3;
-  for (let channel = 0; channel < 3; channel++) buf[statusOffset + channel] = color[channel];
+  if (sessions?.some(s => s.alive && s.state?.startsWith('awaiting'))) return;
+  const r = TERRARIUM_RULES.ciCompanion;
+  const glyphSize = CI_WAIT_CUE.glyphSize;
+  const rgb = (hex: string): RGB => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+  const markColor = rgb(CI_WAIT_CUE.helperColor);
+  for (const anchor of anchors) {
+    if (anchor.x + anchor.bodySize / 2 < 0 || anchor.x - anchor.bodySize / 2 >= size
+      || anchor.y + anchor.bodySize / 2 < 0 || anchor.y - anchor.bodySize / 2 >= bottom) continue;
+    const wait = sessions?.find(s => s.alive && s.id === anchor.sessionId)?.waitingOn;
+    if (!wait) continue;
+    const terminal = wait.phase === 'passed' || wait.phase === 'failed';
+    const moving = wait.agentWaiting && !terminal;
+    if (!moving && !terminal) { ciCueResults.delete(anchor.sessionId); continue; }
+    const speed = wait.phase === 'queued' ? r.queuedSpeed : wait.phase === 'unknown' ? r.unknownSpeed : 1;
+    let seen = ciCueResults.get(anchor.sessionId);
+    if (!seen || seen.openedAt !== wait.openedAt || now < seen.lastAt) {
+      seen = { phase: wait.phase, openedAt: wait.openedAt, waiting: moving, changedAt: now, lastAt: now,
+        angle: ciCompanionSeed(anchor.sessionId) * Math.PI * 2 + (moving ? 0 : r.staticAngle), speed };
+      ciCueResults.set(anchor.sessionId, seen);
+    } else {
+      if (seen.waiting) seen.angle += (now - seen.lastAt) / 1000 * r.radiansPerSecond * seen.speed;
+      if (seen.phase !== wait.phase || seen.waiting !== moving) seen.changedAt = now;
+      seen.phase = wait.phase; seen.waiting = moving; seen.lastAt = now; seen.speed = speed;
+    }
+    if (!moving && now - seen.changedAt >= r.resultSeconds * 1000) continue;
+    if (tiny && now % CI_WAIT_CUE.cycleMs < CI_WAIT_CUE.showAfterMs) continue;
+    const angle = seen.angle;
+    const clearance = Math.SQRT2 * (anchor.bodySize / 2 + glyphSize / 2 + 1);
+    const radiusX = Math.max(size * r.orbitRadiusX, clearance);
+    const radiusY = Math.max(size * r.orbitRadiusY, clearance);
+    let left = 1, top = 1;
+    if (!tiny) {
+      // Preserve the owner and neighbouring agent marks in crowded profiles.
+      let placed = false;
+      for (let step = 0; step < glyphSize; step++) {
+        const a = angle + step * r.staticAngle;
+        left = Math.max(0, Math.min(size - glyphSize, Math.round(anchor.x + Math.cos(a) * radiusX - glyphSize / 2)));
+        top = Math.max(0, Math.min(bottom - glyphSize, Math.round(anchor.y + Math.sin(a) * radiusY - glyphSize / 2)));
+        const overlaps = anchors.some(other => left < other.x + other.bodySize / 2 + 1 && left + glyphSize > other.x - other.bodySize / 2 - 1
+          && top < other.y + other.bodySize / 2 + 1 && top + glyphSize > other.y - other.bodySize / 2 - 1);
+        if (!overlaps) { placed = true; break; }
+      }
+      if (!placed) continue;
+    }
+    const color = rgb(CI_WAIT_CUE.colors[wait.phase] ?? CI_WAIT_CUE.colors.unknown);
+    for (let y = 0; y < glyphSize; y++) for (let x = 0; x < glyphSize; x++) {
+      const lit = CI_WAIT_VISUAL.github[y] & (1 << (glyphSize - 1 - x));
+      if (lit) setPixel(buf, left + x, top + y, markColor);
+      else if (tiny) setPixel(buf, left + x, top + y, [0, 0, 0]);
+    }
+    setPixel(buf, left + glyphSize - 1, top + glyphSize - 1, color);
+    ciCueSnapshot.push({ sessionId: anchor.sessionId, left, top, moving, angle });
+  }
 }
+
+/** Same renderer state used by pixel output; exposed for session-affinity/lifetime verification. */
+export function getCiCueSnapshot() { return ciCueSnapshot.map(c => ({ ...c })); }
 
 export function renderFrame(
   stateEvent: StateUpdateEvent | null,
@@ -1330,7 +1384,7 @@ export function renderFrame(
   if (layout === 'micro') {
     // Still sync creature instances so dominant-creature selection reflects live state.
     syncCreatures(sessions, stateEvent);
-    renderMicroFrame(
+    const selectedSessionId = renderMicroFrame(
       outputBuf,
       size,
       animFrame,
@@ -1339,7 +1393,8 @@ export function renderFrame(
       subagentActivity,
       timeOverrideMs ?? Date.now(),
     );
-    drawCiCue(outputBuf, size, sessions, timeOverrideMs ?? Date.now());
+    drawCiCue(outputBuf, size, sessions, timeOverrideMs ?? Date.now(), selectedSessionId
+      ? [{ sessionId: selectedSessionId, x: size / 2, y: size / 2, bodySize: CI_WAIT_CUE.glyphSize }] : [], true);
     return outputBuf;
   }
 
@@ -1354,7 +1409,6 @@ export function renderFrame(
       subagentActivity,
       timeOverrideMs ?? Date.now(),
     );
-    drawCiCue(outputBuf, size, sessions, timeOverrideMs ?? Date.now());
     return outputBuf;
   }
 
@@ -1572,7 +1626,17 @@ export function renderFrame(
   // Usage HUD (bottom-right, screen-space)
   drawUsageHUD(outputBuf, usageEvent, animFrame);
 
-  drawCiCue(outputBuf, size, sessions, timeOverrideMs ?? Date.now());
+  const ciAnchors = [...creatureInstances.values()].map(c => {
+    const [x, y] = worldToScreen(c.worldX, c.worldY, camera);
+    return { sessionId: c.sessionId, x, y, bodySize: Math.max(CI_WAIT_CUE.glyphSize,
+      Math.round(OFFICIAL_DOT_GLYPH_SIZE / 2 * c.sizeScale * camera.zoom)) };
+  });
+  for (const s of sessions ?? []) if (s.alive && s.agentType === 'openclaw') {
+    const [x, y] = worldToScreen(cfX, cfY, camera);
+    ciAnchors.push({ sessionId: s.id, x, y, bodySize: Math.max(CI_WAIT_CUE.glyphSize, Math.round(OFFICIAL_DOT_GLYPH_SIZE / 2 * camera.zoom)) });
+  }
+  drawCiCue(outputBuf, size, sessions, timeOverrideMs ?? Date.now(), ciAnchors, false,
+    size - hudProviderCount * TERRARIUM_RULES.pixooUsageRowHeight);
   return outputBuf;
 }
 

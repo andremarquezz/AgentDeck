@@ -1,5 +1,5 @@
 import { UI } from './design-tokens.js';
-import { CI_GITHUB_GLYPH, CI_GITHUB_GLYPH_SIZE } from './ci-github-glyph.generated.js';
+import { CI_GITHUB_GLYPH, CI_GITHUB_GLYPH_SIZE, CI_GITHUB_ALPHA, CI_GITHUB_ALPHA_SIZE } from './ci-github-glyph.generated.js';
 /** CI wait intent, never a CI result. SSOT for the staged #433 integration.
  * No I/O, cwd inference, credentials, command text or invented run identity.
  * Unsupported shell syntax fails closed; process evidence can cover it later.
@@ -214,6 +214,17 @@ export function normalizedCiWaitIntent(value: unknown): CiWaitIntent | null {
     ...(v.pr !== undefined ? { pr: v.pr as number } : {}), ...(v.runId !== undefined ? { runId: v.runId as number } : {}) };
 }
 
+/** Source hook aliases normalize at the tracker boundary, so native and Node
+ * receivers cannot omit an agent family or confuse Interrupt with Stop. */
+export const CI_WAIT_HOOK_EVENTS: Readonly<Record<string, string>> = Object.freeze({
+  SessionStart: 'session_start', SessionEnd: 'session_end', UserPromptSubmit: 'user_prompt_submit',
+  PreToolUse: 'tool_start', PostToolUse: 'tool_end', PostToolUseFailure: 'tool_failure',
+  Stop: 'stop', Interrupt: 'interrupt',
+  ...Object.fromEntries(['codex', 'opencode', 'hermes'].flatMap(prefix =>
+    ['session_start', 'session_end', 'user_prompt_submit', 'tool_start', 'tool_end', 'tool_failure', 'stop', 'interrupt', 'turn_complete']
+      .map(event => [`${prefix}_${event}`, event === 'turn_complete' ? 'stop' : event]))),
+});
+
 /** Lifecycle bounds are shared with the generated native implementation. */
 export const CI_WAIT_LIFECYCLE = { maxSessions: 1024, maxTools: 8, maxSessionChars: 256, maxToolIdChars: 255, maxAgeMs: 24 * 60 * 60 * 1000, resultAgeMs: 30_000 } as const;
 import type { CiWaitStatus } from './protocol.js';
@@ -233,6 +244,7 @@ export class CiWaitTracker {
   private nextToken = 0;
 
   note(sessionId: string, event: string, json: Record<string, unknown>, now: number): boolean {
+    event = Object.hasOwn(CI_WAIT_HOOK_EVENTS, event) ? CI_WAIT_HOOK_EVENTS[event] : event;
     if (!sessionId || sessionId.length > CI_WAIT_LIFECYCLE.maxSessionChars || !Number.isSafeInteger(now) || now < 0) return false;
     const before = JSON.stringify(this.snapshot(sessionId, now));
     if (['session_start', 'session_end', 'user_prompt_submit', 'interrupt'].includes(event)) {
@@ -322,15 +334,20 @@ export function ciWaitLabel(wait: CiWaitStatus | null | undefined): string | nul
 export const CI_WAIT_CUE = {
   cycleMs: 6000, showAfterMs: 3000,
   glyphSize: CI_GITHUB_GLYPH_SIZE, helperColor: UI.hudText,
+  standardGlyphSize: CI_GITHUB_ALPHA_SIZE,
   colors: { unknown: UI.idle, queued: UI.cyan, running: UI.cyan, passed: UI.ok, failed: UI.error },
 } as const;
 export const CI_WAIT_VISUAL = {
   none: 0, unknown: 1, queued: 2, running: 3, passed: 4, failed: 5,
   // Official GitHub Invertocat sampled from the canonical SVG, never an agent.
   github: CI_GITHUB_GLYPH,
+  githubAlpha: CI_GITHUB_ALPHA,
 } as const;
 export function ciWaitPhaseId(wait: CiWaitStatus | null | undefined): number {
   if (!wait) return CI_WAIT_VISUAL.none;
+  // Terminal verdicts are passive evidence. A pending helper needs an explicit
+  // waiting signal; missing/false is not evidence that an agent is waiting.
+  if (wait.phase !== 'passed' && wait.phase !== 'failed' && wait.agentWaiting !== true) return CI_WAIT_VISUAL.none;
   const value = CI_WAIT_VISUAL[wait.phase];
   return typeof value === 'number' ? value : CI_WAIT_VISUAL.unknown;
 }

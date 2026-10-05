@@ -530,7 +530,7 @@ static void handleSessionsList(JsonObject& obj) {
             ciPhase = rawPhase >= CiWaitVisual::NONE && rawPhase <= CiWaitVisual::FAILED
                 ? (uint8_t)rawPhase : CiWaitVisual::UNKNOWN;
         }
-        if (s["waitingOn"].is<JsonObject>()) ciPhase = CiWaitVisual::phase(s["waitingOn"]["phase"] | "unknown");
+        if (s["waitingOn"].is<JsonObject>()) ciPhase = CiWaitVisual::fromJsonWait(s["waitingOn"]);
         else if (s["waitingOn"].isNull() && s.containsKey("waitingOn")) ciPhase = CiWaitVisual::NONE;
         g_state.sessions[i].ciPhase = ciPhase;
         copyTextU8(g_state.sessions[i].activity, sizeof(g_state.sessions[i].activity),
