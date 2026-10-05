@@ -368,17 +368,45 @@ export function selectLifecycleSupervisor(
   }
   if (content === null) return null; // Unknown configuration is not this unit's scope.
   if (supervisor.kind === 'systemd') {
-    const execStart = content.match(/^ExecStart=(.+)$/m)?.[1] ?? '';
-    if (!/^\[Service\]$/m.test(content) || !/\bdaemon[\s"]+start\b/.test(execStart)
-        || !execStart.includes('--foreground') || /^EnvironmentFile=/m.test(content)) return null;
-    if (content.includes('AGENTDECK_DATA_DIR')) {
-      // Compare the writer's exact escaped assignment; do not guess at an
-      // arbitrary/unreadable systemd environment expression.
+    const lines = content.split(/\r?\n/).map(line => line.trim())
+      .filter(line => line && !/^[#;]/.test(line));
+    // Only the active Service section supplies the daemon environment. Avoid
+    // interpreting continuation, reset and override semantics as ownership.
+    if (lines.some(line => line.endsWith('\\'))
+        || lines.filter(line => line === '[Service]').length !== 1) return null;
+    const serviceStart = lines.indexOf('[Service]') + 1;
+    const serviceEnd = lines.findIndex((line, index) => index >= serviceStart && line.startsWith('['));
+    const service = lines.slice(serviceStart, serviceEnd < 0 ? undefined : serviceEnd);
+    const execStarts = service.filter(line => /^ExecStart\s*=/.test(line));
+    const environments = service.filter(line => /^Environment\s*=/.test(line));
+    const execStart = execStarts[0]?.split('=').slice(1).join('=') ?? '';
+    if (execStarts.length !== 1 || !/\bdaemon[\s"]+start\b/.test(execStart)
+        || !execStart.includes('--foreground') || environments.length > 1
+        || service.some(line => /^(EnvironmentFile|PassEnvironment|UnsetEnvironment)\s*=/.test(line))) return null;
+    if (service.some(line => line.includes('AGENTDECK_DATA_DIR'))) {
+      // Accept only the writer's one exact assignment, never a commented,
+      // overridden or partially understood environment expression.
       try {
-        return content.includes('Environment=' + escapeUnitEnvAssignment('AGENTDECK_DATA_DIR', requested)) ? supervisor : null;
+        return environments[0] === 'Environment=' + escapeUnitEnvAssignment('AGENTDECK_DATA_DIR', requested) ? supervisor : null;
       } catch { return null; }
     }
     return canonical(requested) === canonical(defaultDir) ? supervisor : null;
+  }
+  // Read active XML only. A commented override has no ownership meaning;
+  // preserve normal default-unit routing when harmless comments are present.
+  content = content.replace(/<!--[\s\S]*?-->/g, '');
+  if (content.includes('<!--') || content.includes('-->')) return null;
+  const keyCount = (key: string): number => [...content.matchAll(new RegExp(`<key>${key}</key>`, 'g'))].length;
+  if (keyCount('Label') !== 1 || keyCount('ProgramArguments') !== 1
+      || keyCount('EnvironmentVariables') > 1 || keyCount('AGENTDECK_DATA_DIR') > 1) return null;
+  const rootXml = content.replace(/<\?xml[^>]*\?>|<!DOCTYPE[^>]*>/g, '').trim();
+  if (!/^<plist\b[^>]*>\s*<dict>[\s\S]*<\/dict>\s*<\/plist>$/.test(rootXml)) return null;
+  for (const key of ['Label', 'ProgramArguments', 'EnvironmentVariables']) {
+    const position = content.indexOf(`<key>${key}</key>`);
+    if (position < 0) continue;
+    const containers = [...content.slice(0, position).matchAll(/<(\/)?(?:dict|array)>/g)];
+    const depth = containers.reduce((value, match) => value + (match[1] ? -1 : 1), 0);
+    if (depth !== 1) return null; // Only root dictionary keys configure launchd.
   }
   const xmlText = (value: string): string => value.replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
@@ -390,8 +418,12 @@ export function selectLifecycleSupervisor(
       || daemonIndex < 0 || words[daemonIndex + 1] !== 'start' || !words.includes('--foreground')) return null;
   let unitDir = defaultDir;
   if (content.includes('AGENTDECK_DATA_DIR')) {
-    const match = content.match(/<key>AGENTDECK_DATA_DIR<\/key>\s*<string>([^<]*)<\/string>/);
-    if (!match) return null;
+    const environment = content.match(/<key>EnvironmentVariables<\/key>\s*<dict>([\s\S]*?)<\/dict>/)?.[1];
+    // Nested/non-string environment values are unsupported, so cannot prove
+    // that this unit owns the requested scope.
+    if (!environment || environment.replace(/<key>[^<]*<\/key>\s*<string>[^<]*<\/string>/g, '').trim()) return null;
+    const match = environment.match(/<key>AGENTDECK_DATA_DIR<\/key>\s*<string>([^<]*)<\/string>/);
+    if (!match || (content.match(/AGENTDECK_DATA_DIR/g)?.length ?? 0) !== 1) return null;
     unitDir = xmlText(match[1]);
     if (!unitDir) return null;
   }

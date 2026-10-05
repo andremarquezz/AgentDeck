@@ -16,15 +16,21 @@ vi.mock('../session-registry.js', async (original) => ({
   findDaemonPort: () => undefined, probeDaemonHealth: mocks.probe,
 }));
 vi.mock('../daemon-takeover.js', () => ({ isForeignDaemon: () => mocks.foreign }));
-import { program, selectLifecycleSupervisor, stopDaemon } from '../cli.js';
+import { buildPlist, program, selectLifecycleSupervisor, stopDaemon } from '../cli.js';
 const launchd = { kind: 'launchd' as const, label: 'dev.agentdeck.daemon', uid: 501, unitPath: '/unit.plist' };
-const unit = '<plist><key>Label</key><string>dev.agentdeck.daemon</string><key>ProgramArguments</key><array><string>agentdeck</string><string>daemon</string><string>start</string><string>--foreground</string></array></plist>';
+const unit = '<plist><dict><key>Label</key><string>dev.agentdeck.daemon</string><key>ProgramArguments</key><array><string>agentdeck</string><string>daemon</string><string>start</string><string>--foreground</string></array></dict></plist>';
 
 describe('CLI lifecycle supervisor data-scope ownership', () => {
   it('preserves readable default service routing without a live daemon and regardless of fallback port', () => {
     expect(selectLifecycleSupervisor(launchd, { env: {}, home: '/default', unitContent: unit })).toBe(launchd);
     expect(selectLifecycleSupervisor(launchd, { env: {}, home: '/default', unitContent: unit,
       info: { pid: 10 }, health: { pid: 10 } })).toBe(launchd);
+    expect(selectLifecycleSupervisor(launchd, { env: {}, home: '/default',
+      unitContent: buildPlist() })).toBe(launchd);
+    const systemd = { ...launchd, kind: 'systemd' as const };
+    expect(selectLifecycleSupervisor(systemd, { env: {}, home: '/default',
+      unitContent: '[Service]\nExecStart=agentdeck daemon start --foreground\n#Environment="AGENTDECK_DATA_DIR=/qa"',
+    })).toBe(systemd);
   });
   it.each(['launchd','systemd','schtasks'] as const)('isolated data never controls a global %s service', kind => {
     expect(selectLifecycleSupervisor({ ...launchd, kind }, { env: { AGENTDECK_DATA_DIR: '/isolated/qa' },
@@ -36,6 +42,44 @@ describe('CLI lifecycle supervisor data-scope ownership', () => {
       unitContent: '[Service]\nExecStart="node" "cli.js" "daemon" "start" "--foreground"\nEnvironment="AGENTDECK_DATA_DIR=/isolated/qa"\n' })).toBe(supervisor);
     expect(selectLifecycleSupervisor(supervisor, { env: { AGENTDECK_DATA_DIR: '/other/qa' },
       unitContent: '[Service]\nExecStart="node" "cli.js" "daemon" "start" "--foreground"\nEnvironment="AGENTDECK_DATA_DIR=/isolated/qa"\n' })).toBeNull();
+  });
+  it.each([
+    '#Environment="AGENTDECK_DATA_DIR=/qa"',
+    ';Environment="AGENTDECK_DATA_DIR=/qa"',
+    'Environment="AGENTDECK_DATA_DIR=/qa"\nEnvironment="AGENTDECK_DATA_DIR=/production"',
+    'Environment="AGENTDECK_DATA_DIR=/qa"\nEnvironment=',
+    'Environment="AGENTDECK_DATA_DIR=/qa"\nEnvironmentFile=/production.env',
+    'Environment="AGENTDECK_DATA_DIR=/qa"\nUnsetEnvironment=AGENTDECK_DATA_DIR',
+    '[Install]\nEnvironment="AGENTDECK_DATA_DIR=/qa"',
+  ])('systemd inactive or ambiguous environment never authorizes a custom scope: %s', declarations => {
+    expect(selectLifecycleSupervisor({ ...launchd, kind: 'systemd' }, {
+      env: { AGENTDECK_DATA_DIR: '/qa' }, home: '/default',
+      unitContent: '[Service]\nExecStart=agentdeck daemon start --foreground\n' + declarations,
+    })).toBeNull();
+  });
+  const environment = (entries: string) => `<key>EnvironmentVariables</key><dict>${entries}</dict>`;
+  const dataDir = (path: string) => `<key>AGENTDECK_DATA_DIR</key><string>${path}</string>`;
+  it('launchd uses the active environment dictionary and ignores harmless XML comments', () => {
+    const commented = unit.replace('</dict></plist>', `<!-- ${environment(dataDir('/qa'))} --></dict></plist>`);
+    expect(selectLifecycleSupervisor(launchd, { env: {}, home: '/default', unitContent: commented })).toBe(launchd);
+    expect(selectLifecycleSupervisor(launchd, { env: { AGENTDECK_DATA_DIR: '/qa' }, home: '/default',
+      unitContent: commented })).toBeNull();
+    const active = commented.replace('</dict></plist>', `${environment(dataDir('/production'))}</dict></plist>`);
+    expect(selectLifecycleSupervisor(launchd, { env: { AGENTDECK_DATA_DIR: '/production' },
+      unitContent: active })).toBe(launchd);
+    expect(selectLifecycleSupervisor(launchd, { env: { AGENTDECK_DATA_DIR: '/qa' },
+      unitContent: active })).toBeNull();
+  });
+  it.each([
+    dataDir('/qa'),
+    environment(dataDir('/qa') + dataDir('/production')),
+    environment(dataDir('/qa')) + environment(dataDir('/production')),
+    environment(`<key>Nested</key><dict>${dataDir('/qa')}</dict>`),
+    `<key>Unrelated</key><dict>${environment(dataDir('/qa'))}</dict>`,
+    `<!-- ${environment(dataDir('/qa'))}`,
+  ])('launchd misplaced or ambiguous override is unknown: %s', declarations => {
+    expect(selectLifecycleSupervisor(launchd, { env: { AGENTDECK_DATA_DIR: '/qa' },
+      unitContent: unit.replace('</dict></plist>', declarations + '</dict></plist>') })).toBeNull();
   });
   it.each(['', 'not a service', '<plist><key>PATH</key><string>/bin</string></plist>'])('malformed readable unit is unknown (%s)', content => {
     for (const kind of ['launchd','systemd'] as const) {
