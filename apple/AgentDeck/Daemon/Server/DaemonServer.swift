@@ -11535,6 +11535,20 @@ final class DaemonServer {
         return (normalizedEvent, payload)
     }
 
+    /// Hermes supplies explicit model metadata but no Gateway usage event.
+    /// Stamp the newly opened (or just closed) turn as well as the run; a
+    /// run-only identity would leave the per-turn scorecard unattributed.
+    static func recordHermesApmeHook(
+        _ hook: (event: String, payload: [String: Any])?,
+        sessionId: String, collector: ApmeCollector?
+    ) {
+        guard let hook, let collector else { return }
+        collector.handleHook(event: hook.event, data: hook.payload)
+        if let model = hook.payload["model_name"] as? String {
+            collector.updateTurnIdentity(modelId: model, provider: nil, sessionId: sessionId)
+        }
+    }
+
     /// Explicit new-turn signal for a Codex thread (`codex_session_start`,
     /// `codex_user_prompt_submit`, OTel `turnStart`). Clears the terminal
     /// record AND its tombstone (late progress from the *finished* turn can
@@ -11781,8 +11795,8 @@ final class DaemonServer {
             sessionId: sessionId
         )
         // The prompt boundary opens the task first so its chat row is tagged.
-        if boundary == "user_prompt_submit", let hook = apmeHook {
-            apmeCollector?.handleHook(event: hook.event, data: hook.payload)
+        if boundary == "user_prompt_submit" {
+            Self.recordHermesApmeHook(apmeHook, sessionId: sessionId, collector: apmeCollector)
         }
         if boundary == "session_end" {
             if openCodeTurnAnchors.hasOpenTurn(sid: sessionId) {
@@ -11822,8 +11836,8 @@ final class DaemonServer {
             }
             broadcastSessionsList()
         }
-        if boundary != "user_prompt_submit", let hook = apmeHook {
-            apmeCollector?.handleHook(event: hook.event, data: hook.payload)
+        if boundary != "user_prompt_submit" {
+            Self.recordHermesApmeHook(apmeHook, sessionId: sessionId, collector: apmeCollector)
         }
     }
 
