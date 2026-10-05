@@ -677,11 +677,11 @@ export class ApmeCollector {
     const after = this.ciWaits.waitsFor(sessionId, now);
     for (const wait of before) if (!after.some(w => w.token === wait.token)) {
       this.noteRelation(sessionId, { relation: 'waiting_on', direction: 'out', phase: 'closed',
-        evidence: wait.background ? 'ci_wait_background' : 'ci_wait_foreground', peerName: 'GitHub CI', key: `ci:${wait.token}`, ts: now });
+        evidence: wait.background ? 'ci_wait_background' : 'ci_wait_foreground', peerName: 'GitHub CI', key: `ci:${wait.status.openedAt}:${wait.token}`, ts: now });
     }
     for (const wait of after) if (!before.some(w => w.token === wait.token)) {
       this.noteRelation(sessionId, { relation: 'waiting_on', direction: 'out', phase: 'open',
-        evidence: wait.background ? 'ci_wait_background' : 'ci_wait_foreground', peerName: 'GitHub CI', key: `ci:${wait.token}`, ts: wait.status.openedAt });
+        evidence: wait.background ? 'ci_wait_background' : 'ci_wait_foreground', peerName: 'GitHub CI', key: `ci:${wait.status.openedAt}:${wait.token}`, ts: wait.status.openedAt });
     }
   }
 

@@ -185,14 +185,18 @@ pushing the iOS fix; this verifies the live provider path, not an agent-hook
 receipt. Blender render and matrix/e-ink host renders are simulated/source
 receipts, not hardware validation. Two local XCTest attempts built but never began executing tests; both were
 cancelled, and the test hosts exited. The same command/lifecycle/accounting
-fixtures passed through a compiled standalone Swift executable. Remote native
-CI remains required. The simulator's default scene list referenced an absent
+fixtures passed through a compiled standalone Swift executable. Remote macOS XCTest and iOS build CI subsequently passed. The simulator's default scene list referenced an absent
 `decision` scene; it now exercises the new `ci-wait` scene instead.
 
 [RELEASING.md](RELEASING.md) retains all eight open issues and their concrete
 acceptance gaps. Hermes CI command evidence, real agent-hook replay, station
 visual acceptance, device/crowd receipts and store delivery are not silently
 closed by these changes. No version tag or store submission was made.
+
+Final CI found the T-Embed snapshot missing the new CI phase; the fixed-width
+field now follows the locked session copy and its host build passes. A restart
+regression also pins distinct CI relation IDs within a rehydrated turn: the
+invocation opening timestamp now scopes the process-local token in both daemons.
 
 ## 2026-10-04 — Windows Codex hook launcher identity
 

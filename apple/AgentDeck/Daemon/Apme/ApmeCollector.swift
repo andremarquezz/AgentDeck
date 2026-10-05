@@ -923,12 +923,12 @@ final class ApmeCollector {
         for wait in before where !after.contains(where: { $0.token == wait.token }) {
             noteRelation(sessionId: sessionId, relation: "waiting_on", direction: "out", phase: "closed",
                 peerSessionId: nil, peerName: "GitHub CI", evidence: wait.background ? "ci_wait_background" : "ci_wait_foreground",
-                detail: nil, ts: now, key: "ci:\(wait.token)")
+                detail: nil, ts: now, key: "ci:\(wait.openedAt):\(wait.token)")
         }
         for wait in after where !before.contains(where: { $0.token == wait.token }) {
             noteRelation(sessionId: sessionId, relation: "waiting_on", direction: "out", phase: "open",
                 peerSessionId: nil, peerName: "GitHub CI", evidence: wait.background ? "ci_wait_background" : "ci_wait_foreground",
-                detail: nil, ts: wait.openedAt, key: "ci:\(wait.token)")
+                detail: nil, ts: wait.openedAt, key: "ci:\(wait.openedAt):\(wait.token)")
         }
     }
 
