@@ -4,7 +4,7 @@ import { acceptsDaemonRuntime } from '@agentdeck/shared';
 import { Command, InvalidArgumentError } from 'commander';
 import { writeFileSync, unlinkSync, existsSync, realpathSync, readFileSync, statSync } from 'fs';
 import { homedir } from 'os';
-import { dirname, join } from 'path';
+import { dirname, join, resolve } from 'path';
 import { execFileSync, execSync, spawn, spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
@@ -59,6 +59,7 @@ import {
   disableUnit,
   getUnitPath,
   getDataDir,
+  escapeUnitEnvAssignment,
 } from './linux-service.js';
 
 const require = createRequire(import.meta.url);
@@ -338,7 +339,66 @@ export function buildPlist(extraArgs: string[] = []): string {
  * This is a stop, not an uninstall: the unit stays installed and starts again
  * at the next login, or at the next `agentdeck daemon start`.
  */
-async function stopDaemon(
+/** Match the installed unit's data scope before controlling it. A unit on the
+ * machine is not proof that it owns an explicitly isolated daemon. Ports are
+ * deliberately absent from this decision: the real service can fall back. */
+export function selectLifecycleSupervisor(
+  supervisor: SupervisorFacts | null,
+  opts: {
+    env?: NodeJS.ProcessEnv; home?: string; unitContent?: string | null;
+    info?: { pid?: number; startedBy?: string } | null;
+    health?: { pid?: number; isSwift?: boolean } | null;
+  } = {},
+): SupervisorFacts | null {
+  if (!supervisor || opts.health?.isSwift) return null;
+  if (opts.info?.startedBy && opts.info.startedBy !== supervisor.kind) return null;
+  if (opts.info?.pid && opts.health?.pid && opts.info.pid !== opts.health.pid) return null;
+  const defaultDir = join(opts.home ?? homedir(), '.agentdeck');
+  const requested = (opts.env ?? process.env).AGENTDECK_DATA_DIR || defaultDir;
+  const canonical = (path: string): string => {
+    try { return realpathSync(path); } catch { return resolve(path); }
+  };
+  // The scheduled task does not inherit a shell's custom data-dir environment.
+  if (supervisor.kind === 'schtasks') {
+    return canonical(requested) === canonical(defaultDir) ? supervisor : null;
+  }
+  let content = opts.unitContent;
+  if (content === undefined) {
+    try { content = readFileSync(supervisor.unitPath ?? '', 'utf8'); } catch { return null; }
+  }
+  if (content === null) return null; // Unknown configuration is not this unit's scope.
+  if (supervisor.kind === 'systemd') {
+    const execStart = content.match(/^ExecStart=(.+)$/m)?.[1] ?? '';
+    if (!/^\[Service\]$/m.test(content) || !/\bdaemon[\s"]+start\b/.test(execStart)
+        || !execStart.includes('--foreground') || /^EnvironmentFile=/m.test(content)) return null;
+    if (content.includes('AGENTDECK_DATA_DIR')) {
+      // Compare the writer's exact escaped assignment; do not guess at an
+      // arbitrary/unreadable systemd environment expression.
+      try {
+        return content.includes('Environment=' + escapeUnitEnvAssignment('AGENTDECK_DATA_DIR', requested)) ? supervisor : null;
+      } catch { return null; }
+    }
+    return canonical(requested) === canonical(defaultDir) ? supervisor : null;
+  }
+  const xmlText = (value: string): string => value.replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+  const label = content.match(/<key>Label<\/key>\s*<string>([^<]*)<\/string>/)?.[1];
+  const argumentsXml = content.match(/<key>ProgramArguments<\/key>\s*<array>([\s\S]*?)<\/array>/)?.[1];
+  const words = argumentsXml ? [...argumentsXml.matchAll(/<string>([^<]*)<\/string>/g)].map(match => xmlText(match[1])) : [];
+  const daemonIndex = words.indexOf('daemon');
+  if (!content.includes('<plist') || !label || xmlText(label) !== supervisor.label
+      || daemonIndex < 0 || words[daemonIndex + 1] !== 'start' || !words.includes('--foreground')) return null;
+  let unitDir = defaultDir;
+  if (content.includes('AGENTDECK_DATA_DIR')) {
+    const match = content.match(/<key>AGENTDECK_DATA_DIR<\/key>\s*<string>([^<]*)<\/string>/);
+    if (!match) return null;
+    unitDir = xmlText(match[1]);
+    if (!unitDir) return null;
+  }
+  return canonical(requested) === canonical(unitDir) ? supervisor : null;
+}
+
+export async function stopDaemon(
   port: number,
   opts: { supervisor?: SupervisorFacts | null; handover?: boolean } = {},
 ): Promise<void> {
@@ -347,10 +407,20 @@ async function stopDaemon(
   } = await import('./session-registry.js');
   const { isForeignDaemon } = await import('./daemon-takeover.js');
 
-  // First, because the alternative is a race with the daemon's own parent: a
-  // `/shutdown` that lands while the unit is still armed is answered by a
-  // respawn a few seconds later.
-  const supervisor = opts.supervisor !== undefined ? opts.supervisor : detectSupervisor();
+  const info = readDaemonInfo();
+  const targetPort = info?.httpPort ?? info?.port ?? findDaemonPort() ?? port;
+  const incumbent = await probeDaemonHealth(targetPort);
+  if (isForeignDaemon(incumbent)) {
+    log(`Port ${targetPort} is held by another user's daemon — refusing to stop it.`);
+    log(`You have no daemon of your own running.`);
+    return;
+  }
+  // Disarm only the unit proven to share this target's data scope, before
+  // /shutdown so its KeepAlive cannot race the requested stop/restart.
+  const supervisor = selectLifecycleSupervisor(
+    opts.supervisor !== undefined ? opts.supervisor : detectSupervisor(),
+    { info, health: incumbent },
+  );
   if (supervisor) {
     const result = runSupervisorPlan(supervisorStopPlan(supervisor));
     if (!await waitForSupervisorUnload(supervisor)) {
@@ -368,17 +438,6 @@ async function stopDaemon(
     }
   }
 
-  const info = readDaemonInfo();
-  const targetPort = info?.httpPort ?? info?.port ?? findDaemonPort() ?? port;
-  // The registry resolves to this user's own daemon, but the `-p` fallback
-  // resolves to whatever is on that port — which on a shared host is somebody
-  // else's daemon, and `/shutdown` is trusted purely for being local.
-  const incumbent = await probeDaemonHealth(targetPort);
-  if (isForeignDaemon(incumbent)) {
-    log(`Port ${targetPort} is held by another user's daemon — refusing to stop it.`);
-    log(`You have no daemon of your own running.`);
-    return;
-  }
   // `handover` says a daemon is coming BACK on this port, which changes what an
   // app-owned Swift incumbent should be told. `/stand-down` names the port it
   // must become a client of; `/shutdown` leaves it resolving that from a
@@ -1466,7 +1525,7 @@ daemon
       //
       // `--foreground` is deliberately NOT routed: that spelling IS the unit's
       // own ExecStart, and routing it would make the unit ask itself to start.
-      const supervisor = detectSupervisor();
+      const supervisor = selectLifecycleSupervisor(detectSupervisor());
       // No posture pair here on purpose: `daemon start` has no running daemon
       // to inherit from, so the unit's own posture is the right answer.
       const route = routeDaemonLifecycle({
@@ -1557,9 +1616,10 @@ daemon
 daemon
   .command('stop')
   .description('Stop the daemon')
-  .option('-p, --port <port>', 'Server port', String(BRIDGE_WS_PORT))
+  .option('-p, --port <port>', 'Server port (default: the persisted daemonPort)')
   .action(async (opts) => {
-    await stopDaemon(parseInt(opts.port, 10));
+    const { resolveDaemonPort } = await import('./daemon-port.js');
+    await stopDaemon(resolveDaemonPort({ flag: opts.port }).port);
   });
 
 daemon
@@ -1600,6 +1660,11 @@ daemon
     // posture in its argv, and this command does not read those three files.
     // Explicit flags still win; inheritance only fills in what wasn't asked for.
     const running = await probeHealth(runningPort);
+    const { isForeignDaemon } = await import('./daemon-takeover.js');
+    if (isForeignDaemon(running)) {
+      log(`Port ${runningPort} is held by another user's daemon — refusing to restart it.`);
+      return;
+    }
     const inheritedLocal = running?.posture?.noDeviceModules === true;
     const inheritedLoopback = running?.posture?.loopbackOnly === true;
     const useLocal = !!opts.local || inheritedLocal;
@@ -1625,7 +1690,7 @@ daemon
     // the inheritance above exists to prevent — handing the restart to a
     // default-posture unit would rewrite a loopback-only daemon into an
     // advertising one, silently.
-    const supervisor = detectSupervisor();
+    const supervisor = selectLifecycleSupervisor(detectSupervisor(), { info, health: running });
     const route = routeDaemonLifecycle({
       supervisor,
       oneOffFlags: oneOffFlagsBlockingSupervisor(opts),
