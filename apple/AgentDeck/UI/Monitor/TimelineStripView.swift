@@ -527,6 +527,18 @@ struct TimelineStripView: View {
                 }
             }
 
+            if !group.toolActivity.isEmpty {
+                HStack(spacing: 4) {
+                    Spacer().frame(width: isNested ? 64 : 56)
+                    Image(systemName: "wrench.and.screwdriver")
+                    Text(group.toolSummary).lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+                .font(.system(size: fontScale.label, design: .monospaced))
+                .foregroundStyle(TerrariumHUD.subtext)
+                .accessibilityLabel("Tool activity: \(group.toolSummary)")
+            }
+
             // Sub-line: assistant response body. Indented + dimmed so the
             // user prompt above stays the primary reading anchor. Hidden
             // while this row's inline detail pane is expanded showing the
@@ -696,6 +708,7 @@ struct TimelineStripView: View {
                     .font(.system(size: fontScale.label, design: .monospaced))
                     .foregroundStyle(TerrariumHUD.subtext.opacity(0.75))
             }
+            toolActivityDetail(group)
             let detailEntry = timelineDetailEntryForDashboard(bodyGroup)
             if let detail = detailEntry.detail,
                shouldShowDetail(entry: detailEntry, detail: detail) {
@@ -835,6 +848,21 @@ struct TimelineStripView: View {
         }
         let tag = agentTag(entry.agentType)
         return tag.isEmpty ? "" : "[\(tag)]"
+    }
+
+    @ViewBuilder
+    private func toolActivityDetail(_ group: GroupedEntry) -> some View {
+        if !group.toolActivity.isEmpty {
+            DisclosureGroup("Tool activity") {
+                // Tool output is literal text: do not interpret shell output as Markdown.
+                Text(group.toolDetail)
+                    .font(.system(size: fontScale.label, design: .monospaced))
+                    .foregroundStyle(TerrariumHUD.text)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .font(.system(size: fontScale.label, design: .monospaced))
+            .foregroundStyle(TerrariumHUD.subtext)
+        }
     }
 
     // MARK: - Detail Pane
@@ -1026,10 +1054,15 @@ struct TimelineStripView: View {
                         .padding(.top, 2)
                 }
 
-                if let detail = shownDetail {
+                if shownDetail != nil || !group.toolActivity.isEmpty {
                     Spacer().frame(height: 4)
                     ScrollView {
-                        TimelineMarkdownPreview(text: detail, allowsSelection: allowsNativeSelection)
+                        VStack(alignment: .leading, spacing: 4) {
+                            toolActivityDetail(group)
+                            if let detail = shownDetail {
+                                TimelineMarkdownPreview(text: detail, allowsSelection: allowsNativeSelection)
+                            }
+                        }
                     }
                     .padding(.horizontal, 8)
                 }
@@ -1062,6 +1095,7 @@ struct TimelineStripView: View {
         var lines = [formatTimeSeconds(group.entry.date), sourceLabel(for: group.entry)]
         lines += lifecycleDetailRows(for: group.entry).map { "\($0.label) \($0.value)" }
         lines.append(timelineSummaryTextForDashboard(group))
+        if !group.toolActivity.isEmpty { lines.append("Tool activity\n" + group.toolDetail) }
         if let detail = entry.detail, shouldShowDetail(entry: entry, detail: detail) { lines.append(detail) }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(lines.filter { !$0.isEmpty }.joined(separator: "\n"),forType: .string)

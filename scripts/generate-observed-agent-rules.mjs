@@ -26,6 +26,7 @@ const HEADER =
   'GENERATED FILE — DO NOT EDIT.\n' +
   'Source of truth: shared/src/session-utils.ts (OBSERVED_SESSION_AGENT_KEYS)\n' +
   '                 shared/src/timeline.ts      (TOOL_EXEC_SUPPRESSED_AGENTS)\n' +
+  '                 shared/src/timeline-task-display.ts (TIMELINE_TURN_RULES)\n' +
   'Regenerate: pnpm generate-observed-agent-rules (drift gated by shared/src/__tests__/observed-agent-rules.test.ts)';
 
 function comment(prefix) {
@@ -44,6 +45,8 @@ import Foundation
 /// rather than written twice.
 enum ObservedAgentRules {
     static let openCodePendingRequestLimit = ${rules.openCodePendingLimit}
+    static let turnMergeMaxGapMs: Double = ${rules.turn.maxGapMs}
+    static let turnActivityTypes: Set<String> = [${rules.turn.activityTypes.map(x => JSON.stringify(x)).join(', ')}]
 
     /// A passively-observed session is keyed \`observed:<agent>:<uuid>\` in
     /// \`sessions_list\` and on devices, while timeline rows, hook payloads and
@@ -82,6 +85,8 @@ package dev.agentdeck.state
  * rather than written twice.
  */
 object ObservedAgentRules {
+    const val TURN_MERGE_MAX_GAP_MS: Long = ${rules.turn.maxGapMs}L
+    val TURN_ACTIVITY_TYPES: Set<String> = setOf(${rules.turn.activityTypes.map(x => JSON.stringify(x)).join(', ')})
     /** A passively-observed session is keyed \`observed:<agent>:<uuid>\` in
      *  \`sessions_list\` and on devices, while timeline rows, hook payloads and
      *  transcripts use the bare uuid. */
@@ -114,10 +119,12 @@ async function main() {
   try {
     const sessionUtils = await import('../shared/dist/session-utils.js');
     const timeline = await import('../shared/dist/timeline.js');
+    const { TIMELINE_TURN_RULES } = await import('../shared/dist/timeline-task-display.js');
     rules = {
       prefixes: [...sessionUtils.OBSERVED_SESSION_PREFIXES],
       openCodePendingLimit: sessionUtils.OPENCODE_PENDING_REQUEST_LIMIT,
       suppressed: [...timeline.TOOL_EXEC_SUPPRESSED_AGENTS],
+      turn: TIMELINE_TURN_RULES,
     };
   } catch {
     console.error('shared/dist not found — run `pnpm --filter @agentdeck/shared build` first');

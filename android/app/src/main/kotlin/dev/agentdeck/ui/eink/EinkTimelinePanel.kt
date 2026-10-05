@@ -63,9 +63,9 @@ fun EinkTimelinePanel(
     // element is a real work unit rather than a stray tool row. Cap at 3 — the
     // most this glance surface renders even for the shortest messages.
     val recent = remember(entries) {
-        timelineDisplayGroups(groupConsecutive(entries.takeLast(40)))
+        timelineDisplayGroups(groupConsecutive(entries))
             .takeLast(3)
-            .map { it.entry }
+            .map { it.mergedResponse ?: it.toolActivity.lastOrNull() ?: it.entry }
             .asReversed()
     }
 
