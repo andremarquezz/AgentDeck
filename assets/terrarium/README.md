@@ -366,7 +366,11 @@ and trademarks belong to GitHub. This is a secondary GitHub Actions integration
 indicator, not AgentDeck's identity or a redistributed private Mona model.
 
 `build-ci-companion.py` adds shallow silhouette depth while preserving the source
-face, arms, whiskers, colors and UV mapping. Coplanar interior cells are dissolved
+face, arms, whiskers, colors and UV mapping. The front texture uses supported
+Principled emission so USD Preview Surface contains the original image; a bare
+Blender Emission node exports an empty material and RealityKit's gray fallback.
+The bundled-resource test verifies the actual imported emission texture.
+Coplanar interior cells are dissolved
 without changing the outer profile. Regenerate with Blender's background Python
 entry point; the saved authoring source is `ci-companion.blend`. The exports are
 Apple's `Resources/Aquarium/ci-companion.usdz`, Android's

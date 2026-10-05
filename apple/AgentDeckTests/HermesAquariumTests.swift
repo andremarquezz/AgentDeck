@@ -250,6 +250,11 @@ final class HermesAquariumTests: XCTestCase {
         let loaded = try XCTUnwrap(loader.loaded)
         XCTAssertFalse(loaded.habitat.visualBounds(relativeTo: nil).isEmpty)
         XCTAssertFalse(loaded.ciCompanion.visualBounds(relativeTo: nil).isEmpty)
+        let artwork = try XCTUnwrap(loaded.ciCompanion.findEntity(named: "Original_Octocat_alpha_silhouette") as? ModelEntity)
+        let materials = try XCTUnwrap(artwork.model?.materials)
+        XCTAssertTrue(materials.contains {
+            ($0 as? PhysicallyBasedMaterial)?.emissiveColor.texture != nil
+        }, "Original Octocat pixels must survive USD export and RealityKit import")
         let scene = AquariumResidents()
         scene.loadTemplates(loaded.residents)
         scene.loadHermesTemplate(loaded.hermes)

@@ -11,8 +11,15 @@ source=ROOT/'assets/terrarium/ci-companion-source.png'
 image=bpy.data.images.load(str(source),check_existing=True);image.pack();w,h=image.size;pixels=list(image.pixels)
 front=bpy.data.materials.new('Original Octocat artwork');front.use_nodes=True
 nodes=front.node_tree.nodes;nodes.clear();tex=nodes.new('ShaderNodeTexImage');tex.image=image
-emission=nodes.new('ShaderNodeEmission');output=nodes.new('ShaderNodeOutputMaterial')
-front.node_tree.links.new(tex.outputs['Color'],emission.inputs['Color']);front.node_tree.links.new(emission.outputs[0],output.inputs['Surface'])
+# USD export only converts supported Principled nodes. A standalone Emission
+# node produced an empty USD Material and a gray RealityKit fallback in the app.
+shader=nodes.new('ShaderNodeBsdfPrincipled');output=nodes.new('ShaderNodeOutputMaterial')
+shader.inputs['Base Color'].default_value=(0,0,0,1)
+shader.inputs['Specular IOR Level'].default_value=0
+shader.inputs['Roughness'].default_value=1
+shader.inputs['Emission Strength'].default_value=1
+front.node_tree.links.new(tex.outputs['Color'],shader.inputs['Emission Color'])
+front.node_tree.links.new(shader.outputs['BSDF'],output.inputs['Surface'])
 # The front retains every original pixel. Only profile/edge thickness is added,
 # equivalent to the canonical SVG extrusion used for other native residents.
 back=bpy.data.materials.new('Octocat silhouette edge');back.use_nodes=True
