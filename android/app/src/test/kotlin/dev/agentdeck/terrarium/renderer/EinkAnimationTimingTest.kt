@@ -1,11 +1,43 @@
 package dev.agentdeck.terrarium.renderer
 
+import dev.agentdeck.terrarium.toTerrariumState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.hypot
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
 class EinkAnimationTimingTest {
+    @Test fun `e-ink renders four separated CI visitors in shared queue and returns them on clear`() {
+        val creatures = (0..3).map { dev.agentdeck.terrarium.AgentCreatureState("ci$it","hermes",dev.agentdeck.terrarium.OctopusVisualState.FLOATING,false,it,"CI QA $it") }
+        val state = dev.agentdeck.terrarium.TerrariumState(dev.agentdeck.terrarium.OctopusVisualState.FLOATING,dev.agentdeck.terrarium.CrayfishVisualState.DORMANT,
+            dev.agentdeck.terrarium.TetraVisualState.ABSENT,dev.agentdeck.terrarium.EnvironmentVisualState.CALM,openCodeCreatures = creatures,
+            ciWaits = creatures.associate { it.sessionId to dev.agentdeck.net.CiWaitStatus(phase = "unknown",agentWaiting = true,openedAt = it.layoutSlot.toLong()) },
+            ciWaitingIds = creatures.map { it.sessionId }.toSet())
+        val frame = renderEinkFrame(state,800,600,textScale = 2f)
+        val cleared = renderEinkFrame(state.copy(ciWaits = emptyMap(),ciWaitingIds = emptySet()),800,600,textScale = 2f)
+        for (slot in 0..3) {
+            val pos = dev.agentdeck.terrarium.ciStationPosition(slot,state.ciWaits["ci$slot"])
+            val x = (pos.first*800).toInt(); val y = (pos.second*600).toInt()
+            fun ink(bitmap: android.graphics.Bitmap) = (x-16..x+16).sumOf { px -> (y-18..y+18).count { py -> android.graphics.Color.red(bitmap.getPixel(px,py)) < 80 } }
+            assertTrue("Each queued resident has its own visible body: $slot",ink(frame) > 10)
+            assertTrue("Clearing the wait returns the body to its normal lane: $slot",ink(cleared) < ink(frame))
+        }
+        val output = java.io.File("/tmp/ad180-final-ci-qa/eink-render-4-unknown.png")
+        output.parentFile?.mkdirs(); output.outputStream().use { frame.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) }
+    }
+
+    @Test fun `e-ink refresh key notices CI changes when ordinary session state stays idle`() {
+        val row = dev.agentdeck.net.SessionInfo(id = "ci",port = 0,agentType = "hermes",state = "idle",
+            waitingOn = dev.agentdeck.net.CiWaitStatus(phase = "unknown",agentWaiting = true))
+        val state = dev.agentdeck.state.DashboardState(agentType = "daemon",siblingSessions = listOf(row))
+        val changed = state.copy(siblingSessions = listOf(row.copy(waitingOn = row.waitingOn!!.copy(phase = "running"))))
+        val cleared = state.copy(siblingSessions = listOf(row.copy(waitingOn = null)))
+        fun key(s: dev.agentdeck.state.DashboardState) = dev.agentdeck.ui.screen.buildEinkTerrariumRefreshKey(s,s.toTerrariumState())
+        assertTrue(key(state) != key(changed)); assertTrue(key(state) != key(cleared))
+    }
+
 
     @Test
     fun `LCD uses vsync and physical e-ink uses fast partial cadence`() {

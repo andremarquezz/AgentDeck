@@ -74,37 +74,37 @@ internal class CiStationVisits(private val clock: () -> Long = System::nanoTime)
 
 internal fun drawCiStation(canvas: Canvas, paint: Paint, state: TerrariumState, queue: List<String>, positions: Map<String, Pair<Float, Float>>, time: Float,
     x: Float = canvas.width*TerrariumRules.CI_STATION_X, y: Float = canvas.height*TerrariumRules.CI_STATION_Y,
-    width: Float = canvas.width*TerrariumRules.CI_STATION_WIDTH_FRAC, drawResident: Boolean = true, textScale: Float = 1f) {
+    width: Float = canvas.width*TerrariumRules.CI_STATION_WIDTH_FRAC, drawResident: Boolean = true, textScale: Float = 1f, ink: Int? = null) {
     val unit = width/8f
     val first = queue.firstOrNull()?.let { state.ciWaits[it] }
     val asleep = queue.isEmpty()
     paint.style = Paint.Style.FILL; paint.alpha = 255
     if (drawResident) {
-        paint.color = DesignTokens.Ink.s700.toArgb()
+        paint.color = ink ?: DesignTokens.Ink.s700.toArgb()
         canvas.drawOval(x-width/2, y+unit*2, x+width/2, y+unit*4, paint)
-        paint.color = DesignTokens.Coral.s500.toArgb()
+        paint.color = ink ?: DesignTokens.Coral.s500.toArgb()
         paint.alpha = if (asleep || first?.phase == "unknown") (TerrariumRules.CI_STATION_ASLEEP_OPACITY*255).toInt() else 255
         CiWaitVisual.shrimp.forEachIndexed { row,bits -> for (col in 0 until 8) if (bits and (1 shl (7-col)) != 0)
             canvas.drawRect(x-width/2+col*unit,y-unit*5+row*unit,x-width/2+(col+1)*unit,y-unit*5+(row+1)*unit,paint) }
     }
     paint.textAlign = Paint.Align.LEFT; paint.textSize = maxOf(9f,minOf(12f,canvas.width*.015f))*textScale
-    paint.color = ciStationColor(first).toArgb(); paint.alpha = 255
+    paint.color = ink ?: ciStationColor(first).toArgb(); paint.alpha = 255
     canvas.drawText(if (asleep) "CI · asleep" else first?.let(::ciStationLabel) ?: "CI UNKNOWN",x+width,y,paint)
     paint.textAlign = Paint.Align.CENTER
     for (id in queue) {
         val p = positions[id] ?: continue
-        paint.color = ciStationColor(state.ciWaits[id]).toArgb(); paint.alpha = 110
+        paint.color = ink ?: ciStationColor(state.ciWaits[id]).toArgb(); paint.alpha = 110
         paint.strokeWidth = 1f
         canvas.drawLine(x,y-unit*3,p.first,p.second,paint)
     }
     for ((id,p) in positions) state.ciWaits[id]?.let { wait ->
-        paint.color = ciStationColor(wait).toArgb(); paint.alpha = 255
+        paint.color = ink ?: ciStationColor(wait).toArgb(); paint.alpha = 255
         paint.textSize = maxOf(9f,minOf(11f,canvas.width*.015f))*textScale
         canvas.drawText(ciStationBadge(wait),p.first,p.second+unit*3,paint)
     }
     if (first?.phase == "running") queue.firstOrNull()?.let { positions[it] }?.let { p ->
         val scan = .5f+.5f*sin(time*TerrariumRules.CI_STATION_SCAN_RATE)
-        paint.color = DesignTokens.Tide.s50.toArgb(); paint.alpha = 190; paint.strokeWidth = 1f
+        paint.color = ink ?: DesignTokens.Tide.s50.toArgb(); paint.alpha = 190; paint.strokeWidth = 1f
         canvas.drawLine(p.first-width/3,p.second-unit*3+scan*unit*6,p.first+width/3,p.second-unit*3+scan*unit*6,paint)
     }
     paint.alpha = 255
