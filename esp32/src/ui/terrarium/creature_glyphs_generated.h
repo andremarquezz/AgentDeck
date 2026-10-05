@@ -17,6 +17,7 @@ struct FeatureLayer {
 };
 constexpr int MIN_MONO_CREATURE_SIZE = 24;
 constexpr float MONO_OUTLINE_WIDTH = 0.4f;
+constexpr float MONO_OUTLINE_WIDTH_FRAC = 0.016666666666666666f;
 
 constexpr int OCTOPUS_W = 64;
 constexpr int OCTOPUS_H = 64;

@@ -5,7 +5,7 @@
 // Output: esp32/src/ui/terrarium/creature_glyphs_generated.h  (committed, like generate-protocol)
 
 import sharp from 'sharp';
-import { rasterizeFeatureLayers, cppFeatureLayers, CPP_FEATURE_STRUCT, MONOCHROME_CREATURE, emitBrowserFeatures } from './creature-feature-masks.mjs';
+import { rasterizeFeatureLayers, cppFeatureLayers, CPP_FEATURE_STRUCT, MONOCHROME_CREATURE, MONO_OUTLINE_WIDTH_FRAC, emitBrowserFeatures } from './creature-feature-masks.mjs';
 import { writeFileSync, readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -83,6 +83,7 @@ namespace CreatureGlyphs {
 ${CPP_FEATURE_STRUCT}
 constexpr int MIN_MONO_CREATURE_SIZE = ${MONOCHROME_CREATURE.minSize};
 constexpr float MONO_OUTLINE_WIDTH = ${MONOCHROME_CREATURE.outlineWidth}f;
+constexpr float MONO_OUTLINE_WIDTH_FRAC = ${MONO_OUTLINE_WIDTH_FRAC}f;
 
 ${sections.join('\n\n')}
 

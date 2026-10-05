@@ -39,6 +39,12 @@ export function cppFeatureLayers(name, layers) {
 }
 
 export const MONOCHROME_CREATURE = BRAND_FEATURES.monochromeCreature;
+const monoSourceUnits = MONOCHROME_CREATURE.lightBodyAgents.map(agent => {
+  const svg = readFileSync(root + BRAND_FEATURES.agents[agent].sourcePath, 'utf8');
+  return Number(svg.match(/viewBox="0 0 ([\d.]+) [\d.]+"/)[1]);
+});
+if (!monoSourceUnits.every(units => units === monoSourceUnits[0])) throw new Error('Monochrome source viewBoxes differ');
+export const MONO_OUTLINE_WIDTH_FRAC = MONOCHROME_CREATURE.outlineWidth / monoSourceUnits[0];
 export function emitBrowserFeatures() {
   const agents = Object.fromEntries(Object.entries(BRAND_FEATURES.agents).map(([agent, definition]) => {
     const paths = sourcePaths(readFileSync(root + definition.sourcePath, 'utf8'));
