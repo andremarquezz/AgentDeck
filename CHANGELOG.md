@@ -47,6 +47,10 @@ bumped, superseded by 1.0.17, and never published, so it exists only in git.
 
 ## Unreleased
 
+## 2026-10-05 — npm 1.8.0, Apple 1.8.0, Android 1.8.0, ESP32 1.8.0, Stream Deck 1.8.0, Ulanzi 1.8.0
+
+Prepared release candidate; no channel has been published from this entry.
+
 - Show observed Claude/Codex/OpenCode CI watch requests separately from agent activity.
   Background waits survive the end of an agent turn; foreground tool completion,
   tool failure, re-invocation and session end clear the applicable wait explicitly.

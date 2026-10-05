@@ -50,9 +50,10 @@ Run `pnpm verify-version` before every build or release. CI rejects a compatibil
 ## Next feature release candidate — CI waits and outstanding acceptance
 
 Preparation branch: `codex/release-ci-wait`, based on `b6fa21bf` (2026-10-05).
-Target a backward-compatible feature release (provisional 1.8.0), retaining
-independent channel versions and the root compatibility major. Do not tag or
-rename Unreleased until the delivered scope and candidate receipts are final.
+The six channel manifests and prepared changelog entry target backward-compatible
+1.8.0; the root compatibility-major anchor remains 1.0.2. The entry is preparation,
+not evidence of publication. Do not tag until candidate receipts are final.
+Distribution signing, uploads and store publication are outside this preparation.
 
 | Work | Candidate scope | Remaining acceptance |
 | --- | --- | --- |
