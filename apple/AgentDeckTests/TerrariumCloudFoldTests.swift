@@ -358,6 +358,24 @@ final class TerrariumCloudFoldTests: XCTestCase {
     }
 
     @MainActor
+    func testSidebarSessionCreatureIconKeepsFilledWhiteCodexPromptOnBothBackgrounds() throws {
+        for background in [Color.blue, Color.yellow] {
+            let view = SessionCreatureIcon(agentType: "codex-cli", tint: .purple, size: 240)
+                .background(background)
+            let image = ImageRenderer(content: view)
+            image.scale = 1
+            let bitmap = try XCTUnwrap(NSBitmapImageRep(data: XCTUnwrap(image.nsImage?.tiffRepresentation)))
+            for (x,y) in [(79,110),(150,153)] {
+                let pixel = try XCTUnwrap(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB))
+                XCTAssertEqual(pixel.redComponent, 1, accuracy: 0.01)
+                XCTAssertEqual(pixel.greenComponent, 1, accuracy: 0.01)
+                XCTAssertEqual(pixel.blueComponent, 1, accuracy: 0.01)
+                XCTAssertEqual(pixel.alphaComponent, 1, accuracy: 0.01)
+            }
+        }
+    }
+
+    @MainActor
     func testTinyMonochromeLogoExceptionKeepsInkBodyEyeContrast() throws {
         let size = CreatureBrandFeatures.monochromeMinimumSize / 2
         let view = CanonicalCreatureView(agentType: "claudecode", size: size, color: .black, monochrome: true)

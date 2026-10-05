@@ -182,6 +182,26 @@ class EinkAnimationTimingTest {
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
 class CreatureFeatureCanvasTest {
+    @Test fun `e-ink OpenClaw paints only an emitted active session even if gateway is available`() {
+        val absent = dev.agentdeck.state.DashboardState(agentType = "daemon",
+            gatewayAvailable = true, gatewayConnected = true).toTerrariumState()
+        assertEquals(dev.agentdeck.terrarium.CrayfishVisualState.DORMANT, absent.crayfish)
+        val bitmap = android.graphics.Bitmap.createBitmap(512, 512, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap)
+        val paint = android.graphics.Paint()
+        drawEinkCrayfish(canvas, paint, 512, 512, absent.crayfish)
+        val pixels = IntArray(512 * 512)
+        bitmap.getPixels(pixels, 0, 512, 0, 0, 512, 512)
+        assertTrue("No dormant fallback, literal eyes or outline without an OpenClaw session", pixels.all { it == 0 })
+        val present = dev.agentdeck.state.DashboardState(agentType = "daemon", gatewayConnected = true,
+            siblingSessions = listOf(dev.agentdeck.net.SessionInfo(id = "synthetic-openclaw", port = 0,
+                agentType = "openclaw", state = "idle", alive = true))).toTerrariumState()
+        assertEquals(dev.agentdeck.terrarium.CrayfishVisualState.SITTING, present.crayfish)
+        drawEinkCrayfish(canvas, paint, 512, 512, present.crayfish)
+        bitmap.getPixels(pixels, 0, 512, 0, 0, 512, 512)
+        assertTrue("Connected idle OpenClaw keeps its original creature", pixels.any { it != 0 })
+    }
+
     @Test fun `native Canvas fills source features independently of background and preserves OpenCode hole`() {
         val samples = listOf(
             Triple("claudecode", 65 to 94, android.graphics.Color.BLACK),

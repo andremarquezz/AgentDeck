@@ -1268,11 +1268,14 @@ private fun drawEinkAntigravity(
     }
 }
 
-private fun drawEinkCrayfish(
+internal fun drawEinkCrayfish(
     canvas: android.graphics.Canvas, paint: Paint, w: Int, h: Int,
     state: CrayfishVisualState,
     animFrame: Float = 0f,
 ) {
+    // Canonical projection uses DORMANT when there is no active OpenClaw row.
+    // Availability/authentication flags alone must not invent a visible creature.
+    if (state == CrayfishVisualState.DORMANT) return
     val cx = w * 0.75f
     // Y-position by state — sitting on rock when idle, floating up when active
     // ROUTING: bob animation (match tablet's sin(time*3f) * 0.05f)

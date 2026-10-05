@@ -35,11 +35,12 @@ internal object CreatureBrandFeatures {
         "crayfish" -> "openclaw"
         else -> agent ?: ""
     }
-    fun draw(scope: DrawScope, agent: String?) {
+    fun draw(scope: DrawScope, agent: String?, compactInkMonochrome: Boolean = false, monochromeCreature: Boolean = false) {
         for (layer in layers[canonical(agent)].orEmpty()) {
             if (layer.hole) continue
             val color = layer.color ?: continue
-            for (path in layer.composePaths) scope.drawPath(path, color)
+            val shade = if (compactInkMonochrome) { if (layer.monochrome == "ink") Color.Black else Color.White } else if (monochromeCreature) { if (layer.creatureMonochrome == "paper") Color.White else Color.Black } else color
+            for (path in layer.composePaths) scope.drawPath(path, shade)
         }
     }
     fun drawNative(canvas: android.graphics.Canvas, paint: android.graphics.Paint, agent: String?, matrix: android.graphics.Matrix? = null, monochromeCreature: Boolean = false) {
