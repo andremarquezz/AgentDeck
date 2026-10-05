@@ -58,6 +58,9 @@ final class HermesObserverGateTests: XCTestCase {
             keys.insert(key)
             let normalized = try XCTUnwrap(DaemonServer.normalizeApmeObservedHook(event: event, json: payload, sessionId: key))
             XCTAssertEqual(normalized.event, boundary)
+            if let model = payload["model"] as? String, !model.isEmpty {
+                XCTAssertEqual(normalized.payload["model_name"] as? String, model)
+            }
             if boundary == "stop" { stops += 1 }
             if boundary == "session_end" { finalized += 1 }
         }

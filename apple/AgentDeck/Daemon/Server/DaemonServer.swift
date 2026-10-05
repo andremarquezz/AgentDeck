@@ -11509,6 +11509,13 @@ final class DaemonServer {
             }
             payload["session_id"] = sessionId
             payload["agent_type"] = source.agentType
+            // Hermes observer v1 calls this field `model`; the collector's
+            // agent-neutral run contract reads `model_name`. Preserve the
+            // measured identity without inventing one for blank tool hooks.
+            if source.agentType == "hermes", let model = payload["model"] as? String,
+               !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                payload["model_name"] = String(model.prefix(200))
+            }
         } else {
             payload["agent_type"] = (payload["agent_type"] as? String) ?? "claude-code"
             if let sessionId, !sessionId.isEmpty { payload["session_id"] = sessionId }
