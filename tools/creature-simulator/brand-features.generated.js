@@ -19,6 +19,7 @@ globalThis.CREATURE_BRAND_FEATURES = {
           "role": "eyes",
           "mode": "fill",
           "monochrome": "paper",
+          "monochromeCreature": "ink",
           "rgb": [
             0,
             0,
@@ -46,6 +47,7 @@ globalThis.CREATURE_BRAND_FEATURES = {
           "role": "prompt",
           "mode": "fill",
           "monochrome": "paper",
+          "monochromeCreature": "paper",
           "rgb": [
             255,
             255,
@@ -75,10 +77,11 @@ globalThis.CREATURE_BRAND_FEATURES = {
           "role": "eyes",
           "mode": "fill",
           "monochrome": "paper",
+          "monochromeCreature": "ink",
           "rgb": [
-            0,
-            0,
-            0
+            5,
+            8,
+            16
           ],
           "pathIndex": 2,
           "subpathIndices": [
@@ -94,10 +97,11 @@ globalThis.CREATURE_BRAND_FEATURES = {
           "role": "eye-highlight",
           "mode": "fill",
           "monochrome": "ink",
+          "monochromeCreature": "paper",
           "rgb": [
-            255,
-            255,
-            255
+            0,
+            229,
+            204
           ],
           "pathIndex": 0,
           "subpathIndices": [
@@ -111,10 +115,11 @@ globalThis.CREATURE_BRAND_FEATURES = {
           "role": "eye-highlight",
           "mode": "fill",
           "monochrome": "ink",
+          "monochromeCreature": "paper",
           "rgb": [
-            255,
-            255,
-            255
+            0,
+            229,
+            204
           ],
           "pathIndex": 1,
           "subpathIndices": [
@@ -136,6 +141,7 @@ globalThis.CREATURE_BRAND_FEATURES = {
           "role": "center",
           "mode": "hole",
           "monochrome": "hole",
+          "monochromeCreature": "hole",
           "rgb": null,
           "pathIndex": 0,
           "subpathIndices": [

@@ -403,6 +403,7 @@ export const OFFICIAL_STANDARD_FEATURES = {
         0
       ],
       "monochrome": "paper",
+      "monochromeCreature": "ink",
       "alpha": [
         230,
         112,
@@ -455,6 +456,7 @@ export const OFFICIAL_STANDARD_FEATURES = {
         255
       ],
       "monochrome": "paper",
+      "monochromeCreature": "paper",
       "alpha": [
         0,
         9,
@@ -607,11 +609,12 @@ export const OFFICIAL_STANDARD_FEATURES = {
       "width": 10,
       "height": 4,
       "rgb": [
-        0,
-        0,
-        0
+        5,
+        8,
+        16
       ],
       "monochrome": "paper",
+      "monochromeCreature": "ink",
       "alpha": [
         1,
         82,
@@ -661,11 +664,12 @@ export const OFFICIAL_STANDARD_FEATURES = {
       "width": 8,
       "height": 2,
       "rgb": [
-        255,
-        255,
-        255
+        0,
+        229,
+        204
       ],
       "monochrome": "ink",
+      "monochromeCreature": "paper",
       "alpha": [
         82,
         102,
@@ -704,6 +708,7 @@ export const OFFICIAL_TIMEBOX_FEATURES = {
         0
       ],
       "monochrome": "paper",
+      "monochromeCreature": "ink",
       "alpha": [
         137,
         0,
@@ -730,6 +735,7 @@ export const OFFICIAL_TIMEBOX_FEATURES = {
         255
       ],
       "monochrome": "paper",
+      "monochromeCreature": "paper",
       "alpha": [
         1,
         0,
@@ -767,11 +773,12 @@ export const OFFICIAL_TIMEBOX_FEATURES = {
       "width": 5,
       "height": 2,
       "rgb": [
-        0,
-        0,
-        0
+        5,
+        8,
+        16
       ],
       "monochrome": "paper",
+      "monochromeCreature": "ink",
       "alpha": [
         10,
         85,
@@ -791,11 +798,12 @@ export const OFFICIAL_TIMEBOX_FEATURES = {
       "width": 3,
       "height": 2,
       "rgb": [
-        255,
-        255,
-        255
+        0,
+        229,
+        204
       ],
       "monochrome": "ink",
+      "monochromeCreature": "paper",
       "alpha": [
         19,
         0,
@@ -824,6 +832,7 @@ export const OFFICIAL_TC001_FEATURES = {
         0
       ],
       "monochrome": "paper",
+      "monochromeCreature": "ink",
       "alpha": [
         38,
         0,
@@ -848,6 +857,7 @@ export const OFFICIAL_TC001_FEATURES = {
         255
       ],
       "monochrome": "paper",
+      "monochromeCreature": "paper",
       "alpha": [
         5,
         38,
@@ -884,11 +894,12 @@ export const OFFICIAL_TC001_FEATURES = {
       "width": 4,
       "height": 1,
       "rgb": [
-        0,
-        0,
-        0
+        5,
+        8,
+        16
       ],
       "monochrome": "paper",
+      "monochromeCreature": "ink",
       "alpha": [
         76,
         53,
@@ -902,11 +913,12 @@ export const OFFICIAL_TC001_FEATURES = {
       "width": 4,
       "height": 1,
       "rgb": [
-        255,
-        255,
-        255
+        0,
+        229,
+        204
       ],
       "monochrome": "ink",
+      "monochromeCreature": "paper",
       "alpha": [
         6,
         9,

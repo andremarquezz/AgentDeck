@@ -17,6 +17,7 @@
           "role": "eyes",
           "mode": "fill",
           "monochrome": "paper",
+          "monochromeCreature": "ink",
           "rgb": [
             0,
             0,
@@ -38,6 +39,7 @@
           "role": "prompt",
           "mode": "fill",
           "monochrome": "paper",
+          "monochromeCreature": "paper",
           "rgb": [
             255,
             255,
@@ -52,6 +54,14 @@
       ]
     },
     "openclaw": {
+      "colorReference": {
+        "sourcePath": "design/brand/openclaw-color.svg",
+        "sourceHash": "4123c0c75dda5b28e3e0d38075514085bf546178a620776344813c08fa41277c",
+        "rolePathIndices": {
+          "eyes": 4,
+          "eye-highlight": 5
+        }
+      },
       "sourcePath": "design/brand/openclaw.svg",
       "sourceHash": "1f0b18833ccb1c7c21ae998d237856975fc90eb8eafc14f8db05198628e8da4d",
       "features": [
@@ -59,10 +69,11 @@
           "role": "eyes",
           "mode": "fill",
           "monochrome": "paper",
+          "monochromeCreature": "ink",
           "rgb": [
-            0,
-            0,
-            0
+            5,
+            8,
+            16
           ],
           "pathIndex": 2,
           "subpathIndices": [
@@ -74,10 +85,11 @@
           "role": "eye-highlight",
           "mode": "fill",
           "monochrome": "ink",
+          "monochromeCreature": "paper",
           "rgb": [
-            255,
-            255,
-            255
+            0,
+            229,
+            204
           ],
           "pathIndex": 0,
           "subpathIndices": [
@@ -88,10 +100,11 @@
           "role": "eye-highlight",
           "mode": "fill",
           "monochrome": "ink",
+          "monochromeCreature": "paper",
           "rgb": [
-            255,
-            255,
-            255
+            0,
+            229,
+            204
           ],
           "pathIndex": 1,
           "subpathIndices": [
@@ -108,6 +121,7 @@
           "role": "center",
           "mode": "hole",
           "monochrome": "hole",
+          "monochromeCreature": "hole",
           "rgb": null,
           "pathIndex": 0,
           "subpathIndices": [

@@ -13,6 +13,7 @@ struct FeatureLayer {
     const uint8_t* alpha;
     uint8_t red, green, blue;
     bool monochromeInk;
+    bool creatureMonochromeInk;
 };
 
 static const uint8_t CLAUDE_CODE[SIZE * SIZE] = {
@@ -30,7 +31,7 @@ static const uint8_t CLAUDE_CODE_FEATURE_0_A8[8] = {
 };
 constexpr int CLAUDE_CODE_FEATURE_COUNT = 1;
 static const FeatureLayer CLAUDE_CODE_FEATURES[1] = {
-    {2, 2, 4, 2, CLAUDE_CODE_FEATURE_0_A8, 0, 0, 0, false},
+    {2, 2, 4, 2, CLAUDE_CODE_FEATURE_0_A8, 0, 0, 0, false, true},
 };
 
 static const uint8_t CODEX[SIZE * SIZE] = {
@@ -48,7 +49,7 @@ static const uint8_t CODEX_FEATURE_0_A8[24] = {
 };
 constexpr int CODEX_FEATURE_COUNT = 1;
 static const FeatureLayer CODEX_FEATURES[1] = {
-    {1, 2, 6, 4, CODEX_FEATURE_0_A8, 255, 255, 255, false},
+    {1, 2, 6, 4, CODEX_FEATURE_0_A8, 255, 255, 255, false, false},
 };
 
 static const uint8_t OPEN_CODE[SIZE * SIZE] = {
@@ -64,7 +65,7 @@ static const uint8_t OPEN_CODE[SIZE * SIZE] = {
 
 constexpr int OPEN_CODE_FEATURE_COUNT = 0;
 static const FeatureLayer OPEN_CODE_FEATURES[1] = {
-    {0, 0, 0, 0, nullptr, 0, 0, 0, false},
+    {0, 0, 0, 0, nullptr, 0, 0, 0, false, false},
 };
 
 static const uint8_t OPEN_CLAW[SIZE * SIZE] = {
@@ -85,8 +86,8 @@ static const uint8_t OPEN_CLAW_FEATURE_1_A8[4] = {
 };
 constexpr int OPEN_CLAW_FEATURE_COUNT = 2;
 static const FeatureLayer OPEN_CLAW_FEATURES[2] = {
-    {2, 2, 4, 1, OPEN_CLAW_FEATURE_0_A8, 0, 0, 0, false},
-    {2, 2, 4, 1, OPEN_CLAW_FEATURE_1_A8, 255, 255, 255, true},
+    {2, 2, 4, 1, OPEN_CLAW_FEATURE_0_A8, 5, 8, 16, false, true},
+    {2, 2, 4, 1, OPEN_CLAW_FEATURE_1_A8, 0, 229, 204, true, false},
 };
 
 static const uint8_t ANTIGRAVITY[SIZE * SIZE] = {
@@ -102,7 +103,7 @@ static const uint8_t ANTIGRAVITY[SIZE * SIZE] = {
 
 constexpr int ANTIGRAVITY_FEATURE_COUNT = 0;
 static const FeatureLayer ANTIGRAVITY_FEATURES[1] = {
-    {0, 0, 0, 0, nullptr, 0, 0, 0, false},
+    {0, 0, 0, 0, nullptr, 0, 0, 0, false, false},
 };
 
 static const uint8_t KIRO[SIZE * SIZE] = {
@@ -118,7 +119,7 @@ static const uint8_t KIRO[SIZE * SIZE] = {
 
 constexpr int KIRO_FEATURE_COUNT = 0;
 static const FeatureLayer KIRO_FEATURES[1] = {
-    {0, 0, 0, 0, nullptr, 0, 0, 0, false},
+    {0, 0, 0, 0, nullptr, 0, 0, 0, false, false},
 };
 
 static const uint8_t HERMES[SIZE * SIZE] = {
@@ -134,7 +135,7 @@ static const uint8_t HERMES[SIZE * SIZE] = {
 
 constexpr int HERMES_FEATURE_COUNT = 0;
 static const FeatureLayer HERMES_FEATURES[1] = {
-    {0, 0, 0, 0, nullptr, 0, 0, 0, false},
+    {0, 0, 0, 0, nullptr, 0, 0, 0, false, false},
 };
 
 static const uint8_t ZAI[SIZE * SIZE] = {
@@ -150,7 +151,7 @@ static const uint8_t ZAI[SIZE * SIZE] = {
 
 constexpr int ZAI_FEATURE_COUNT = 0;
 static const FeatureLayer ZAI_FEATURES[1] = {
-    {0, 0, 0, 0, nullptr, 0, 0, 0, false},
+    {0, 0, 0, 0, nullptr, 0, 0, 0, false, false},
 };
 
 }  // namespace OfficialDotGlyphs

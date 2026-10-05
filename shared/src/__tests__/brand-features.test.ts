@@ -25,7 +25,7 @@ describe('source-grounded creature feature semantics', () => {
       const samples: Record<string, [number, number, number[]][]> = {
         claudecode: [[65, 94, [0, 0, 0]], [173, 94, [0, 0, 0]]],
         codex: [[79, 110, [255, 255, 255]], [150, 153, [255, 255, 255]]],
-        openclaw: [[80, 81, [0, 0, 0]], [90, 76, [255, 255, 255]]],
+        openclaw: [[80, 81, [5, 8, 16]], [90, 76, [0, 229, 204]]],
         opencode: [[120, 120, []]],
       };
       for (const [x, y, rgb] of samples[agent]) {
@@ -55,7 +55,7 @@ it('compact feature masks stay cropped, bounded and source-grounded across 64/24
       expect(layer.x + layer.width).toBeLessThanOrEqual(size); expect(layer.y + layer.height).toBeLessThanOrEqual(size);
       expect(layer.alpha).toHaveLength(layer.width * layer.height);
       expect(layer.alpha.some((value: number) => value > 0)).toBe(true);
-      expect(layer.monochrome).toBe(layer.rgb[0] === 255 && agent === 'openclaw' ? 'ink' : 'paper');
+      expect(layer.monochrome).toBe(layer.monochromeCreature === 'paper' && agent === 'openclaw' ? 'ink' : 'paper');
       if (size === 64) flashBytes += layer.alpha.length;
     }
     if (size === 64) {
@@ -69,4 +69,20 @@ it('compact feature masks stay cropped, bounded and source-grounded across 64/24
   }
   // Cropped feature alpha alone stays far below one extra full 64px mask.
   expect(flashBytes).toBeLessThan(64 * 64);
+});
+
+it('OpenClaw feature colors come from the pinned original color reference, not inferred white', async () => {
+  const { createHash } = await import('node:crypto');
+  const definition = BRAND_FEATURES.agents.openclaw;
+  const reference = readFileSync(root + '/' + definition.colorReference.sourcePath, 'utf8');
+  expect(createHash('sha256').update(reference).digest('hex')).toBe(definition.colorReference.sourceHash);
+  const source = [...reference.replace(/<defs\b[\s\S]*?<\/defs>/g, '').matchAll(/<path\b[^>]*>/g)];
+  for (const role of ['eyes', 'eye-highlight'] as const) {
+    const element = source[definition.colorReference.rolePathIndices[role]][0];
+    const color = element.match(/fill="(#[A-Fa-f0-9]{6})"/)![1];
+    const rgb = [1, 3, 5].map(i => parseInt(color.slice(i, i + 2), 16));
+    for (const feature of definition.features.filter(f => f.role === role)) expect(feature.rgb).toEqual(rgb);
+  }
+  expect(definition.features[0].monochromeCreature).toBe('ink');
+  expect(definition.features[1].monochromeCreature).toBe('paper');
 });

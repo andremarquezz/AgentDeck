@@ -14,6 +14,7 @@ struct FeatureLayer {
     const uint8_t* alpha;
     uint8_t red, green, blue;
     bool monochromeInk;
+    bool creatureMonochromeInk;
 };
 constexpr int MIN_MONO_CREATURE_SIZE = 24;
 constexpr float MONO_OUTLINE_WIDTH = 0.4f;
@@ -93,7 +94,7 @@ static const uint8_t OCTOPUS_FEATURE_0_A8[288] = {
 };
 constexpr int OCTOPUS_FEATURE_COUNT = 1;
 static const FeatureLayer OCTOPUS_FEATURES[1] = {
-    {16, 21, 32, 9, OCTOPUS_FEATURE_0_A8, 0, 0, 0, false},
+    {16, 21, 32, 9, OCTOPUS_FEATURE_0_A8, 0, 0, 0, false, true},
 };
 
 constexpr bool OCTOPUS_MONO_LIGHT_BODY = true;
@@ -175,8 +176,8 @@ static const uint8_t OPENCLAW_MARK_FEATURE_1_A8[84] = {
 };
 constexpr int OPENCLAW_MARK_FEATURE_COUNT = 2;
 static const FeatureLayer OPENCLAW_MARK_FEATURES[2] = {
-    {20, 17, 24, 8, OPENCLAW_MARK_FEATURE_0_A8, 0, 0, 0, false},
-    {22, 18, 21, 4, OPENCLAW_MARK_FEATURE_1_A8, 255, 255, 255, true},
+    {20, 17, 24, 8, OPENCLAW_MARK_FEATURE_0_A8, 5, 8, 16, false, true},
+    {22, 18, 21, 4, OPENCLAW_MARK_FEATURE_1_A8, 0, 229, 204, true, false},
 };
 
 constexpr bool OPENCLAW_MARK_MONO_LIGHT_BODY = true;
@@ -253,7 +254,7 @@ static const uint8_t OPENCODE_A8[64 * 64] = {
 
 constexpr int OPENCODE_FEATURE_COUNT = 0;
 static const FeatureLayer OPENCODE_FEATURES[1] = {
-    {0, 0, 0, 0, nullptr, 0, 0, 0, false},
+    {0, 0, 0, 0, nullptr, 0, 0, 0, false, false},
 };
 
 constexpr bool OPENCODE_MONO_LIGHT_BODY = false;
@@ -332,7 +333,7 @@ static const uint8_t CODEX_FEATURE_0_A8[805] = {
 };
 constexpr int CODEX_FEATURE_COUNT = 1;
 static const FeatureLayer CODEX_FEATURES[1] = {
-    {15, 21, 35, 23, CODEX_FEATURE_0_A8, 255, 255, 255, false},
+    {15, 21, 35, 23, CODEX_FEATURE_0_A8, 255, 255, 255, false, false},
 };
 
 constexpr bool CODEX_MONO_LIGHT_BODY = false;
@@ -409,7 +410,7 @@ static const uint8_t ANTIGRAVITY_A8[64 * 64] = {
 
 constexpr int ANTIGRAVITY_FEATURE_COUNT = 0;
 static const FeatureLayer ANTIGRAVITY_FEATURES[1] = {
-    {0, 0, 0, 0, nullptr, 0, 0, 0, false},
+    {0, 0, 0, 0, nullptr, 0, 0, 0, false, false},
 };
 
 constexpr bool ANTIGRAVITY_MONO_LIGHT_BODY = false;
@@ -486,7 +487,7 @@ static const uint8_t KIRO_A8[64 * 64] = {
 
 constexpr int KIRO_FEATURE_COUNT = 0;
 static const FeatureLayer KIRO_FEATURES[1] = {
-    {0, 0, 0, 0, nullptr, 0, 0, 0, false},
+    {0, 0, 0, 0, nullptr, 0, 0, 0, false, false},
 };
 
 constexpr bool KIRO_MONO_LIGHT_BODY = false;
@@ -563,7 +564,7 @@ static const uint8_t HERMES_A8[64 * 64] = {
 
 constexpr int HERMES_FEATURE_COUNT = 0;
 static const FeatureLayer HERMES_FEATURES[1] = {
-    {0, 0, 0, 0, nullptr, 0, 0, 0, false},
+    {0, 0, 0, 0, nullptr, 0, 0, 0, false, false},
 };
 
 constexpr bool HERMES_MONO_LIGHT_BODY = false;
@@ -640,7 +641,7 @@ static const uint8_t ZAI_A8[64 * 64] = {
 
 constexpr int ZAI_FEATURE_COUNT = 0;
 static const FeatureLayer ZAI_FEATURES[1] = {
-    {0, 0, 0, 0, nullptr, 0, 0, 0, false},
+    {0, 0, 0, 0, nullptr, 0, 0, 0, false, false},
 };
 
 constexpr bool ZAI_MONO_LIGHT_BODY = false;
