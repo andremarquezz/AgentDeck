@@ -671,50 +671,6 @@
 
     const ANTIGRAVITY_PATH = "M21.751 22.607c1.34 1.005 3.35.335 1.508-1.508C17.73 15.74 18.904 1 12.037 1 5.17 1 6.342 15.74.815 21.1c-2.01 2.009.167 2.511 1.507 1.506 5.192-3.517 4.857-9.714 9.715-9.714 4.857 0 4.522 6.197 9.714 9.715z";
 
-    const PIXEL_GRIDS = {
-      claude: [
-        "001111111100",
-        "001101101100",
-        "111101101111",
-        "111111111111",
-        "111111111111",
-        "011111111110",
-        "001010010100",
-        "001010010100",
-      ],
-      codex: [
-        "000111111000",
-        "001111111100",
-        "011111111110",
-        "111111111111",
-        "111111111111",
-        "111111111111",
-        "111111111111",
-        "111111111111",
-        "001111111100",
-        "000111111000",
-      ],
-      opencode: [
-        "1111111111",
-        "1000000001",
-        "1011111101",
-        "1010000101",
-        "1010000101",
-        "1010000101",
-        "1011111101",
-        "1000000001",
-        "1111111111",
-      ],
-      openclaw: [
-        "00100100",
-        "01000010",
-        "11111111",
-        "01100110",
-        "00111100",
-        "01011010",
-      ],
-    };
-
     const AGENTS = {
       claude: {
         label: "Claude Code",
@@ -736,7 +692,7 @@
       },
       openclaw: {
         label: "OpenClaw",
-        referenceCopy: "Original OpenClaw body, claws and antennae with black eyes and bright white source highlights.",
+        referenceCopy: "Original OpenClaw body, claws and antennae with black eyes and bright teal source highlights.",
         tabletCopy: "OpenClaw can stay more character-like than the logo-only agents, but the body and claws should still read as the front-facing openclaw mark rather than a generic lobster.",
         deviceCopy: "Pixoo and matrix should preserve claw/body recognizability first. LCD, e-ink, watch, TUI, and Stream Deck can keep the front-facing silhouette and simple claw motion.",
       },
@@ -817,19 +773,27 @@
       svg.appendChild(defs);
     }
 
-    function drawOriginalCreature(svg, agent, cx, cy, size, fill, opacity, bob) {
+    function drawOriginalCreature(svg, agent, cx, cy, size, fill, opacity, bob, monochrome = false) {
       const group = el("g", {
         transform: `translate(${cx} ${cy + bob}) scale(${size / 24}) translate(-12 -12)`,
         opacity,
       });
       const definition = originalCreatures[agent];
+      const policy = globalThis.CREATURE_BRAND_FEATURES.monochromeCreature;
+      const lightBody = monochrome && size >= policy.minSize && policy.lightBodyAgents.includes(agent);
       for (const d of definition.bodyPaths) {
-        group.appendChild(el('path', { d, fill, 'fill-rule': 'evenodd' }));
+        group.appendChild(el('path', {
+          d, fill: lightBody ? 'white' : fill, 'fill-rule': 'evenodd',
+          ...(lightBody ? {stroke: 'black', 'stroke-width': policy.outlineWidth} : {}),
+        }));
       }
       for (const feature of definition.features) {
         if (feature.mode !== 'fill') continue; // OpenCode stays open to the background.
         group.appendChild(el('path', {
-          d: feature.paths.join(' '), fill: featureColor(feature.rgb),
+          d: feature.paths.join(' '),
+          fill: monochrome
+            ? ((lightBody ? feature.monochromeCreature : feature.monochrome) === 'ink' ? 'black' : 'white')
+            : featureColor(feature.rgb),
         }));
       }
       svg.appendChild(group);
@@ -894,6 +858,12 @@
 
     function drawAgentMark(svg, agent, cx, cy, size, options = {}) {
       const { palette = {}, promptStyle = {}, state = "idle", t = 0 } = options;
+      const originalAgent = agent === 'claude' ? 'claudecode' : agent;
+      if (options.monochrome && originalCreatures[originalAgent]) {
+        drawOriginalCreature(svg, originalAgent, cx, cy, size, 'black',
+          palette.opacity ?? STATE_STYLE[state].opacity, 0, true);
+        return;
+      }
       if (agent === "claude") drawClaudeLogo(svg, cx, cy, size, palette, state, t);
       else if (agent === "codex") drawCodexLogo(svg, cx, cy, size, palette, promptStyle, state, t);
       else if (agent === "opencode") drawOpenCodeLogo(svg, cx, cy, size, palette, state, t);
@@ -1675,21 +1645,21 @@
       const creatureY = y + (state === "working" ? h * 0.44 : state === "asking" ? h * 0.56 : h * 0.70);
       const creatureSize = Math.min(w, h) * 0.18;
       if (agent === "claude") {
-        drawAgentMark(svg, agent, creatureX, creatureY, creatureSize, { state, t, palette: { fill: opts.claude || "#D97757" } });
+        drawAgentMark(svg, agent, creatureX, creatureY, creatureSize, { state, t, monochrome: opts.monochrome, palette: { fill: opts.claude || "#D97757" } });
       } else if (agent === "codex") {
         drawAgentMark(svg, agent, creatureX, creatureY, creatureSize * 1.02, {
-          state, t,
+          state, t, monochrome: opts.monochrome,
           palette: opts.codexPalette || { top: "#CEC4FF", mid: "#89A7FF", bottom: "#3941FF" },
           promptStyle: { color: opts.codexText || "#EEF1FF", fontSize: creatureSize * 0.30, yOffset: creatureSize * 0.09 },
         });
       } else if (agent === "opencode") {
         drawAgentMark(svg, agent, creatureX, creatureY, creatureSize * 0.82, {
-          state, t,
+          state, t, monochrome: opts.monochrome,
           palette: { outer: "#F1ECEC", inner: opts.opencodeInner || "#4B4646", bg: waterTop },
         });
       } else {
         drawAgentMark(svg, agent, creatureX, creatureY, creatureSize * 1.02, {
-          state, t,
+          state, t, monochrome: opts.monochrome,
           palette: opts.openclawPalette || { top: "#FF4D4D", bottom: "#991B1B", eye: "#00E5CC" },
         });
       }
@@ -1798,62 +1768,9 @@
     }
 
     function renderGridGlyph(svg, agent, state, cx, cy, targetW, t = 0) {
-      const grid = PIXEL_GRIDS[agent];
-      const rows = grid.length;
-      const cols = grid[0].length;
-      const style = STATE_STYLE[state];
-      const cell = Math.max(1, Math.floor(targetW / cols));
-      const pulse = 1 + style.pulse * (0.45 + (Math.sin(t * 3) + 1) * 0.25);
-      const bob = state === "working" ? Math.sin(t * 2.1) * 1.2 : state === "idle" ? Math.sin(t) * 0.5 : 0;
-      const startX = cx - (cols * cell * pulse) / 2;
-      const startY = cy - (rows * cell * pulse) / 2 + bob;
-      const palette = {
-        claude: { body: "#D97757", shade: "#BE6D52", mark: "#F2E6E0" },
-        codex: { body: "#7A9DFF", shade: "#3941FF", mark: "#EEF1FF" },
-        opencode: { body: "#F1ECEC", shade: "#4B4646", mark: "#4B4646" },
-        openclaw: { body: "#FF4D4D", shade: "#991B1B", mark: "#00E5CC" },
-      }[agent];
-
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const value = grid[r][c];
-          if (value === "0") continue;
-          const fill = value === "1" ? palette.body : palette.mark;
-          svg.appendChild(el("rect", {
-            x: startX + c * cell * pulse,
-            y: startY + r * cell * pulse,
-            width: cell * pulse - 1,
-            height: cell * pulse - 1,
-            rx: 1.4,
-            fill,
-            opacity: state === "sleeping" ? 0.52 : 1,
-          }));
-        }
-      }
-
-      if (agent === "codex") {
-          const prompt = textNode(">_", {
-          x: cx,
-          y: cy + cell * 1.45 + bob,
-          "font-size": cell * 3.8,
-          "font-weight": 700,
-          "text-anchor": "middle",
-          "font-family": "SF Mono, ui-monospace, Menlo, monospace",
-          "letter-spacing": "-1px",
-          fill: "#EEF1FF",
-          opacity: state === "sleeping" ? 0.6 : 1,
-        });
-        svg.appendChild(prompt);
-      } else if (agent === "openclaw") {
-        svg.appendChild(el("rect", {
-          x: cx - cell * 0.45,
-          y: cy - cell * 0.4 + bob,
-          width: cell * 0.9,
-          height: cell * 0.9,
-          fill: "#00E5CC",
-          opacity: state === "sleeping" ? 0.55 : 1,
-        }));
-      }
+      // Only a fallback when canonical pixel frames are unavailable. Preserve the
+      // same source contours instead of inventing another hand-drawn creature.
+      drawAgentMark(svg, agent, cx, cy, targetW, {state, t});
     }
 
     function renderTabletDevice(svg, agent, state, platform, t) {
@@ -1898,6 +1815,7 @@
       const aqY = 0;
       const aqH = h * 0.50;
       drawTabletTerrarium(svg, rightX, aqY, rightW, aqH, agent, state, t, {
+        monochrome: !colorMode,
         waterTop: tank,
         waterBottom: colorMode ? "#B5D0DE" : "#CFC8BD",
         sand: colorMode ? "#D4B896" : "#C7BEB0",
