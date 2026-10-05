@@ -115,7 +115,7 @@ fun ColorTerrariumCanvas(
         openCodeCreatures.forEachIndexed { i,c -> c.stationPosition = state.openCodeCreatures.getOrNull(i)?.let { ciPositions[it.sessionId] } }
         antigravityCreatures.forEachIndexed { i,c -> c.stationPosition = state.antigravityCreatures.getOrNull(i)?.let { ciPositions[it.sessionId] } }
         drawCiStation(drawContext.canvas.nativeCanvas, ciPaint, state, ciVisits.queue,
-            (originals+ciPositions).mapValues { (_,p) -> p.first*w to p.second*h }, ciVisits.time)
+            (originals+ciPositions).mapValues { (_,p) -> p.first*w to p.second*h }, ciVisits.time, textScale = density)
 
         // Layer 6.5: Back-layer fish (behind creatures for 3D depth)
         dataParticles.drawBackLayer(this)

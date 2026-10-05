@@ -18,7 +18,7 @@ internal class AquariumResidentOverlay(context: Context) {
 
     fun drawStation(canvas: Canvas, state: TerrariumState, queue: List<String>, positions: Map<String, Pair<Float, Float>>, time: Float, x: Float, y: Float) {
         paint.typeface = regular
-        drawCiStation(canvas, paint, state, queue, positions, time, x, y, 60f*density, drawResident = false)
+        drawCiStation(canvas, paint, state, queue, positions, time, x, y, 60f*density, drawResident = false, textScale = density)
     }
 
     /** Selection rails and the working bars — body cues, drawn whether or not tags are. */

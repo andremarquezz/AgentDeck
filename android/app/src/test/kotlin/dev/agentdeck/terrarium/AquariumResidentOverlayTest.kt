@@ -34,7 +34,7 @@ class AquariumResidentOverlayTest {
     }
 
     @Test fun `CI uncertainty stays neutral and only running moves its inspection sweep`() {
-        fun snapshot(phase: String?, time: Float): IntArray {
+        fun snapshot(phase: String?, time: Float, textScale: Float = 1f): IntArray {
             val state = TerrariumState(OctopusVisualState.FLOATING,CrayfishVisualState.DORMANT,TetraVisualState.CIRCLING,EnvironmentVisualState.CALM,
                 ciWaits = phase?.let { mapOf("s" to dev.agentdeck.net.CiWaitStatus(phase = it,agentWaiting = true,
                     checks = dev.agentdeck.net.CiWaitChecks(10,7,0,3),pr = 432)) } ?: emptyMap())
@@ -43,7 +43,7 @@ class AquariumResidentOverlayTest {
             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 typeface = android.graphics.Typeface.createFromAsset(RuntimeEnvironment.getApplication().assets,"fonts/IBMPlexSans-Regular.ttf")
             }
-            drawCiStation(canvas,paint,state,if (phase == null) emptyList() else listOf("s"),mapOf("s" to (140f to 322f)),time)
+            drawCiStation(canvas,paint,state,if (phase == null) emptyList() else listOf("s"),mapOf("s" to (140f to 322f)),time,textScale = textScale)
             System.getenv("AGENTDECK_CI_VISUAL_OUTPUT")?.let { output ->
                 val file = java.io.File(output,"android-station-${phase ?: "asleep"}-$time.png"); file.parentFile.mkdirs()
                 file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) }
@@ -58,6 +58,13 @@ class AquariumResidentOverlayTest {
         assertFalse(snapshot("running",0f).contentEquals(snapshot("running",1f)))
         assertFalse(snapshot(null,0f).contentEquals(unknown))
         assertFalse(snapshot("queued",0f).contentEquals(unknown))
+        val regular = snapshot("passed",0f)
+        val dense = snapshot("passed",0f,textScale = 2f)
+        val success = DesignTokens.UI.ok.toArgb()
+        assertTrue("High-density captions must remain readable",dense.count { it == success } > regular.count { it == success }*2)
+        assertFalse("Caption stays above the Timeline/floor band",dense.withIndex().any {
+            it.value == success && it.index/1000 >= 700*TerrariumRules.FLOOR_REST_Y_MAX
+        })
     }
 
     private val painter get() = AquariumResidentOverlay(RuntimeEnvironment.getApplication())

@@ -57,7 +57,7 @@ enum CiStationPresentation {
         }
         let label = asleep ? "CI · asleep" : first.map(Self.label) ?? "CI UNKNOWN"
         context.draw(Text(label).font(.custom("IBMPlexSans", size: max(9, min(12, size.width*0.015))))
-            .foregroundColor(color(first)), at: CGPoint(x: x, y: y+unit*5), anchor: .top)
+            .foregroundColor(color(first)), at: CGPoint(x: x+width, y: y), anchor: .leading)
         for id in queue {
             guard let position = positions[id] else { continue }
             var line = Path(); line.move(to: CGPoint(x: x, y: y-unit*3))
