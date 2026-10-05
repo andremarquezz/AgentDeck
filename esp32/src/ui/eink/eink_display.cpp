@@ -856,7 +856,7 @@ static void drawAgentFeatures(int16_t x, int16_t y, const CreatureGlyphs::Featur
         const int top = layer.y * size / 64;
         const int width = max(1, (layer.x + layer.width) * size / 64 - left);
         const int height = max(1, (layer.y + layer.height) * size / 64 - top);
-        const bool ink = actualCreature ? layer.red == 0 && layer.green == 0 && layer.blue == 0 : layer.monochromeInk;
+        const bool ink = actualCreature ? layer.creatureMonochromeInk : layer.monochromeInk;
         const uint16_t color = ink ? inkColor : paperColor;
         for (int oy = 0; oy < height; ++oy) {
             for (int ox = 0; ox < width; ++ox) {

@@ -14,6 +14,7 @@ int main() {
     assert(CreatureGlyphs::selectAgent("codex-cli").alpha == codex.alpha);
     const auto openclaw = CreatureGlyphs::selectAgent("openclaw");
     assert(openclaw.alpha && openclaw.featureCount == 2 && openclaw.lightMonoBody);
+    assert(openclaw.features[0].creatureMonochromeInk && !openclaw.features[1].creatureMonochromeInk);
     const auto opencode = CreatureGlyphs::selectAgent("opencode");
     assert(opencode.alpha && opencode.featureCount == 0);
     for (const char* agent : {"kiro-cli", "kiro-ide", "antigravity", "hermes", "zai"})
