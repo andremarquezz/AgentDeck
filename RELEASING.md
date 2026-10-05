@@ -60,7 +60,7 @@ Distribution signing, uploads and store publication are outside this preparation
 | [#433](https://github.com/puritysb/AgentDeck/issues/433) CI waits | Claude/Codex/OpenCode/Hermes lifecycle, explicit clearing, bounded Node evidence/counts, session-bound GitHub companion orbit/result cues, readable Canvas/native cues, firmware activity, foreground APME accounting | Physical fleet/phone acceptance remains distinct from source and fixture tests; unknown evidence never claims a provider verdict |
 | [#449](https://github.com/puritysb/AgentDeck/issues/449) delivery | #451, #452, #459 plus clean installed-tarball acceptance, versioned plugin packages and unsigned Android artifacts | Distribution signing, upload, store review/publication and DRM-processed encoder acceptance are outside this preparation |
 | [#423](https://github.com/puritysb/AgentDeck/issues/423) Hermes umbrella | Observer-only support retained; pinned upstream CLI callbacks and real read-only GitHub watcher captured | Remains open while child acceptance is incomplete |
-| [#425](https://github.com/puritysb/AgentDeck/issues/425) Hermes surfaces | Actual macOS 3D, Lenovo Canvas/Filament CI rendering, iPad native rendering, crowded-profile and package tests | iPhone 14 Pro Max was unavailable; physical matrix/firmware optical acceptance is not inferred from compiled images |
+| [#425](https://github.com/puritysb/AgentDeck/issues/425) Hermes surfaces | Actual macOS 3D, Lenovo Canvas/Filament CI rendering, iPad native rendering, crowded-profile and package tests | iPhone 14 Pro Max is now installed and launch-verified; physical matrix/firmware optical acceptance is not inferred from compiled images |
 | [#426](https://github.com/puritysb/AgentDeck/issues/426) Hermes lifecycle | Pinned CLI tool/Stop/finalization, private CI intent, independent sessions and Swift model attribution | A test-only messaging Gateway channel and permission to send test messages are still needed for real `/new`/reset capture |
 | [#428](https://github.com/puritysb/AgentDeck/issues/428) Hermes model | Existing renderer retained without claiming visual approval; no replacement asset is bundled | Replacement face/rig/export and owner visual acceptance remain a separate artwork task |
 | [#273](https://github.com/puritysb/AgentDeck/issues/273) managed replacement | All managed contracts retained; no PTY removal in 1.8.0 | Remote relay/two-machine and terminal-only replacement gates apply to future removal work |
@@ -100,42 +100,52 @@ eyes and original teal pupils, Codex’s filled white prompt and OpenCode’s ac
 opening. It covers both 2D and 3D rendering, including generated device glyphs
 and canonical terminal cells. Very small LED/terminal samples can average away
 fine details; terminal hues require true-color support.
-Final local source gates passed 5,341 Vitest tests (8 skipped), 86 focused Swift
-checks and 460 Android unit tests. The four clean-installed npm tarballs passed
-all ten acceptance checks; macOS/iOS archive invariant checks and unsigned
-Android APK/AAB signature-absence checks passed. Actual final macOS/iPad and three
-Android QA surfaces cover original features, small icons, CI companions and
-clear/permission behavior. These receipts remain separate from public deployment.
+Final executable candidate `41803e5c` passed all ten GitHub checks. Local
+verification passed 5,363 Vitest tests (8 skipped), 473 Android tests and 82
+focused Swift tests for the final fixes, in addition to the earlier native QA
+receipts. The four clean-installed npm tarballs passed all ten acceptance checks
+and a 60-second soak. macOS/iOS archive invariant checks used local verification
+signatures only; unsigned Android APK/AAB signature-absence checks passed.
+
+The final fixes include #462/#461 Timeline grouping and Android recency/selection,
+natural Android HUD leading, resolved npm dependency build identity, and bounded
+Codex subagent filtering in Node and Swift. Re-running the previously misclassified
+child did not recreate the phantom project. These are candidate/runtime receipts,
+not public deployment evidence.
 
 TTGO's CI memo preserves ten owners in 160 bytes rather than 240, fixing the
 48-byte static DRAM overflow. The linked image has only 32 bytes of static
-region slack; that is not runtime heap headroom. Physical boot/free-block and
-performance checks remain required before fleet rollout.
+region slack; that is not runtime heap headroom. The installed board observed
+69–72 KB internal free heap and a 37 KB largest block over 63 seconds without
+reboot. Longer performance and physical panel/touch acceptance remain separate.
 
 Previously built archives/packages are superseded wherever their inputs change.
 The deployment audit separately records source changes, package contents and
 installed/runtime identity for ESP32, Stream Deck and D200H; compilation alone
 does not update a connected device.
 
-Read-only deployment inventory on 2026-10-06 found the following installed gaps.
-These are observations of the local test fleet, not public release versions:
+The completed local deployment audit on 2026-10-06 records the following.
+These are local test-fleet installations, not public release versions:
 
-| Target | Measured installed state | Delivery needed for the corrected candidate |
+| Target | Verified candidate installation | Remaining boundary |
 | --- | --- | --- |
-| Node daemon | npm 1.7.0; loaded build identity recorded separately | Four rebuilt npm packages and a verified runtime restart |
-| Apple | Running public macOS 1.7.0; separate macOS QA/iPad 1.8.0 builds | Final native assets in new macOS/iOS archives; QA version alone does not identify their source |
-| Android | Pantone/Crema 1.6.1; Lenovo 1.7.0 | New 1.8.0 APK/AAB, then device-specific installation and rendering checks |
-| ESP32 | Eleven connected boards: ten 1.6.0, T-Display-S3-Pro 1.0.8; C6 absent | All twelve final firmware artifacts; identified-board updates and runtime readback remain separate |
-| Stream Deck | Installed/running 1.6.0.0 with matching bundle hash | New package, persistent-checkout deployment and a fresh runtime hash receipt |
-| D200H | Installed Ulanzi plugin 1.6.0; Studio process path observed | New WASM/font-complete package, plugin restart and actual key acceptance; file hash alone is not loaded-code proof |
+| Node daemon | Four 1.8.0 npm packages; restarted runtime content identity `8d4564002234` | No npm publication or release tag |
+| Apple | macOS 1.8.0/build 5 from final source; iPad Air M2 and iPhone 14 Pro Max installed/launched | Later fixes are macOS-only; compiler evidence proves unchanged iOS-active code. Distribution signing and store delivery excluded |
+| Android | Lenovo and Crema 1.8.0/code 25 installed in place with final Timeline/typography fixes | Pantone unavailable; Play upload excluded |
+| ESP32 | All eleven connected ESP32/TC001 boards updated; twelve-target artifacts prepared | C6 unavailable; final 225 firmware inputs unchanged, so later fixes need no reflash |
+| Stream Deck | 1.8.0.0 installed; final debug/production runtime bytes match validated baseline | DRM-processed encoder acceptance remains before marketplace publication |
+| D200H | Ulanzi 1.8.0 installed; WASM and required fonts validated | Latest bundle adds only an unused policy declaration; remaining renderer/control bytes match. Longer physical acceptance remains distinct |
+
+User data and device preferences were preserved. Five USB firmware updates also
+verified identical NVS before and after installation. The local receipts are
+kept under `diagnostics/pr462-fix/` and `diagnostics/release-180/`; private captures
+and credentials are not public release media.
 
 D200H uses the Studio plugin; TC001 uses ESP32 firmware. Pixoo, Timebox and
-iDotMatrix receive daemon-rendered pixels and need the corresponding Node/Swift
-update. The default deployment `all` sequence excludes ESP32 and D200H; the deploy
-skill now names both explicitly and includes C6 in its board registry. The public
-web flasher still selects ESP32 1.7.0; it must consume the eventual 1.8.0 manifest
-and images after publication. No connected firmware or production plugin was
-replaced by this audit.
+iDotMatrix receive daemon-rendered pixels and use the updated Node/Swift renderer.
+The public web flasher still selects ESP32 1.7.0; update it to the eventual 1.8.0
+manifest and images only after publication. Existing public 1.7 delivery and local
+1.8 candidate installation must be reported separately.
 
 Existing aquarium/key gallery images depict the prior creature treatment.
 Representative final synthetic-session native captures and generated deck-key

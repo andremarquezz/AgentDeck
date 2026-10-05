@@ -57,6 +57,15 @@ Prepared release candidate; no channel has been published from this entry.
   separate. Busy concurrent sessions no longer split a request from its reply
   after 40 intervening groups, and Android updates no longer overwrite another
   known session or run within the same second ([#461](https://github.com/puritysb/AgentDeck/issues/461)).
+- Android Timeline selects visible turns by their latest activity, so a new
+  response remains visible even when its request is older. Selection and expanded
+  details stay attached to the same turn after reordering.
+- Android tablet HUD text uses natural line height instead of inheriting the
+  larger body-text spacing, while preserving font size and accessibility scaling.
+- Node and macOS exclude confirmed Codex subagents from fallback telemetry
+  discovery and remove early phantom project rows without hiding normal sessions.
+- Installed npm build identity includes resolved shared and hooks dependencies,
+  including hoisted package layouts, so restart checks identify the actual code.
 - OpenClaw folds the tool calls of one turn into one updating summary, with
   bounded command and result evidence. Failures take priority over successful
   calls in the detail budget, and omitted details are explicitly marked.
