@@ -29,7 +29,7 @@
 // draws neither the model line nor a mode line, so nothing visible changes here.
 // Re-ported 2026-10-06 (#463 phase 2): OpenClaw idle MODEL / THINKING picker
 // entry tiles; the picker sub-view itself is listed under INTENTIONALLY OMITTED.
-// SYNC-HASH shared/src/d200h-layout.ts 51183ee8a25a2ff645ca882f50b822e561c7e273
+// SYNC-HASH shared/src/d200h-layout.ts 81bd93b49735294abb249f38a0571987d7e6274e
 // SYNC-HASH shared/src/session-utils.ts 9ff8581b7ce0e779cfd4443a16ba7d85ed7d9964
 //
 // INTENTIONALLY OMITTED (not needed by a read-only preview):
@@ -51,6 +51,9 @@
 //   • The setting picker sub-view (`DeckView.picker`, #463). Its cells are the
 //     agent's live `session_settings` answer, which a static preview never has;
 //     the MODEL / THINKING entry tiles that open it ARE ported.
+//   • The NOW card (#463: `activity` / `goal` / `subagents` / `contextPercent`).
+//     `D200HSession` carries none of those row facts, and the observed idle
+//     branch it replaces is itself modelled with PTY semantics here.
 //   • Animation frames (`animFrame`/`animated`) — the preview is a static frame.
 //   • resvg text sanitization (ANSI/control-char stripping) — irrelevant to a
 //     native SwiftUI text surface.

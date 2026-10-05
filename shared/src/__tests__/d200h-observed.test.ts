@@ -249,3 +249,20 @@ describe('D200H observed detail INFO readout (#463)', () => {
     expect(svgs).not.toContain('>PLAN<');
   });
 });
+
+describe('D200H observed NOW card (#463)', () => {
+  it('idle replaces the bare OBSERVED card with what the row says the agent is doing', () => {
+    const svgs = [...detailCells(observedStateEvt({
+      state: 'idle', activity: 'Reviewing picker', contextPercent: 63, subagents: { active: 2, peak: 2, completed: 0 },
+    })).values()].map((c) => c.svg).join('');
+    expect(svgs).toContain('2 SUBAGENTS');
+    expect(svgs).toContain('Reviewing picker');
+    expect(svgs).toContain('context 63%');
+    expect(svgs).not.toContain('control in terminal');
+  });
+
+  it('keeps OBSERVED when the row carries nothing to say', () => {
+    const svgs = [...detailCells(observedStateEvt({ state: 'idle' })).values()].map((c) => c.svg).join('');
+    expect(svgs).toContain('OBSERVED');
+  });
+});

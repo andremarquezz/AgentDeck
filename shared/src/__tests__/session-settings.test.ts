@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { openClawSessionSettings, sessionSettingOptionLabel } from '../session-settings.js';
+import { openClawSessionSettings, sessionNowSummary, sessionSettingOptionLabel } from '../session-settings.js';
 
 // Shapes captured from a live OpenClaw Gateway `sessions.list` (2026.9.8, 2026-10-06).
 const LEVELS = ['off', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'].map((id) => ({ id, label: id }));
@@ -58,5 +58,26 @@ describe('openClawSessionSettings (#463)', () => {
     expect(openClawSessionSettings({}, undefined, undefined)).toEqual([]);
     const [effort] = openClawSessionSettings({ thinkingLevels: [{ id: 'ultra' }] }, undefined, undefined);
     expect(effort).toEqual({ key: 'effort', options: [{ id: 'ultra' }] });
+  });
+});
+
+describe('sessionNowSummary (#463)', () => {
+  it('builds the card only from row facts', () => {
+    expect(sessionNowSummary({ activity: 'Editing deck layout', contextPercent: 41.6 }))
+      .toEqual({ label: 'NOW', subtitle: 'Editing deck layout', detail: 'context 42%' });
+    expect(sessionNowSummary({ goal: 'fix the picker', subagents: { active: 3, peak: 3, completed: 0 } }))
+      .toEqual({ label: '3 SUBAGENTS', subtitle: 'fix the picker' });
+    expect(sessionNowSummary({ subagents: { active: 1, peak: 2, completed: 1 } })).toEqual({ label: '1 SUBAGENT' });
+  });
+
+  it('mid-turn leads with the goal, since the RUNNING card already names the tool', () => {
+    expect(sessionNowSummary({ activity: 'Editing deck.ts', goal: 'add the picker' }, true)?.subtitle).toBe('add the picker');
+    expect(sessionNowSummary({ activity: 'Editing deck.ts' }, true)?.subtitle).toBe('Editing deck.ts');
+  });
+
+  it('is null when the row says nothing, rather than padding', () => {
+    expect(sessionNowSummary({})).toBeNull();
+    expect(sessionNowSummary({ subagents: { active: 0, peak: 0, completed: 4 }, activity: ' ' })).toBeNull();
+    expect(sessionNowSummary(undefined)).toBeNull();
   });
 });

@@ -63,6 +63,7 @@ No session while daemon is connected: healthy idle dashboard, not recovery UI. S
 - **List**: 각 키는 하나의 세션이다. AgentDeck terrarium creature mark + 상태 링으로 빠르게 훑는다.
 - **Press session**: 먼저 선택 세션의 list-state 로 상세 화면을 즉시 표시하고, daemon focus relay 가 도착하면 tool/options/current model 을 갱신한다. 사용자는 빈 화면이나 다른 세션 옵션을 보지 않는다.
 - **INFO readout** (Stream Deck·D200H 공통): 프로젝트, `model · effort`, permission mode, 상태. 값은 세션 row 의 `modelName`/`effortLevel`/`permissionMode` 를 **에이전트 고유 단어 그대로** 표시한다 — Claude hook 의 `model`·`effort.level`·`permission_mode`, Codex rollout `turn_context` 의 `effort` 와 `plan` 또는 `sandbox_policy.type`. 레벨 집합과 기본값은 에이전트·모델마다 다르므로 덱이 단계나 기본값을 만들지 않고, 리터럴 `default` 만 생략한다. 다른 세션이나 daemon-global 값을 빌려 오지 않는다 ([#463](https://github.com/puritysb/AgentDeck/issues/463)).
+- **NOW card** (observed 세션, Stream Deck·D200H 공통): "지금 무엇을 하는지"를 row 사실로만 보여준다 — 라벨은 진행 중 subagent 수(`2 SUBAGENTS`) 또는 `NOW`, 부제는 idle 에선 공유 `activity`(없으면 `goal`), 처리 중에는 RUNNING 카드가 이미 도구를 말하므로 `goal` 우선, 상세는 `context N%`. row 에 아무 사실이 없으면 카드를 만들지 않고 기존 OBSERVED 카드를 둔다 ([#463](https://github.com/puritysb/AgentDeck/issues/463)).
 - **Detail idle**: GO ON / REVIEW / COMMIT / CLEAR 를 1-tap 명령으로 두고, 남는 칸은 MODEL/MODE/READY 이미지 카드로 채운다.
 - **Detail awaiting**: 실제 parser options 를 아이콘이 붙은 선택 카드로 노출한다. overflow 는 MORE 로 페이지 전환한다.
 - **Detail processing**: 현재 tool/status 를 첫 content 키에 고정하고, STOP 을 항상 기기의 마지막 버튼에 둔다. OpenClaw 도 STATUS/MODEL/GATEWAY 보다 현재 작업 문맥을 먼저 보여준다.

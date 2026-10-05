@@ -1202,3 +1202,29 @@ describe('OpenClaw setting picker (#463)', () => {
     expect(manager.pickerOpen).toBeNull();
   });
 });
+
+describe('Observed NOW card (#463)', () => {
+  it('idle shows the row\'s activity, subagent fan-out and context in place of OBSERVED', () => {
+    const manager = new SessionSlotManager();
+    manager.updateSessions([makeSession({
+      id: 'observed:claude:a', port: 0, controlMode: 'observed', agentType: 'claude-code', state: State.IDLE,
+      activity: 'Reviewing picker', contextPercent: 63, subagents: { active: 1, peak: 1, completed: 0 },
+    })]);
+    manager.enterDetailView('observed:claude:a');
+    // SD+ content keys 2-5: REVIEW, VOICE, NOW, …
+    expect(manager.getSlotConfig(4, SD_PLUS_LAYOUT)).toMatchObject({
+      type: 'status', label: '1 SUBAGENT', subtitle: 'Reviewing picker', detail: 'context 63%',
+    });
+  });
+
+  it('mid-turn adds the goal next to the running tool', () => {
+    const manager = new SessionSlotManager();
+    manager.updateSessions([makeSession({
+      id: 'observed:claude:a', port: 0, controlMode: 'observed', agentType: 'claude-code', state: State.PROCESSING,
+      currentTool: 'Edit', activity: 'Editing deck.ts', goal: 'add the picker',
+    })]);
+    manager.enterDetailView('observed:claude:a');
+    expect(manager.getSlotConfig(2, SD_PLUS_LAYOUT)).toMatchObject({ label: 'Edit' });
+    expect(manager.getSlotConfig(3, SD_PLUS_LAYOUT)).toMatchObject({ label: 'NOW', subtitle: 'add the picker' });
+  });
+});

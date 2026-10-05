@@ -5,7 +5,7 @@
  * projection of what the agent itself reported at request time. Mirrored in
  * Swift by `OpenClawSessionSettings` (apple/AgentDeck/Daemon/Gateway).
  */
-import type { ModelCatalogEntry, SessionSetting, SessionSettingOption } from './protocol.js';
+import type { ModelCatalogEntry, SessionInfo, SessionSetting, SessionSettingOption } from './protocol.js';
 
 /** The subset of an OpenClaw Gateway `sessions.list` row (or its `defaults`)
  *  that describes model and thinking. Field names are the Gateway's. */
@@ -96,4 +96,31 @@ export function openClawSessionSettings(
 /** Display text for an option: the agent's label, else its id. */
 export function sessionSettingOptionLabel(option: SessionSettingOption): string {
   return option.label ?? option.id;
+}
+
+/**
+ * The detail view's "what is it doing right now" card (#463), built only from
+ * facts the daemon put on the row: the shared `activity` one-liner (else the
+ * session `goal`), the live subagent fan-out, and context fill. Null when the
+ * row carries none of them — the card is then not shown rather than padded.
+ */
+export function sessionNowSummary(
+  session: Pick<SessionInfo, 'activity' | 'goal' | 'subagents' | 'contextPercent'> | undefined,
+  /** Mid-turn the RUNNING card already names the tool, so lead with the goal. */
+  processing = false,
+): { label: string; subtitle?: string; detail?: string } | null {
+  if (!session) return null;
+  const active = session.subagents?.active ?? 0;
+  const what = processing
+    ? text(session.goal) ?? text(session.activity)
+    : text(session.activity) ?? text(session.goal);
+  const context = typeof session.contextPercent === 'number' && Number.isFinite(session.contextPercent)
+    ? `context ${Math.round(Math.min(100, Math.max(0, session.contextPercent)))}%`
+    : undefined;
+  if (!what && active <= 0 && !context) return null;
+  return {
+    label: active > 0 ? `${active} SUBAGENT${active === 1 ? '' : 'S'}` : 'NOW',
+    ...(what ? { subtitle: what } : {}),
+    ...(context ? { detail: context } : {}),
+  };
 }

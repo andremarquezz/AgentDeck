@@ -9,7 +9,7 @@ import { nextZaiPairMode, zaiPairReadings, type ZaiPairMode } from '@agentdeck/s
  * - Detail View: button 1=BACK, button 2=session info, buttons 3-7=options, button 8=ESC/STOP
  */
 import type { SessionInfo, SessionSetting, StatusCardTone, StatusIconKind, CodexRateLimits, CodexLunaReserve, SelectedCodexCredits, ScopedUsageLimit } from '@agentdeck/shared';
-import { sessionSettingOptionLabel } from '@agentdeck/shared';
+import { sessionNowSummary, sessionSettingOptionLabel } from '@agentdeck/shared';
 import { State, sortSessions, assignDisplayNames, foldCodexSessionsForDisplay, aliasModelName, Brand, formatScopedLabel, scopedLimitClaimsUsageKey, codexWindowsBeside, usageStripRank, usageWindowKind, usageWindowLabel, codexUsageFootnote, summarizeQuestionForKey, approvalReasonHead, UI } from '@agentdeck/shared';
 import type { PromptOption } from '@agentdeck/shared';
 import { dlog } from './log.js';
@@ -994,6 +994,20 @@ export class SessionSlotManager {
     return { type: 'empty' };
   }
 
+  /** "What is it doing right now" readout (#463) from row facts; null when the row says nothing. */
+  private nowCard(session: SessionInfo | undefined, processing = false): SessionSlotConfig | null {
+    const now = sessionNowSummary(session, processing);
+    if (!now) return null;
+    return {
+      type: 'status',
+      label: now.label,
+      ...(now.subtitle ? { subtitle: truncateStr(now.subtitle, 22) } : {}),
+      ...(now.detail ? { detail: now.detail } : {}),
+      icon: 'activity',
+      tone: 'info',
+    };
+  }
+
   /** MODEL / THINKING preset subtitle: the value in effect, in the agent's words. */
   private presetSettingSubtitle(key: SessionSetting['key'], session: SessionInfo | undefined): string | undefined {
     const setting = this.focusedSetting(key);
@@ -1298,6 +1312,8 @@ export class SessionSlotManager {
       // glanceable and only STOP is actionable; review remains an inert
       // status badge.
       const cells: SessionSlotConfig[] = [];
+      const now = this.nowCard(session, true);
+      if (now) cells.push(now);
       const reviewBadge = this.reviewBadgeSlotConfig(session);
       if (reviewBadge) cells.push(reviewBadge);
       const cellIdx = idx - 1;
@@ -1321,7 +1337,8 @@ export class SessionSlotManager {
       return { type: 'preset', preset: buildVoicePreset(this._voiceState) };
     }
     if (idx === 2) {
-      return { type: 'status', label: 'OBSERVED', subtitle: 'control in terminal', icon: 'ready', tone: 'info' };
+      return this.nowCard(session)
+        ?? { type: 'status', label: 'OBSERVED', subtitle: 'control in terminal', icon: 'ready', tone: 'info' };
     }
     return this.idleStatusCard(session, idx - 3, false, false);
   }

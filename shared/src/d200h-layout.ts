@@ -32,7 +32,7 @@ import {
   aliasModelName,
   type StatusIconKind,
 } from './svg-renderers/index.js';
-import { sessionSettingOptionLabel } from './session-settings.js';
+import { sessionNowSummary, sessionSettingOptionLabel } from './session-settings.js';
 import { State, type PromptOption } from './states.js';
 import { sortSessions, foldCodexSessionsForDisplay } from './session-utils.js';
 import type { SessionInfo, SessionSetting, SubscriptionInfo, CodexRateLimits, CodexRateLimitWindow, CodexLunaReserve, ScopedUsageLimit, ZaiRateLimits, ZaiWindow } from './protocol.js';
@@ -974,6 +974,16 @@ function voiceTile(view: DeckView, sid: string): SessionDeckCell {
   }
 }
 
+/** "What is it doing right now" readout (#463) from row facts; null when the row says nothing. */
+function nowTile(sess: SessionInfo | undefined, processing = false): SessionDeckCell | null {
+  const now = sessionNowSummary(sess, processing);
+  if (!now) return null;
+  return {
+    svg: renderInfoSlot(now.label, now.subtitle ? truncateLabel(now.subtitle, 22) : undefined, 'activity', 'info', now.detail),
+    action: null,
+  };
+}
+
 /** The value in effect for `key`, in the agent's own words. */
 function settingCurrentLabel(key: SessionSetting['key'], settings: DeckView['settings']): string | undefined {
   const setting = settings?.settings.find((x) => x.key === key);
@@ -1420,6 +1430,8 @@ function buildDetail(
     // live status + STOP so users cannot mistake a future directive for the
     // agent's current work. Keep the
     // REVIEWING spinner / last-verdict badge visible as inert status.
+    const now = nowTile(sess, true);
+    if (now) cells.push(now);
     const badge = reviewBadgeTile(sess);
     if (badge) cells.push(badge);
   } else if (isObserved) {
@@ -1443,7 +1455,7 @@ function buildDetail(
       // the Swift daemon).
       cells.push(reviewTile(sess, sid));
       cells.push(voiceTile(view, sid));
-      cells.push({ svg: renderInfoSlot('OBSERVED', 'control in terminal', 'status', 'info'), action: null });
+      cells.push(nowTile(sess) ?? { svg: renderInfoSlot('OBSERVED', 'control in terminal', 'status', 'info'), action: null });
     }
   } else {
     // Managed idle quick-actions. REVIEW routes to the independent eval
