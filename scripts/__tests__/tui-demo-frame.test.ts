@@ -28,3 +28,19 @@ describe('public TUI canonical color frames', () => {
     expect(frame.lines.some(line => line.includes('OpenCode'))).toBe(true);
   });
 });
+
+
+it('generated canonical TUI reset labels are finite for every synthetic agent/state', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { readFileSync } = await import('node:fs');
+  execFileSync(process.execPath, ['scripts/render-creature-simulator.mjs'], { timeout: 20_000 });
+  const text = readFileSync('tools/creature-simulator/sim-data.js', 'utf8');
+  const data = JSON.parse(text.slice(text.indexOf('=') + 1).replace(/;\s*$/, ''));
+  expect(Object.keys(data.tui)).toHaveLength(28);
+  for (const frame of Object.values(data.tui) as { lines: string[] }[]) {
+    const screen = frame.lines.join('\n');
+    expect(screen).not.toContain('NaN');
+    expect(screen).not.toContain('undefined');
+    expect(screen).toMatch(/↻\d/);
+  }
+});

@@ -216,8 +216,8 @@ function renderTuiData() {
           usage: {
             fiveHourPercent: 46,
             sevenDayPercent: 72,
-            fiveHourResetsAt: '1h24m',
-            sevenDayResetsAt: '1d12h',
+            fiveHourResetsAt: buildUsage().fiveHourResetsAt,
+            sevenDayResetsAt: buildUsage().sevenDayResetsAt,
             inputTokens: 123400,
             outputTokens: 56700,
             estimatedCostUsd: 12.34,
