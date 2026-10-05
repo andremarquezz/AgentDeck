@@ -60,4 +60,36 @@ Keep public copy in English, with optional Korean/Japanese translations. Store
 links stay evergreen; measured submission receipts belong in release records,
 not temporary review-status copy in installation instructions.
 
+### 1.8.0 scenario supplement
+
+The original introduction and hardware photographs remain intact. The overview's
+`#showcase-180` section and README add `aquarium-180-showcase.mp4` plus three
+native screenshots: `aquarium-180-overview.jpg`, `aquarium-180-ci.jpg`, and
+`aquarium-180-complete.jpg`. This is a native iPad **simulator** recording with
+fictional sessions, not footage of a physical device or a live private workspace.
+
+Reproduce the isolated 38-second fixture with
+`node scripts/appstore-demo-orchestrator.mjs serve --showcase --port 9231`.
+Use a Debug iPad simulator build from the 1.8.0 candidate with
+`-AgentDeckScreenshotURL ws://127.0.0.1:9231` and
+`-prefs.dashboardType aquarium3d`. The optional showcase leaves the original
+`--story` and default App Store scenario unchanged. Keep the feed loopback-only
+and separate from the production daemon.
+
+The video is 36 seconds, 1920 × 1334 at 30 fps (H.264, `yuv420p`, about
+5.5 MB). Full-frame JPEGs retain the native 2360 × 1640 resolution. There is
+no UI compositing, retouching, upscaling, or speed change. The 38-second fixture
+is cut from 1.5 to 37.5 seconds, opening on the first working session and ending
+before the next cycle. Caption times subtract 1.5 seconds from the story clock.
+
+The supplement follows Hermes Agent alongside Claude, Codex, OpenCode, and
+OpenClaw, a GitHub CI companion attached to its waiting session, and the return
+to completed work. Gateway residents remain singular. Approval and CI waiting
+are separate states; the dashboard does not approve a request in this story.
+English, Korean, and Japanese captions use `aquarium-180.{en,ko,ja}.vtt`.
+The player keeps controls, no autoplay, and `preload="none"`; stills load lazily.
+The Pages assembly copies the new MP4 and captions explicitly and the JPEGs via
+the existing photo copy step. Do not replace older dated footage with a new
+version label or composite new UI into the historical hardware photos.
+
 See [testing.md](testing.md) for the full testing reference.

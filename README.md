@@ -203,6 +203,16 @@ edit code, run tests, wait for permission, and finish. No private workspace data
 is shown. [Watch the high-resolution story](https://puritysb.github.io/AgentDeck/#aquarium)
 or take the [hardware desk tour](https://youtu.be/s-f8ICBcC4o).
 
+**New in the 1.8.0 showcase:** Hermes Agent joins the other agents while GitHub CI
+companions orbit sessions waiting for checks. Captured in the native iPad simulator
+with fictional activity; the earlier introduction and hardware photos remain available.
+
+[![AgentDeck 1.8.0 with Hermes Agent and the coding agents](docs/media/aquarium-180-overview.jpg)](https://puritysb.github.io/AgentDeck/#showcase-180)
+
+[Watch the new scenario](https://puritysb.github.io/AgentDeck/#showcase-180) ·
+[CI waiting](docs/media/aquarium-180-ci.jpg) ·
+[Checks complete](docs/media/aquarium-180-complete.jpg)
+
 ## What it does
 
 - **Follow parallel work.** Session names, current tools, and a shared timeline
