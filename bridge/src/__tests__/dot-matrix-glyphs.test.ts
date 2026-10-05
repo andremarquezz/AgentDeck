@@ -88,12 +88,10 @@ describe('Timebox Mini Agent Beacon', () => {
     paintTimeboxBeacon(openCode, 'opencode', 'idle', 0);
     paintTimeboxBeacon(openClaw, 'crayfish', 'idle', 0);
     expect(pixel(openCode, 5, 5)).toEqual(background);
-    expect(pixel(openClaw, 4, 4)[0]).toBeGreaterThan(0);
-    expect(pixel(openClaw, 4, 4)[1]).toBeGreaterThan(pixel(openClaw, 4, 4)[0]);
-    expect(pixel(openClaw, 4, 4)[2]).toBeGreaterThan(pixel(openClaw, 4, 4)[0]);
-    expect(pixel(openClaw, 7, 4)[1]).toBeGreaterThan(pixel(openClaw, 7, 4)[0]);
-    expect(pixel(openClaw, 7, 4)[2]).toBeGreaterThan(pixel(openClaw, 7, 4)[0]);
-    expect(pixel(openClaw, 4, 4)[0]).toBeLessThan(235); // fractional tiny source glint
+    // Exact downsampled original glints; no invented full-strength eye pixels.
+    // At9px the source eye/glint spans less than a whole LED and mixes with red.
+    expect(pixel(openClaw, 4, 3)).toEqual([117, 59, 60]);
+    expect(pixel(openClaw, 6, 3)).toEqual([118, 60, 60]);
   });
 
   it('keeps identity fixed and moves only the perimeter rail while processing', () => {
