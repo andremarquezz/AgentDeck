@@ -1302,12 +1302,16 @@ function drawCiCue(buf: Uint8Array, size: number, sessions: SessionInfo[] | null
   const value = CI_WAIT_CUE.colors[wait.phase];
   const hex = typeof value === 'string' ? value : CI_WAIT_CUE.colors.unknown;
   const color = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  const markColor = [1, 3, 5].map(i => parseInt(CI_WAIT_CUE.helperColor.slice(i, i + 2), 16));
   const left = 1, top = size === 11 ? 1 : size - 9;
   for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
     const offset = ((top + y) * size + left + x) * 3;
-    const lit = CI_WAIT_VISUAL.shrimp[y] & (1 << (7 - x));
-    for (let channel = 0; channel < 3; channel++) buf[offset + channel] = lit ? color[channel] : 0;
+    const lit = CI_WAIT_VISUAL.github[y] & (1 << (7 - x));
+    for (let channel = 0; channel < 3; channel++) buf[offset + channel] = lit ? markColor[channel] : 0;
   }
+  // Phase is separate from the unchanged monochrome GitHub mark.
+  const statusOffset = ((top + 7) * size + left + 7) * 3;
+  for (let channel = 0; channel < 3; channel++) buf[statusOffset + channel] = color[channel];
 }
 
 export function renderFrame(

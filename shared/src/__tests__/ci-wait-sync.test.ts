@@ -5,10 +5,32 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import * as rules from '../ci-wait.js';
+import sharp from 'sharp';
+import { createHash } from 'node:crypto';
+import { CI_GITHUB_GLYPH, CI_GITHUB_GLYPH_SOURCE_SHA256 } from '../ci-github-glyph.generated.js';
 import { emitSwift, OUTPUT, emitKotlin, KOTLIN_OUTPUT, emitCpp, CPP_OUTPUT, emitHermesRules, HERMES_OUTPUT } from '../../../scripts/generate-ci-wait.mjs';
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 
 describe('Node/Swift CI wait command parity', () => {
+  it('derives the CI helper from the official GitHub SVG and preserves its transparent face', async () => {
+    const svg = readFileSync(join(root, 'design/brand/github.svg'));
+    expect(createHash('sha256').update(svg).digest('hex')).toBe(CI_GITHUB_GLYPH_SOURCE_SHA256);
+    const { data, info } = await sharp(svg, { density: 384 })
+      .resize(8, 8, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const rows = Array.from({ length: 8 }, (_, y) => {
+      let bits = 0;
+      for (let x = 0; x < 8; x++) if (data[(y * 8 + x) * info.channels + info.channels - 1] >= 128) bits |= 0x80 >> x;
+      return bits;
+    });
+    expect(CI_GITHUB_GLYPH).toEqual(rows);
+    expect(rows[3] & 0x18).toBe(0); // Actual upstream Invertocat face cutout.
+    expect(rows[3] & 0xc3).toBe(0xc3);
+    expect(rows[7] & 1).toBe(0); // The separate phase dot cannot cover the logo.
+    expect(Object.values(rules.CI_WAIT_VISUAL).filter((v) => typeof v === 'number')).toEqual([0, 1, 2, 3, 4, 5]);
+  });
   it('keeps the native classifier generated from the common grammar and bounds', () => {
     expect(readFileSync(join(root, OUTPUT), 'utf8')).toBe(emitSwift(rules));
     expect(readFileSync(join(root, KOTLIN_OUTPUT), 'utf8')).toBe(emitKotlin(rules));

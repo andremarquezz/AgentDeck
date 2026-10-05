@@ -161,7 +161,7 @@ private struct PixooPixelGrid: View {
 // colours, and subagent satellites. Usage layout and drawStateDot changes do
 // not alter the mirrored AGENTS pixels.
 //
-// SYNC-HASH esp32/src/ui/matrix/matrix_pages.cpp 63b3e9eb7d22d84f7bc8baa6b937789b08026955
+// SYNC-HASH esp32/src/ui/matrix/matrix_pages.cpp e12dafd67cc9661070af9ff5657ce3b90a654e46
 // scripts/check-preview-mirror-sync.mjs fails CI when the origin above drifts
 // from this pin — re-verify AGENTS-page parity and bump the hash together.
 
@@ -253,8 +253,8 @@ struct UlanziMatrixPreview: View {
             let ciRGB = CiWaitVisual.rgb(ci?.phase ?? "unknown")
             drawSprite(
                 ctx: &ctx, atX: cursorX,
-                alpha: session.ciWait != nil && state != .awaitingPrompt ? CiWaitVisual.shrimp.flatMap { bits in (0..<8).map { col -> UInt8 in bits & (1 << (7 - col)) != 0 ? 255 : 0 } } : Tc001Sprites.mask(for: agent),
-                bodyRGB: ci != nil ? (Double(ciRGB.0), Double(ciRGB.1), Double(ciRGB.2)) : Tc001Sprites.bodyRGB255(agent: agent, state: state, instanceIdx: index),
+                alpha: session.ciWait != nil && state != .awaitingPrompt ? CiWaitVisual.github.flatMap { bits in (0..<8).map { col -> UInt8 in bits & (1 << (7 - col)) != 0 ? 255 : 0 } } : Tc001Sprites.mask(for: agent),
+                bodyRGB: ci != nil ? (Double(CiWaitVisual.helperRGB.0), Double(CiWaitVisual.helperRGB.1), Double(CiWaitVisual.helperRGB.2)) : Tc001Sprites.bodyRGB255(agent: agent, state: state, instanceIdx: index),
                 rainbow: ci == nil && agent == .antigravity,
                 cellW: cellW, cellH: cellH
             )
@@ -262,6 +262,11 @@ struct UlanziMatrixPreview: View {
                 ctx: &ctx, atX: cursorX, count: session.subagentCount,
                 cellW: cellW, cellH: cellH
             )
+            if ci != nil {
+                plot(ctx: &ctx, x: cursorX + 7, y: 7,
+                     color: Color(red: Double(ciRGB.0) / 255, green: Double(ciRGB.1) / 255, blue: Double(ciRGB.2) / 255),
+                     cellW: cellW, cellH: cellH)
+            }
             cursorX += 8
         }
 

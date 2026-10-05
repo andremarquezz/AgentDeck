@@ -7,6 +7,7 @@ import CoreFoundation
 enum CiWaitVisual {
     static let cycleMs = 6000
     static let showAfterMs = 3000
+    static let helperRGB: (UInt8, UInt8, UInt8) = (226, 232, 240)
     static func rgb(_ phase: String) -> (UInt8, UInt8, UInt8) {
         let colors: [String: UInt32] = ["unknown": 0x9a9aa2, "queued": 0x3ED6E8, "running": 0x3ED6E8, "passed": 0x52D988, "failed": 0xFF6B6B]
         let value = colors[phase] ?? colors["unknown"]!
@@ -18,7 +19,9 @@ enum CiWaitVisual {
     static let running = 3
     static let passed = 4
     static let failed = 5
-    static let shrimp: [UInt8] = [130, 68, 56, 124, 94, 60, 82, 161]
+    static let github: [UInt8] = [60, 126, 195, 195, 195, 231, 70, 36]
+    @available(*, deprecated, message: "Use github; this compatibility name contains the GitHub mark")
+    static let shrimp = github
     static func phase(_ value: String?) -> Int {
         switch value {
         case "unknown": return 1

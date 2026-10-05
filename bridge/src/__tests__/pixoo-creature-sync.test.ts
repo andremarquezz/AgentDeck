@@ -271,7 +271,8 @@ describe('CI micro cue', () => {
     const wait = { kind: 'ci' as const, provider: 'github-actions' as const, phase: 'failed' as const,
       agentWaiting: false, openedAt: 1, evidence: 'github' as const };
     const row = session({ id: 'ci', waitingOn: wait });
-    const pixel = (buf: Uint8Array) => Array.from(buf.slice((11 + 1) * 3, (11 + 1) * 3 + 3));
+    // Phase dot is separate from the monochrome GitHub mark.
+    const pixel = (buf: Uint8Array) => Array.from(buf.slice((8 * 11 + 8) * 3, (8 * 11 + 8) * 3 + 3));
     expect(pixel(renderFrame(null, null, [row], 3500, 11, 'micro'))).toEqual([255, 107, 107]);
     expect(pixel(renderFrame(null, null, [row], 500, 11, 'micro'))).not.toEqual([255, 107, 107]);
     expect(pixel(renderFrame(null, null, [row, session({ id: 'permission', state: 'awaiting_permission' })], 3500, 11, 'micro'))).not.toEqual([255, 107, 107]);

@@ -17,9 +17,11 @@ package dev.agentdeck.terrarium
 
 object CiWaitVisual {
 ` +
-    Object.entries(r).filter(([k]) => k !== 'shrimp').map(([k,v]) => `    const val ${k.toUpperCase()} = ${v}
+    Object.entries(r).filter(([k]) => k !== 'github').map(([k,v]) => `    const val ${k.toUpperCase()} = ${v}
 `).join('') +
-    `    val shrimp = intArrayOf(${r.shrimp.join(', ')})
+    `    val github = intArrayOf(${r.github.join(', ')})
+    @Deprecated("Use github; this compatibility name contains the GitHub mark")
+    val shrimp get() = github
 }
 `;
 }
@@ -32,13 +34,14 @@ export function emitCpp(mod) {
 namespace CiWaitVisual {
 static constexpr unsigned long CYCLE_MS = ${mod.CI_WAIT_CUE.cycleMs};
 static constexpr unsigned long SHOW_AFTER_MS = ${mod.CI_WAIT_CUE.showAfterMs};
+static constexpr uint32_t HELPER_COLOR = 0x${mod.CI_WAIT_CUE.helperColor.slice(1)};
 ` +
-    Object.entries(r).filter(([k]) => k !== 'shrimp').map(([k,v]) => `static constexpr uint8_t ${k.toUpperCase()} = ${v};
+    Object.entries(r).filter(([k]) => k !== 'github').map(([k,v]) => `static constexpr uint8_t ${k.toUpperCase()} = ${v};
 `).join('') +
-    `static constexpr uint8_t SHRIMP[8] = {${r.shrimp.join(', ')}};
+    `static constexpr uint8_t GITHUB[8] = {${r.github.join(', ')}};
 inline uint8_t phase(const char* value) {
 ` +
-    Object.entries(r).filter(([k]) => k !== 'shrimp' && k !== 'none').map(([k,v]) => `    if (value && !strcmp(value, "${k}")) return ${v};
+    Object.entries(r).filter(([k]) => k !== 'github' && k !== 'none').map(([k,v]) => `    if (value && !strcmp(value, "${k}")) return ${v};
 `).join('') +
     `    return UNKNOWN;
 }
@@ -56,16 +59,19 @@ import CoreFoundation
 enum CiWaitVisual {
     static let cycleMs = ${mod.CI_WAIT_CUE.cycleMs}
     static let showAfterMs = ${mod.CI_WAIT_CUE.showAfterMs}
+    static let helperRGB: (UInt8, UInt8, UInt8) = (${[1, 3, 5].map(i => parseInt(mod.CI_WAIT_CUE.helperColor.slice(i, i + 2), 16)).join(', ')})
     static func rgb(_ phase: String) -> (UInt8, UInt8, UInt8) {
         let colors: [String: UInt32] = [${Object.entries(mod.CI_WAIT_CUE.colors).map(([k,v]) => `"${k}": 0x${v.slice(1)}`).join(', ')}]
         let value = colors[phase] ?? colors["unknown"]!
         return (UInt8((value >> 16) & 255), UInt8((value >> 8) & 255), UInt8(value & 255))
     }
-${Object.entries(mod.CI_WAIT_VISUAL).filter(([k]) => k !== 'shrimp').map(([k,v]) => `    static let ${k} = ${v}`).join('\n')}
-    static let shrimp: [UInt8] = [${mod.CI_WAIT_VISUAL.shrimp.join(', ')}]
+${Object.entries(mod.CI_WAIT_VISUAL).filter(([k]) => k !== 'github').map(([k,v]) => `    static let ${k} = ${v}`).join('\n')}
+    static let github: [UInt8] = [${mod.CI_WAIT_VISUAL.github.join(', ')}]
+    @available(*, deprecated, message: "Use github; this compatibility name contains the GitHub mark")
+    static let shrimp = github
     static func phase(_ value: String?) -> Int {
         switch value {
-${Object.entries(mod.CI_WAIT_VISUAL).filter(([k]) => k !== 'shrimp' && k !== 'none').map(([k,v]) => `        case "${k}": return ${v}`).join('\n')}
+${Object.entries(mod.CI_WAIT_VISUAL).filter(([k]) => k !== 'github' && k !== 'none').map(([k,v]) => `        case "${k}": return ${v}`).join('\n')}
         default: return unknown
         }
     }

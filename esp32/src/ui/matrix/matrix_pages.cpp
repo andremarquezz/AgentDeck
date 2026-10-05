@@ -685,7 +685,8 @@ void MatrixPages::renderAgents(CRGB* leds, float animTime) {
                     phase == CiWaitVisual::PASSED ? ProductPalette::UiOk :
                     phase == CiWaitVisual::UNKNOWN ? ProductPalette::UiIdle : ProductPalette::UiCyan);
                 for (uint8_t y = 0; y < 8; y++) for (uint8_t dx = 0; dx < 8; dx++)
-                    if (CiWaitVisual::SHRIMP[y] & (0x80 >> dx)) setPixel(leds, x + dx, y, color);
+                    if (CiWaitVisual::GITHUB[y] & (0x80 >> dx)) setPixel(leds, x + dx, y, CRGB(CiWaitVisual::HELPER_COLOR));
+                setPixel(leds, x + 7, 7, color);
             } else {
                 drawOfficialMatrixGlyph(leds, x, agentSprite(agents[i].kind), bc,
                                         agents[i].kind == AGENT_ANTIGRAVITY);
@@ -727,7 +728,8 @@ void MatrixPages::renderAgents(CRGB* leds, float animTime) {
                     phase == CiWaitVisual::PASSED ? ProductPalette::UiOk :
                     phase == CiWaitVisual::UNKNOWN ? ProductPalette::UiIdle : ProductPalette::UiCyan);
                 for (uint8_t y = 0; y < 8; y++) for (uint8_t dx = 0; dx < 8; dx++)
-                    if (CiWaitVisual::SHRIMP[y] & (0x80 >> dx)) setPixel(leds, x + dx, y, color);
+                    if (CiWaitVisual::GITHUB[y] & (0x80 >> dx)) setPixel(leds, x + dx, y, CRGB(CiWaitVisual::HELPER_COLOR));
+                setPixel(leds, x + 7, 7, color);
             } else {
                 drawOfficialMatrixGlyph(leds, x, agentSprite(agents[i].kind), bc,
                                         agents[i].kind == AGENT_ANTIGRAVITY);

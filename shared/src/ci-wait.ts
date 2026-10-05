@@ -1,4 +1,5 @@
 import { UI } from './design-tokens.js';
+import { CI_GITHUB_GLYPH, CI_GITHUB_GLYPH_SIZE } from './ci-github-glyph.generated.js';
 /** CI wait intent, never a CI result. SSOT for the staged #433 integration.
  * No I/O, cwd inference, credentials, command text or invented run identity.
  * Unsupported shell syntax fails closed; process evidence can cover it later.
@@ -320,12 +321,13 @@ export function ciWaitLabel(wait: CiWaitStatus | null | undefined): string | nul
 /** Stable compact phase IDs: zero clears; unknown is never success. */
 export const CI_WAIT_CUE = {
   cycleMs: 6000, showAfterMs: 3000,
+  glyphSize: CI_GITHUB_GLYPH_SIZE, helperColor: UI.hudText,
   colors: { unknown: UI.idle, queued: UI.cyan, running: UI.cyan, passed: UI.ok, failed: UI.error },
 } as const;
 export const CI_WAIT_VISUAL = {
   none: 0, unknown: 1, queued: 2, running: 3, passed: 4, failed: 5,
-  // Original cleaner-shrimp silhouette, 8x8, MSB on the left.
-  shrimp: [0x82, 0x44, 0x38, 0x7c, 0x5e, 0x3c, 0x52, 0xa1],
+  // Official GitHub Invertocat sampled from the canonical SVG, never an agent.
+  github: CI_GITHUB_GLYPH,
 } as const;
 export function ciWaitPhaseId(wait: CiWaitStatus | null | undefined): number {
   if (!wait) return CI_WAIT_VISUAL.none;

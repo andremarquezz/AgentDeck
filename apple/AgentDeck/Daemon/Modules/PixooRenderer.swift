@@ -407,14 +407,17 @@ final class PixooRenderer {
               let wait = state.siblingSessions.first(where: { $0.alive && $0.waitingOn != nil })?.waitingOn,
               Int(now) % CiWaitVisual.cycleMs >= CiWaitVisual.showAfterMs else { return }
         let color = CiWaitVisual.rgb(wait.phase)
+        let markColor = CiWaitVisual.helperRGB
         let top = size == 11 ? 1 : size - 9
         for y in 0..<8 { for x in 0..<8 {
             let offset = ((top + y) * size + x + 1) * 3
-            let lit = CiWaitVisual.shrimp[y] & (1 << (7 - x)) != 0
-            buf[offset] = lit ? color.0 : 0
-            buf[offset + 1] = lit ? color.1 : 0
-            buf[offset + 2] = lit ? color.2 : 0
+            let lit = CiWaitVisual.github[y] & (1 << (7 - x)) != 0
+            buf[offset] = lit ? markColor.0 : 0
+            buf[offset + 1] = lit ? markColor.1 : 0
+            buf[offset + 2] = lit ? markColor.2 : 0
         } }
+        let statusOffset = ((top + 7) * size + 8) * 3
+        buf[statusOffset] = color.0; buf[statusOffset + 1] = color.1; buf[statusOffset + 2] = color.2
     }
 
     func render(dashboardState: DashboardState) -> Data {
