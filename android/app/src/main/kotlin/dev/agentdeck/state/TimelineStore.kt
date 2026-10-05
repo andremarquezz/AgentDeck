@@ -163,6 +163,8 @@ data class GroupedEntry(
      *  "Completed · Ns · topic" suffix. Mirrors Apple mergedCompletion. */
     val mergedCompletion: TimelineEntry? = null,
     val toolActivity: List<TimelineEntry> = emptyList(),
+    /** Android presentation-only identity, assigned before recency projection. */
+    val presentationKey: String? = null,
 ) {
     val toolSummary: String get() = toolActivity.joinToString(" · ") { it.summary }
     val toolDetail: String get() = toolActivity.joinToString("\n\n") { it.detail ?: it.summary }
