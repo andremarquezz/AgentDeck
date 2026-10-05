@@ -55,16 +55,95 @@ The six channel manifests and prepared changelog entry target backward-compatibl
 not evidence of publication. Do not tag until candidate receipts are final.
 Distribution signing, uploads and store publication are outside this preparation.
 
-| Work | Candidate scope | Remaining acceptance |
+| Work | Prepared 1.8.0 scope | Separate or external acceptance |
 | --- | --- | --- |
-| [#433](https://github.com/puritysb/AgentDeck/issues/433) CI waits | Hook lifecycle, explicit wire clearing, bounded Node evidence/counts, OpenCode shell evidence, native station/queue, Canvas/matrix glyphs, firmware activity, APME foreground wait accounting | Real agent-hook replay; station visual acceptance; physical-device and crowded-profile receipts; Hermes privacy-preserving CI evidence remains separate |
-| [#449](https://github.com/puritysb/AgentDeck/issues/449) delivery | Carry #451, #452, #459 and regression evidence into new artifacts | Three daemon modes plus reverse takeover on packaged candidates; organization-signed Apple archive; existing Elgato/Ulanzi review readback; DRM encoder acceptance |
-| [#423](https://github.com/puritysb/AgentDeck/issues/423) Hermes umbrella | Preserve observer-only support and measured upstream revision | Closes only with child acceptance; no duplicate implementation task |
-| [#425](https://github.com/puritysb/AgentDeck/issues/425) Hermes surfaces | Retain native/Lenovo receipts and verify crowded profiles | Remaining iPad/iPhone and physical matrix targets; versioned artifact validation |
-| [#426](https://github.com/puritysb/AgentDeck/issues/426) Hermes lifecycle | Recheck candidate observer package against pinned upstream | Test-only messaging Gateway channel and real `/new`/reset capture |
-| [#428](https://github.com/puritysb/AgentDeck/issues/428) Hermes model | Preserve current rendering while reviewing replacement separately | Original-face comparison, deformation/export checks, owner visual acceptance |
-| [#273](https://github.com/puritysb/AgentDeck/issues/273) managed replacement | Keep all managed contracts; local launcher already shipped | Remote relay design and real two-machine acceptance; terminal-only replacement decisions; no 1.x removal |
-| [#272](https://github.com/puritysb/AgentDeck/issues/272) e-ink | Collect representative actionable traffic before redesign | Board delivery/repaint and optical measurement; audio hardware and Swift pull-path decisions |
+| [#433](https://github.com/puritysb/AgentDeck/issues/433) CI waits | Claude/Codex/OpenCode/Hermes lifecycle, explicit clearing, bounded Node evidence/counts, session-bound GitHub companion orbit/result cues, readable Canvas/native cues, firmware activity, foreground APME accounting | Physical fleet/phone acceptance remains distinct from source and fixture tests; unknown evidence never claims a provider verdict |
+| [#449](https://github.com/puritysb/AgentDeck/issues/449) delivery | #451, #452, #459 plus clean installed-tarball acceptance, versioned plugin packages and unsigned Android artifacts | Distribution signing, upload, store review/publication and DRM-processed encoder acceptance are outside this preparation |
+| [#423](https://github.com/puritysb/AgentDeck/issues/423) Hermes umbrella | Observer-only support retained; pinned upstream CLI callbacks and real read-only GitHub watcher captured | Remains open while child acceptance is incomplete |
+| [#425](https://github.com/puritysb/AgentDeck/issues/425) Hermes surfaces | Actual macOS 3D, Lenovo Canvas/Filament CI rendering, iPad native rendering, crowded-profile and package tests | iPhone 14 Pro Max was unavailable; physical matrix/firmware optical acceptance is not inferred from compiled images |
+| [#426](https://github.com/puritysb/AgentDeck/issues/426) Hermes lifecycle | Pinned CLI tool/Stop/finalization, private CI intent, independent sessions and Swift model attribution | A test-only messaging Gateway channel and permission to send test messages are still needed for real `/new`/reset capture |
+| [#428](https://github.com/puritysb/AgentDeck/issues/428) Hermes model | Existing renderer retained without claiming visual approval; no replacement asset is bundled | Replacement face/rig/export and owner visual acceptance remain a separate artwork task |
+| [#273](https://github.com/puritysb/AgentDeck/issues/273) managed replacement | All managed contracts retained; no PTY removal in 1.8.0 | Remote relay/two-machine and terminal-only replacement gates apply to future removal work |
+| [#272](https://github.com/puritysb/AgentDeck/issues/272) e-ink | Existing readable CI activity retained | Repaint/optical measurements, audio hardware and Swift pull-path decisions remain research; no redesign is claimed |
+
+Candidate checks include
+`pnpm test:packaged --soak-seconds 60 --keep-artifacts --report diagnostics/release-180/packaged-daemon.json`. It packs all four npm
+packages, installs them outside the workspace and proves native bindings,
+installed hooks, failed-to-repaired CI evidence, twelve independent conversations,
+compact device frames, reconnects, soak health and restart persistence. Its GitHub
+responses are fixtures; the separate pinned Hermes CLI receipt uses a real `gh`
+watch against completed PR CI, with a deterministic local model provider.
+Neither receipt proves a messaging-platform Gateway session. The installed 1.8.0
+CLI also passed Swift-to-Node takeover, Node-only operation, app relaunch as a
+Node client and automatic Swift recovery on an isolated port, with production
+listeners unchanged.
+
+Native QA found and fixed canceled asset loads being shown as permanent failure,
+macOS selectable Timeline text flipping over the Metal scene, stale sibling
+frames overriding permission priority, and missing Hermes model attribution in
+Swift runs/turns/tasks. Accepted CI timeline annotations now broadcast live,
+while deduplicated rows stay suppressed. Explicit QA data directories no longer import the real
+daemon registry or credentials. CLI lifecycle commands also verify installed
+service data scope before controlling launchd/systemd/Scheduled Task units. Device QA uses development execution only; it
+is not distribution signing or App Store sandbox acceptance. The superseded
+station candidate compiled all twelve firmware targets and packaged 62 assets.
+Its IPS10 image had 68,544 bytes of app-partition headroom; that receipt is
+superseded. The final appearance/orbit candidate passed all twelve board builds
+and packaged 62 files. Six targets were rebuilt for the TTGO memo change; actual
+compiler dependencies prove the six retained outputs had unchanged inputs.
+All merged headers, artifact hashes and partition bounds passed. The final padded
+IPS10 application uses 6,225,408 of 6,291,456 bytes, leaving 66,048 bytes (98.95%
+used). Per-board source stamps and compiler-input receipts retain this distinction.
+
+The current appearance pass distinguishes Claude’s black eyes, OpenClaw’s black
+eyes and original teal pupils, Codex’s filled white prompt and OpenCode’s actual central
+opening. It covers both 2D and 3D rendering, including generated device glyphs
+and canonical terminal cells. Very small LED/terminal samples can average away
+fine details; terminal hues require true-color support.
+Final local source gates passed 5,340 Vitest tests (8 skipped), 86 focused Swift
+checks and 460 Android unit tests. The four clean-installed npm tarballs passed
+all ten acceptance checks; macOS/iOS archive invariant checks and unsigned
+Android APK/AAB signature-absence checks passed. Actual final macOS/iPad and three
+Android QA surfaces cover original features, small icons, CI companions and
+clear/permission behavior. These receipts remain separate from public deployment.
+
+TTGO's CI memo preserves ten owners in 160 bytes rather than 240, fixing the
+48-byte static DRAM overflow. The linked image has only 32 bytes of static
+region slack; that is not runtime heap headroom. Physical boot/free-block and
+performance checks remain required before fleet rollout.
+
+Previously built archives/packages are superseded wherever their inputs change.
+The deployment audit separately records source changes, package contents and
+installed/runtime identity for ESP32, Stream Deck and D200H; compilation alone
+does not update a connected device.
+
+Read-only deployment inventory on 2026-10-06 found the following installed gaps.
+These are observations of the local test fleet, not public release versions:
+
+| Target | Measured installed state | Delivery needed for the corrected candidate |
+| --- | --- | --- |
+| Node daemon | npm 1.7.0; loaded build identity recorded separately | Four rebuilt npm packages and a verified runtime restart |
+| Apple | Running public macOS 1.7.0; separate macOS QA/iPad 1.8.0 builds | Final native assets in new macOS/iOS archives; QA version alone does not identify their source |
+| Android | Pantone/Crema 1.6.1; Lenovo 1.7.0 | New 1.8.0 APK/AAB, then device-specific installation and rendering checks |
+| ESP32 | Eleven connected boards: ten 1.6.0, T-Display-S3-Pro 1.0.8; C6 absent | All twelve final firmware artifacts; identified-board updates and runtime readback remain separate |
+| Stream Deck | Installed/running 1.6.0.0 with matching bundle hash | New package, persistent-checkout deployment and a fresh runtime hash receipt |
+| D200H | Installed Ulanzi plugin 1.6.0; Studio process path observed | New WASM/font-complete package, plugin restart and actual key acceptance; file hash alone is not loaded-code proof |
+
+D200H uses the Studio plugin; TC001 uses ESP32 firmware. Pixoo, Timebox and
+iDotMatrix receive daemon-rendered pixels and need the corresponding Node/Swift
+update. The default deployment `all` sequence excludes ESP32 and D200H; the deploy
+skill now names both explicitly and includes C6 in its board registry. The public
+web flasher still selects ESP32 1.7.0; it must consume the eventual 1.8.0 manifest
+and images after publication. No connected firmware or production plugin was
+replaced by this audit.
+
+Existing aquarium/key gallery images depict the prior creature treatment.
+Representative final synthetic-session native captures and generated deck-key
+assets are prepared separately for release media review. Preserve unchanged
+setup/pairing and real hardware-shell photographs; historical screenshots are
+not proof of the 1.8.0 appearance, and generated key assets are not device photos.
+The live preview uses canonical renderer frames, including terminal background
+colors and exact half cells, with explicit placeholders if frame data is absent.
 
 Other follow-ups: IPS10 wake-word 3-to-5-frame candidate needs a new controlled
 false-positive/missed-trigger/latency comparison before firmware inclusion;
@@ -186,7 +265,7 @@ So when a channel first goes live, sweep the surfaces that state its status: the
 | Surface                                                   | Target version                               | Independent monotonic value                                                | Tag / delivery                             |
 | --------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------ |
 | **Apple** (iOS+macOS)                                     | `apple/project.yml` `MARKETING_VERSION`      | `CURRENT_PROJECT_VERSION` (CI-owned)                                       | `apple-v*` → TestFlight / App Store        |
-| **Android**                                               | `android/app/build.gradle.kts` `versionName` | `versionCode` (currently 17)                                               | `android-v*` → APK Release / optional Play |
+| **Android**                                               | `android/app/build.gradle.kts` `versionName` | `versionCode` (candidate 25; public 1.7.0 used 24)                                               | `android-v*` → APK Release / optional Play |
 | **npm** (`@agentdeck/hooks`, `shared`, `bridge`, `setup`) | public `package.json` files                  | npm registry version floor                                                 | `npm-v*` → OIDC publish                  |
 | **ESP32**                                                 | `esp32/src/config.h` `FIRMWARE_VERSION`      | build hash / epoch in firmware metadata                                    | `esp32-v*` → firmware Release              |
 | **Stream Deck**                                           | plugin manifest `Version` as `X.Y.Z.0`       | fourth component if a same-product-version plugin rebuild is ever required | `streamdeck-v*` → Elgato Maker portal      |

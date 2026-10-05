@@ -51,18 +51,39 @@ bumped, superseded by 1.0.17, and never published, so it exists only in git.
 
 Prepared release candidate; no channel has been published from this entry.
 
-- Show observed Claude/Codex/OpenCode CI watch requests separately from agent activity.
+- Show observed Claude/Codex/OpenCode/Hermes CI watch requests separately from agent activity.
   Background waits survive the end of an agent turn; foreground tool completion,
   tool failure, re-invocation and session end clear the applicable wait explicitly.
   Hook evidence alone has unknown CI status. The Node daemon can query explicitly identified GitHub
   checks with bounded requests and recognize owned watcher-process exit.
   Session lists and deck keys include complete check counts when available.
-  Native 3D aquariums queue waiting residents at an original cleaner-shrimp
-  station; Canvas and small matrix displays use its generated glyph. LCD/e-ink
+  The original GitHub Octocat orbits the waiting agent in native 3D and Canvas
+  aquariums; small matrix displays use its generated compact glyph. LCD/e-ink
   keep readable CI activity, with permission requests retaining priority.
   APME records CI relations and separates foreground blocking time from active
   turn time; background checks never subtract active time or alter `end_source`.
-  Physical-device, real-agent receipt and visual acceptance remain tracked in #433.
+  Hermes exports bounded CI intent and hashed invocation identities without raw
+  commands or tool arguments. Concurrent sessions retain independent CI timeline rows;
+  Swift broadcasts accepted annotations immediately and retains model attribution
+  on runs, turns and tasks.
+- Keep canceled 3D asset loads retryable instead of leaving a permanent error
+  after initial dashboard updates. Explicit development data-directory overrides
+  no longer import the user's existing daemon registry or credentials. Keep macOS
+  Timeline details upright over the 3D scene with an explicit Copy action, and
+  scale Android CI captions to device density above the Timeline. E-ink paper
+  dashboards show CI waits even for idle rows and refresh when CI evidence changes.
+- Preserve the original creature features across 2D, native 3D and device glyphs:
+  Claude has black eyes, OpenClaw has black eyes with its original bright teal highlights, Codex
+  has an opaque white `> _`, and OpenCode retains its central opening. Monochrome
+  screens preserve the source contours with contrasting ink and paper.
+- Keep the aquarium snail on its authored rock-foraging path and preserve its
+  feeler animation, instead of moving it around an unrelated screen-wide circuit.
+- Keep daemon start/stop/restart service control within the configured data
+  directory, so an isolated QA daemon cannot unload the user’s global service.
+  Refuse foreign-owned targets before touching their supervisor.
+- Verify clean npm tarball installation, native bindings, installed hooks,
+  concurrent sessions, device reconnects and restart persistence with the new
+  packaged acceptance command. Setup tarballs no longer include compiled tests.
 - Recover rejected z.ai credentials through Integrations, including when the
   Mac app follows the local Node daemon. Distinguish invalid credentials from
   transport failure and verified usage from successful key storage (#459).
