@@ -246,7 +246,7 @@
       "blocking": false,
       "required": false,
       "command": "bash esp32/sim/run-tests.sh",
-      "evidence": ["esp32/sim/run-tests.sh", "esp32/sim/tests/creature_glyph_selection_test.cpp"],
+      "evidence": ["esp32/sim/run-tests.sh", "esp32/sim/tests/creature_glyph_selection_test.cpp", "esp32/sim/tests/ci_companion_ttgo_test.cpp"],
       "proves": ["firmware policy headers execute on the host, including strict unknown-agent glyph refusal and source feature selection"],
       "does_not_prove": ["pixel output, physical firmware memory pressure, or an installed board update"]
     },
