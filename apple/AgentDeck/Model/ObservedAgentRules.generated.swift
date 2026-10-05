@@ -1,6 +1,7 @@
 // GENERATED FILE — DO NOT EDIT.
 // Source of truth: shared/src/session-utils.ts (OBSERVED_SESSION_AGENT_KEYS)
 //                  shared/src/timeline.ts      (TOOL_EXEC_SUPPRESSED_AGENTS)
+//                  shared/src/timeline-task-display.ts (TIMELINE_TURN_RULES)
 // Regenerate: pnpm generate-observed-agent-rules (drift gated by shared/src/__tests__/observed-agent-rules.test.ts)
 
 import Foundation
@@ -10,6 +11,8 @@ import Foundation
 /// rather than written twice.
 enum ObservedAgentRules {
     static let openCodePendingRequestLimit = 64
+    static let turnMergeMaxGapMs: Double = 43200000
+    static let turnActivityTypes: Set<String> = ["tool_exec"]
 
     /// A passively-observed session is keyed `observed:<agent>:<uuid>` in
     /// `sessions_list` and on devices, while timeline rows, hook payloads and

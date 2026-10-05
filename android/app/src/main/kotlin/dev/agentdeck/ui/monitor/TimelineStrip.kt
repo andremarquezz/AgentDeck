@@ -101,7 +101,7 @@ fun TimelineStrip(
     val filteredEntries = remember(entries, filter) {
         if (filter == null) entries else entries.filter { it.matchesTimelineFilter(filter) }
     }
-    val displayEntries = remember(filteredEntries) { filteredEntries.takeLast(80) }
+    val displayEntries = filteredEntries // Group before applying the visible-row cap.
     val grouped = remember(displayEntries) {
         timelineDisplayGroups(groupConsecutive(displayEntries)).takeLast(50)
     }
@@ -648,6 +648,17 @@ private fun TurnRow(
                 )
             }
         }
+        if (group.toolActivity.isNotEmpty()) {
+            Text(
+                text = "↳ ${group.toolSummary}",
+                modifier = Modifier.padding(start = subIndent),
+                color = TerrariumColors.HUDSubtext,
+                fontSize = scale.fontSub,
+                fontFamily = FontFamily.Monospace,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         group.mergedResponse?.let { resp ->
             if (!isProgressChatResponse(resp)) {
                 Row(
@@ -1131,7 +1142,7 @@ private fun DetailPane(
                 )
             }
 
-            if (showDetail && detailText != null) {
+            if (showDetail || focusedGroup.toolActivity.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 LazyColumn(
                     modifier = Modifier
@@ -1139,8 +1150,9 @@ private fun DetailPane(
                         .weight(1f, fill = false)
                         .padding(horizontal = 8.dp),
                 ) {
-                    item {
-                        TimelineMarkdownView(text = detailText)
+                    item { ToolActivityDetail(focusedGroup, scale) }
+                    if (showDetail && detailText != null) {
+                        item { TimelineMarkdownView(text = detailText) }
                     }
                 }
             }
@@ -1174,6 +1186,29 @@ private fun shouldShowDetailForDashboard(entry: TimelineEntry, detail: String): 
  * single-column layout. Mirrors the right-side `DetailPane` content shape
  * but laid out vertically without the type badge / timestamp header.
  */
+@Composable
+private fun ToolActivityDetail(group: GroupedEntry, scale: MonitorLayoutScale) {
+    if (group.toolActivity.isEmpty()) return
+    var expanded by remember(group.entry.timestamp, group.entry.sessionId, group.entry.runId) { mutableStateOf(false) }
+    Column {
+        Text(
+            text = if (expanded) "▾ Tool activity" else "▸ Tool activity",
+            modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(vertical = 4.dp),
+            color = TerrariumColors.HUDSubtext,
+            fontSize = scale.fontSub,
+            fontFamily = FontFamily.Monospace,
+        )
+        if (expanded) {
+            Text(
+                text = group.toolDetail,
+                color = TerrariumColors.HUDText,
+                fontSize = scale.fontSub,
+                fontFamily = FontFamily.Monospace,
+            )
+        }
+    }
+}
+
 @Composable
 private fun InlineDetailPane(
     group: GroupedEntry,
@@ -1221,6 +1256,7 @@ private fun InlineDetailPane(
                 style = tight,
             )
         }
+        ToolActivityDetail(group, scale)
         val detailText = bodyEntry.detail
         if (!detailText.isNullOrEmpty() && shouldShowDetailForDashboard(bodyEntry, detailText)) {
             TimelineMarkdownView(text = detailText)

@@ -22,6 +22,7 @@ import {
   sameSession,
 } from '../session-utils.js';
 import { TOOL_EXEC_SUPPRESSED_AGENTS, isToolExecSuppressedAgent } from '../timeline.js';
+import { TIMELINE_TURN_RULES } from '../timeline-task-display.js';
 import { OUTPUTS } from '../../../scripts/generate-observed-agent-rules.mjs';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -80,6 +81,7 @@ describe('generated mirrors', () => {
       prefixes: [...OBSERVED_SESSION_PREFIXES],
       openCodePendingLimit: OPENCODE_PENDING_REQUEST_LIMIT,
       suppressed: [...TOOL_EXEC_SUPPRESSED_AGENTS],
+      turn: TIMELINE_TURN_RULES,
     };
     for (const [rel, emit] of OUTPUTS as Array<[string, (r: unknown) => string]>) {
       const onDisk = readFileSync(join(repoRoot, rel), 'utf8');

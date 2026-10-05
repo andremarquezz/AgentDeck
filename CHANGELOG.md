@@ -51,6 +51,15 @@ bumped, superseded by 1.0.17, and never published, so it exists only in git.
 
 Prepared release candidate; no channel has been published from this entry.
 
+- Timeline on Apple and Android keeps ordinary tool activity beneath its
+  originating request, alongside the final response. Tool details expand inside
+  the turn; approvals, subagent events and activity without a known prompt stay
+  separate. Busy concurrent sessions no longer split a request from its reply
+  after 40 intervening groups, and Android updates no longer overwrite another
+  known session or run within the same second ([#461](https://github.com/puritysb/AgentDeck/issues/461)).
+- OpenClaw folds the tool calls of one turn into one updating summary, with
+  bounded command and result evidence. Failures take priority over successful
+  calls in the detail budget, and omitted details are explicitly marked.
 - Show observed Claude/Codex/OpenCode/Hermes CI watch requests separately from agent activity.
   Background waits survive the end of an agent turn; foreground tool completion,
   tool failure, re-invocation and session end clear the applicable wait explicitly.
