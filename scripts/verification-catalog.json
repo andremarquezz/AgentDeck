@@ -691,7 +691,7 @@
       "name": "Terminal dashboard",
       "question": "Does the TUI dashboard render sessions and the terrarium stably?",
       "icon": "▨",
-      "match": ["bridge/src/__tests__/tui-*.test.ts"]
+      "match": ["bridge/src/__tests__/tui-*.test.ts", "scripts/__tests__/tui-demo-frame.test.ts"]
     },
     {
       "id": "release",

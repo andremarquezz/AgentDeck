@@ -1051,6 +1051,8 @@
     }
 
     function renderInlineSvg(svg, rawSvg) {
+      if (svg._canonicalInlineSvg === rawSvg && svg.childElementCount) return true;
+      svg._canonicalInlineSvg = rawSvg;
       const doc = new DOMParser().parseFromString(rawSvg, "image/svg+xml");
       const source = doc.documentElement;
       if (!source || source.nodeName.toLowerCase() === "parsererror" || source.querySelector("parsererror")) {
@@ -1095,6 +1097,9 @@
     }
 
     function renderTuiActual(svg, frame) {
+      if (svg._canonicalTuiFrame === frame && svg.childElementCount) return;
+      svg._canonicalTuiFrame = frame;
+      delete svg.dataset.tuiMissing;
       clear(svg);
       const [w, h] = svgSize(svg);
 
@@ -1161,40 +1166,38 @@
       if (Array.isArray(frame.spans) && frame.spans.length) {
         frame.spans.forEach((rowSpans, rowIdx) => {
           if (!Array.isArray(rowSpans)) return;
-          const y = padY + rowIdx * cellH + cellH * 0.84;
+          const y = padY + rowIdx * cellH;
           rowSpans.forEach((span) => {
-            if (!span?.text?.trim()) return;
-            svg.appendChild(textNode(span.text, {
-              x: padX + (span.x || 0) * cellW,
-              y,
-              fill: span.color || colorForLine(lines[rowIdx] || '', rowIdx),
-              'font-size': fontSize,
-              'font-family': fontFam,
-              'xml:space': 'preserve',
-              'letter-spacing': '0',
-              'dominant-baseline': 'auto',
+            if (!span?.text) return;
+            const x = padX + (span.x || 0) * cellW;
+            if (span.background) svg.appendChild(el('rect', {
+              x, y, width: span.text.length * cellW, height: cellH, fill: span.background,
             }));
+            if (!/[▀▄]/.test(span.text)) {
+              if (span.text.trim()) svg.appendChild(textNode(span.text, {
+                x, y: y + cellH * 0.84, fill: span.color || colorForLine(lines[rowIdx] || '', rowIdx),
+                opacity: span.dim ? 0.5 : 1, 'font-size': fontSize, 'font-family': fontFam,
+                'xml:space': 'preserve', 'letter-spacing': '0',
+                textLength: span.text.length * cellW, lengthAdjust: 'spacingAndGlyphs',
+              }));
+              return;
+            }
+            for (const [col, char] of Array.from(span.text).entries()) {
+              const foreground = span.color || colorForLine(lines[rowIdx] || '', rowIdx);
+              if (char === '▀' || char === '▄') {
+                svg.appendChild(el('rect', { x: x + col * cellW,
+                  y: y + (char === '▄' ? cellH / 2 : 0), width: cellW, height: cellH / 2,
+                  fill: foreground, opacity: span.dim ? 0.5 : 1 }));
+              } else if (char !== ' ') svg.appendChild(textNode(char, {
+                x: x + col * cellW, y: y + cellH * 0.84, fill: foreground,
+                opacity: span.dim ? 0.5 : 1, 'font-size': fontSize, 'font-family': fontFam,
+                'xml:space': 'preserve', 'letter-spacing': '0',
+              }));
+            }
           });
         });
       } else {
-        lines.forEach((rawLine, rowIdx) => {
-          const visLine = (rawLine || '');
-          if (!visLine.trim() && rowIdx > 0) return;
-
-          const y = padY + rowIdx * cellH + cellH * 0.84; // text baseline
-          const color = colorForLine(visLine, rowIdx);
-
-          svg.appendChild(textNode(visLine, {
-            x: padX,
-            y,
-            fill: color,
-            'font-size': fontSize,
-            'font-family': fontFam,
-            'xml:space': 'preserve',
-            'letter-spacing': '0',
-            'dominant-baseline': 'auto',
-          }));
-        });
+        drawHatchPlaceholder(svg, w, h, 'TUI color frame not generated');
       }
 
       // Scanline vignette overlay for terminal feel
@@ -1853,98 +1856,12 @@
 
     function renderPixooDevice(svg, agent, state, t) {
       const actual = getPixooActual(agent, state);
-      if (actual) {
-        clear(svg);
-        renderRgbFrame(svg, actual);
-        return;
-      }
+      if (actual) { clear(svg); renderRgbFrame(svg, actual); return; }
       clear(svg);
       const [w, h] = svgSize(svg);
-      const scale = w / 64;
-      svg.appendChild(el("rect", { x: 0, y: 0, width: w, height: h, fill: "#14243C" }));
-      for (let y = 0; y < 64; y++) {
-        for (let x = 0; x < 64; x++) {
-          svg.appendChild(el("circle", { cx: x + 0.5, cy: y + 0.5, r: 0.18, fill: "#050A11", opacity: 0.8 }));
-        }
-      }
-      const scene = el("g", { transform: `scale(${scale})` });
-      svg.appendChild(scene);
-      scene.appendChild(el("rect", { x: 0, y: 0, width: 64, height: 6, fill: "#203E60", opacity: 0.9 }));
-      scene.appendChild(el("rect", { x: 0, y: 54, width: 64, height: 10, fill: "#2A2118" }));
-      scene.appendChild(el("rect", { x: 0, y: 50, width: 64, height: 4, fill: "#3A2C1E" }));
-
-      const creatures = [
-        { agent: "claude", state: agent === "claude" ? state : "idle", sx: 18, sy: agent === "claude" && state !== "idle" ? 25 : 31 },
-        { agent: "codex", state: agent === "codex" ? state : "idle", sx: 32, sy: agent === "codex" && state !== "idle" ? 22 : 28 },
-        { agent: "opencode", state: agent === "opencode" ? state : "idle", sx: 46, sy: agent === "opencode" && state !== "idle" ? 25 : 33 },
-        { agent: "openclaw", state: agent === "openclaw" ? state : "idle", sx: 55, sy: agent === "openclaw" && state === "working" ? 42 : 50 },
-      ];
-      for (const creature of creatures) {
-        const sx = creature.sx;
-        const sy = creature.sy;
-        const bob = creature.state === "working" ? Math.sin(t * 6 + sx) * 1.2 : 0;
-        renderGridGlyph(
-          scene,
-          creature.agent,
-          creature.state,
-          sx,
-          sy + bob,
-          creature.agent === agent
-            ? (creature.agent === "codex" ? 22 : creature.agent === "openclaw" ? 16 : 20)
-            : (creature.agent === "codex" ? 12 : creature.agent === "openclaw" ? 9 : 10),
-          t,
-        );
-        if (creature.state === "asking") {
-          const bx = sx + (creature.agent === "openclaw" ? 3 : 4);
-          const by = sy - (creature.agent === "codex" ? 5 : 4);
-          scene.appendChild(el("circle", { cx: bx, cy: by, r: 2.4, fill: "#F4F7FB", opacity: 0.84 }));
-          scene.appendChild(textNode("?", {
-            x: bx,
-            y: by + 0.9,
-            "font-size": 4.2,
-            "font-weight": 800,
-            "text-anchor": "middle",
-            "font-family": "ui-monospace, SFMono-Regular, Menlo, monospace",
-            fill: "#F5B942",
-          }));
-        }
-      }
-      for (let i = 0; i < 3; i++) {
-        scene.appendChild(el("circle", {
-          cx: 8 + i * 4,
-          cy: 3,
-          r: 1,
-          fill: i === 1 && state === "working" ? "#34D399" : "#7AA0C6",
-          opacity: 0.9,
-        }));
-      }
-      if (state === "working") {
-        for (let i = 0; i < 4; i++) {
-          scene.appendChild(el("circle", {
-            cx: 22 + i * 5,
-            cy: 44 - ((t * 12 + i * 3) % 12),
-            r: 0.7,
-            fill: "#9BC9FF",
-            opacity: 0.8,
-          }));
-        }
-      }
-      // Usage HUD bar at bottom (matching actual Pixoo renderer)
-      const pct5h = state === "working" ? 72 : state === "asking" ? 46 : 34;
-      const pct7d = state === "working" ? 38 : state === "asking" ? 25 : 18;
-      scene.appendChild(el("rect", { x: 0, y: 57, width: 64, height: 7, fill: "#000000", opacity: 0.55 }));
-      // 5H gauge (left half)
-      const fill5h = Math.round((pct5h / 100) * 30);
-      const color5h = pct5h >= 90 ? "#EF4444" : pct5h >= 70 ? "#F59E0B" : pct5h >= 50 ? "#00C8B4" : "#3B82F6";
-      scene.appendChild(el("rect", { x: 1, y: 58, width: fill5h, height: 5, fill: color5h, opacity: 0.35 }));
-      // 7D gauge (right half)
-      const fill7d = Math.round((pct7d / 100) * 30);
-      const color7d = pct7d >= 90 ? "#EF4444" : pct7d >= 70 ? "#F59E0B" : pct7d >= 50 ? "#00C8B4" : "#3B82F6";
-      scene.appendChild(el("rect", { x: 33, y: 58, width: fill7d, height: 5, fill: color7d, opacity: 0.35 }));
+      drawHatchPlaceholder(svg, w, h, 'Pixoo frame not generated');
     }
 
-    // TC001 pages come straight from the firmware's matrix_pages.cpp via the
-    // esp32/sim led8x32 env — no hand-coded page layout in the demo.
     function renderMatrixUsageDevice(svg, agent, state) {
       renderFirmwareFrame(svg, `tc001-${agent}-${state}-usage.png`);
     }
@@ -1956,350 +1873,36 @@
     function renderStreamDeckDevice(svg, agent, state, t) {
       const actual = getStreamDeckActual(agent, state);
       if (actual?.svg && renderInlineSvg(svg, actual.svg)) return;
-
       clear(svg);
-      const isWorking = state === "working";
-      const isAsking = state === "asking";
-      
-      const p1 = agent === "claude" ? "#D97757" : agent === "codex" ? "#8BA4FF" : agent === "openclaw" ? "#FF6B6B" : "#F1ECEC";
-      const p2 = agent === "claude" ? "#BE6D52" : agent === "codex" ? "#5981FF" : agent === "openclaw" ? "#CC3333" : "#AFAFAF";
-
-      // Widget Layout Depth Banding
-      const gradId = `sd-bg-${agent}-${state}`;
-      addLinearGradient(svg, gradId, [
-        { offset: "0%", "stop-color": "#1C1C1E" },
-        { offset: "100%", "stop-color": "#0C0C0E" },
-      ]);
-      svg.appendChild(el("rect", { x: 0, y: 0, width: 144, height: 144, rx: 16, fill: `url(#${gradId})` }));
-      
-      // Floating Panel
-      svg.appendChild(el("rect", { x: 8, y: 8, width: 128, height: 128, rx: 12, fill: "#2C2C2E", opacity: 0.8 }));
-      
-      // Left Edge Color Strip
-      svg.appendChild(el("rect", { x: 8, y: 8, width: 4, height: 128, rx: 2, fill: isWorking ? "#F5B942" : isAsking ? "#F87171" : p1 }));
-
-      // Left-aligned Typography 
-      const labelStr = isWorking ? "RUNNING" : isAsking ? "PERMIT?" : "IDLE";
-      const modelStr = agent === "claude" ? "opus-4" : agent === "codex" ? "gpt-5" : "opencode";
-      const colorText = isWorking ? "#FDE68A" : isAsking ? "#FECACA" : p1;
-
-      svg.appendChild(textNode(labelStr, {
-        x: 20, y: 32, "font-size": 17, "font-weight": 800, "text-anchor": "start",
-        fill: colorText, "font-family": "Inter, sans-serif",
-      }));
-      
-      svg.appendChild(textNode("AgentDeck", {
-        x: 20, y: 52, "font-size": 13, "font-weight": 600, "text-anchor": "start",
-        fill: "#E2E8F0", "font-family": "Inter, sans-serif",
-      }));
-
-      // Agent mark simplified inside
-      if (agent === "claude") {
-        drawAgentMark(svg, agent, 114, 114, 40, { state: "idle", t, palette: { fill: p1, opacity: 0.46 } });
-      } else if (agent === "codex") {
-        drawAgentMark(svg, agent, 114, 114, 40, {
-          state: "idle", t,
-          palette: { top: p1, mid: p1, bottom: p2, opacity: 0.46 },
-          promptStyle: { color: "#FFF", fontSize: 10, yOffset: 3, opacity: 0.72 },
-        });
-      } else if (agent === "openclaw") {
-        drawAgentMark(svg, agent, 114, 114, 36, {
-          state: "idle", t,
-          palette: { top: p1, bottom: p2, eye: "#00E5CC", opacity: 0.48 },
-        });
-      } else {
-        drawAgentMark(svg, agent, 114, 114, 34, {
-          state: "idle", t,
-          palette: { outer: p1, inner: p2, bg: "#2C2C2E", opacity: 0.48 },
-        });
-      }
-
-      // Sparkle on running
-      if (isWorking) {
-        const angle = (t * 100) % 360;
-        const spinner = el("g", { transform: `translate(114 34) rotate(${angle}) scale(1) translate(-8,-8)` });
-        spinner.appendChild(el("path", { d: "M8,0 L10,5 L16,8 L10,11 L8,16 L6,11 L0,8 L6,5 Z", fill: colorText }));
-        svg.appendChild(spinner);
-        
-        svg.appendChild(textNode("Read file", {
-          x: 20, y: 120, "font-size": 13, "text-anchor": "start",
-          fill: colorText, opacity: 0.8, "font-family": "Inter, sans-serif",
-        }));
-      } else {
-        svg.appendChild(textNode(modelStr, {
-          x: 20, y: 120, "font-size": 14, "text-anchor": "start",
-          fill: colorText, opacity: 0.8, "font-family": "Inter, sans-serif",
-        }));
-      }
-
-      // Badge
-      if (!isAsking) {
-        svg.appendChild(el("rect", { x: 100, y: 16, width: 28, height: 16, rx: 8, fill: "rgba(255,255,255,0.1)" }));
-        svg.appendChild(textNode("1/3", {
-          x: 114, y: 27, "font-size": 10, "font-weight": 700, "text-anchor": "middle",
-          fill: "#A1A1AA", "font-family": "Inter, sans-serif",
-        }));
-      }
-
-      if (isAsking) drawAskIndicator(svg, "streamdeck", 114, 24, 1, t);
+      const [w, h] = svgSize(svg);
+      drawHatchPlaceholder(svg, w, h, 'Stream Deck frame not generated');
     }
 
     function renderD200HDevice(svg, agent, state, t) {
+      const actual = getStreamDeckActual(agent, state);
+      if (actual?.svg && renderInlineSvg(svg, actual.svg)) return;
       clear(svg);
-      // The D200H session key uses the same shared session renderer as Stream Deck
-      // (buildSessionDeck / renderSessionSlot). Reuse the real slot SVG so the key
-      // is canonical (144×144), not an approximation.
-      const slot = getStreamDeckActual(agent, state);
-      if (slot && renderInlineSvg(svg, slot.svg)) return;
-      svg.setAttribute("viewBox", "0 0 196 196");
-      const isWorking = state === "working";
-      const isAsking = state === "asking";
-      const p1 = agent === "claude" ? "#D97757" : agent === "codex" ? "#8BA4FF" : agent === "openclaw" ? "#FF6B6B" : "#F1ECEC";
-      const p2 = agent === "claude" ? "#BE6D52" : agent === "codex" ? "#5981FF" : agent === "openclaw" ? "#CC3333" : "#AFAFAF";
-      const stateColor = isWorking ? "#3B82F6" : isAsking ? "#F59E0B" : "#22C55E";
-      const stripColor = isWorking || isAsking ? stateColor : p1;
-      const stateLabel = isWorking ? (agent === "openclaw" ? "ROUTING" : "WORKING") : isAsking ? "AWAITING" : agent === "openclaw" ? "STANDBY" : "IDLE";
-      const modelStr = agent === "claude" ? "opus-4" : agent === "codex" ? "gpt-5" : agent === "openclaw" ? "" : "opencode";
-      const nameStr = agent === "claude" ? "Claude" : agent === "codex" ? "Codex" : agent === "openclaw" ? "OpenClaw" : "OpenCode";
-      const hasModel = modelStr.length > 0;
-      const d200hFont = "\"Helvetica Neue\", Helvetica, Arial, sans-serif";
-
-      const gradId = `d200h-bg-${agent}-${state}`;
-      addLinearGradient(svg, gradId, [
-        { offset: "0%", "stop-color": "#141417" },
-        { offset: "100%", "stop-color": "#08090C" },
-      ]);
-      svg.appendChild(el("rect", { x: 0, y: 0, width: 196, height: 196, fill: `url(#${gradId})` }));
-
-      const pad = 18;
-      const inner = 196 - pad * 2;
-      svg.appendChild(el("rect", { x: pad, y: pad, width: inner, height: inner, rx: 13, fill: "#1C1C1E" }));
-      svg.appendChild(el("rect", { x: pad, y: pad, width: inner, height: 34, rx: 13, fill: "#FFFFFF", opacity: 0.08 }));
-      svg.appendChild(el("rect", { x: pad, y: 134, width: inner, height: 44, rx: 13, fill: "#000000", opacity: 0.12 }));
-      svg.appendChild(el("rect", { x: pad, y: pad, width: inner, height: inner, rx: 13, fill: "none", stroke: "#FFFFFF", "stroke-width": 1.5, opacity: 0.24 }));
-      if (isWorking || isAsking) {
-        svg.appendChild(el("rect", { x: pad, y: pad, width: inner, height: inner, rx: 13, fill: "none", stroke: stateColor, "stroke-width": 3, opacity: 0.72 }));
-      }
-      svg.appendChild(el("rect", { x: pad + 3, y: pad + 34, width: 5, height: inner - 68, rx: 2.5, fill: stripColor, opacity: 0.78 }));
-
-      if (agent === "claude") {
-        drawAgentMark(svg, agent, 62, 54, 54, { state: "idle", t, palette: { fill: p1, opacity: 0.82 } });
-      } else if (agent === "codex") {
-        drawAgentMark(svg, agent, 62, 56, 56, {
-          state: "idle", t,
-          palette: { top: p1, mid: p1, bottom: p2, opacity: 0.88 },
-          promptStyle: { color: "#FFF", fontSize: 13, yOffset: 4, opacity: 0.6 },
-        });
-      } else if (agent === "openclaw") {
-        drawAgentMark(svg, agent, 62, 52, 64, {
-          state: "idle", t,
-          palette: { top: p1, bottom: p2, eye: "#00E5CC", opacity: 0.9 },
-        });
-      } else {
-        drawAgentMark(svg, agent, 62, 56, 48, {
-          state: "idle", t,
-          palette: { outer: p1, inner: p2, bg: "#1C1C1E", opacity: 0.9 },
-        });
-      }
-
-      svg.appendChild(el("circle", { cx: 163, cy: 33, r: 8, fill: stateColor, opacity: 0.9 }));
-      svg.appendChild(textNode(nameStr, {
-        x: 34, y: hasModel ? 104 : 112, "font-size": nameStr.length >= 8 ? 20 : 22, "font-weight": 800, "text-anchor": "start",
-        fill: "#FFFFFF", "font-family": d200hFont,
-      }));
-      if (hasModel) {
-        svg.appendChild(textNode(modelStr, {
-          x: 34, y: 126, "font-size": 15, "font-weight": 700, "text-anchor": "start",
-          fill: "#94A3B8", "font-family": d200hFont,
-        }));
-      }
-      svg.appendChild(textNode(stateLabel, {
-        x: 34, y: hasModel ? 148 : 140, "font-size": 14, "font-weight": 800, "text-anchor": "start",
-        fill: stateColor, "font-family": d200hFont,
-      }));
-
-      if (isAsking) drawAskIndicator(svg, "streamdeck", 163, 33, 0.85, t);
+      const [w, h] = svgSize(svg);
+      drawHatchPlaceholder(svg, w, h, 'D200H frame not generated');
     }
 
     function renderD200HUsageDevice(svg, state, t) {
-      clear(svg);
-      // Prefer the real 288×144 shared renderer (shared/src/d200h-layout.ts).
       const actual = getD200HUsageActual();
-      if (actual && renderInlineSvg(svg, actual.svg)) return;
-      // Fallback: hand-drawn approximation (only if sim-data is missing).
-      const pct5 = 46;
-      const pct7 = 72;
-      const colorForPct = (pct) => pct > 80 ? "#EF4444" : pct > 50 ? "#EAB308" : "#22C55E";
-      const color5 = colorForPct(pct5);
-      const color7 = colorForPct(pct7);
-      const w = 392;
-      const h = 196;
-      const d200hFont = "\"Helvetica Neue\", Helvetica, Arial, sans-serif";
-      svg.appendChild(el("rect", { x: 0, y: 0, width: w, height: h, fill: "#0F172A" }));
-
-      const segmentGauge = (x, y, pct, color) => {
-        const segments = 8;
-        const segmentWidth = 20;
-        const segmentHeight = 18;
-        const gap = 5;
-        const filled = Math.round(Math.max(0, Math.min(100, pct)) / 100 * segments);
-        for (let i = 0; i < segments; i++) {
-          svg.appendChild(el("rect", {
-            x: x + i * (segmentWidth + gap), y, width: segmentWidth, height: segmentHeight, rx: 4,
-            fill: i < filled ? color : "#1E293B", opacity: i < filled ? 0.88 : 0.78,
-          }));
-        }
-      };
-      segmentGauge(78, 53, pct5, color5);
-      segmentGauge(78, 105, pct7, color7);
-
-      svg.appendChild(textNode("USAGE", {
-        x: w / 2, y: 22, "font-size": 22, "font-weight": 800, "text-anchor": "middle",
-        fill: "#94A3B8", "font-family": d200hFont,
-      }));
-      svg.appendChild(textNode("5H", {
-        x: 34, y: 49, "font-size": 22, "font-weight": 800, "text-anchor": "start",
-        fill: "#94A3B8", "font-family": d200hFont,
-      }));
-      svg.appendChild(textNode(`${pct5}%`, {
-        x: 334, y: 44, "font-size": 26, "font-weight": 800, "text-anchor": "middle",
-        fill: "#FFFFFF", "font-family": d200hFont,
-      }));
-      svg.appendChild(textNode("1h24m", {
-        x: 327, y: 74, "font-size": 17, "font-weight": 800, "text-anchor": "middle",
-        fill: "#94A3B8", "font-family": d200hFont,
-      }));
-      svg.appendChild(textNode("7D", {
-        x: 34, y: 101, "font-size": 22, "font-weight": 800, "text-anchor": "start",
-        fill: "#94A3B8", "font-family": d200hFont,
-      }));
-      svg.appendChild(textNode(`${pct7}%`, {
-        x: 334, y: 96, "font-size": 26, "font-weight": 800, "text-anchor": "middle",
-        fill: "#FFFFFF", "font-family": d200hFont,
-      }));
-      svg.appendChild(textNode("1d4h", {
-        x: 327, y: 126, "font-size": 17, "font-weight": 800, "text-anchor": "middle",
-        fill: "#94A3B8", "font-family": d200hFont,
-      }));
-      svg.appendChild(textNode("ChatGPT Plus Apr 27", {
-        x: w / 2, y: 140, "font-size": 16, "font-weight": 800, "text-anchor": "middle",
-        fill: "#64748B", "font-family": d200hFont,
-      }));
+      if (actual?.svg && renderInlineSvg(svg, actual.svg)) return;
+      clear(svg);
+      const [w, h] = svgSize(svg);
+      drawHatchPlaceholder(svg, w, h, 'D200H usage frame not generated');
     }
-
 
     function renderTuiDevice(svg, agent, state, t) {
       const actual = getTuiActual(agent, state);
-      if (actual) {
-        renderTuiActual(svg, actual);
-        return;
-      }
+      if (actual) { renderTuiActual(svg, actual); return; }
+      if (svg.dataset.tuiMissing === 'true') return;
+      svg._canonicalTuiFrame = null;
       clear(svg);
       const [w, h] = svgSize(svg);
-      const focus = svg.id === "tui-focus";
-      const bg = "#0B1118";
-      const panel = "#101923";
-      const line = "#203040";
-      const accent = agent === "claude" ? "#D97757" : agent === "codex" ? "#8BA4FF" : agent === "openclaw" ? "#FF6B6B" : "#F1ECEC";
-      const dim = "#8FA4B7";
-      const bright = "#DDE7F0";
-      svg.appendChild(el("rect", { x: 0, y: 0, width: w, height: h, rx: 18, fill: bg }));
-      svg.appendChild(el("rect", { x: 16, y: 16, width: w - 32, height: 36, rx: 10, fill: panel }));
-      svg.appendChild(textNode("agentdeck dashboard", {
-        x: 34, y: 39, fill: bright, "font-size": focus ? 24 : 20, "font-family": "ui-monospace, SFMono-Regular, Menlo, monospace",
-      }));
-      svg.appendChild(textNode(state.toUpperCase(), {
-        x: w - (focus ? 132 : 112), y: 39, fill: accent, "font-size": focus ? 24 : 20, "font-weight": 700, "font-family": "ui-monospace, SFMono-Regular, Menlo, monospace",
-      }));
-      svg.appendChild(el("rect", { x: 20, y: 70, width: w * (focus ? 0.24 : 0.28), height: h - 92, rx: 12, fill: panel }));
-      svg.appendChild(el("rect", { x: w * (focus ? 0.28 : 0.32), y: 70, width: w * (focus ? 0.69 : 0.64) - 24, height: h - 92, rx: 12, fill: panel }));
-      svg.appendChild(el("line", { x1: w * (focus ? 0.28 : 0.32), y1: 94, x2: w - 24, y2: 94, stroke: line, "stroke-width": 1 }));
-      svg.appendChild(textNode("AGENT", {
-        x: 36, y: 94, fill: dim, "font-size": focus ? 20 : 18, "font-family": "ui-monospace, SFMono-Regular, Menlo, monospace",
-      }));
-      svg.appendChild(textNode("TERRARIUM", {
-        x: w * (focus ? 0.28 : 0.32) + 16, y: 94, fill: dim, "font-size": focus ? 20 : 18, "font-family": "ui-monospace, SFMono-Regular, Menlo, monospace",
-      }));
-
-      const lines = [
-        "[1] " + AGENTS[agent].label,
-        "    model · " + (agent === "claude" ? "opus-4" : agent === "codex" ? "gpt-5-codex" : "opencode"),
-        "    state · " + state,
-        "",
-        "limits 5h ███░ 72%",
-        "limits 7d ██░░ 38%",
-      ];
-      lines.forEach((str, i) => {
-        svg.appendChild(textNode(str, {
-          x: 36,
-          y: 126 + i * (focus ? 30 : 28),
-          fill: i === 0 ? bright : dim,
-          "font-size": focus ? 20 : 18,
-          "font-family": "ui-monospace, SFMono-Regular, Menlo, monospace",
-        }));
-      });
-
-      const sprites = {
-        claude: ["  ⢠⣶⣶⡄ ", " ⢸⣿⣿⣿⡇", "  ⠸⠇⠸⠇ "],
-        codex:  ["  ⣠⣶⣦  ", " ⣾⠟⠻⣷ ", "  ⠻⣦⠟  "],
-        opencode:["  ┌────┐  ", "  │ ┌┐ │  ", "  └────┘  "],
-        openclaw:["  ╭╮  ╭╮ ", "  ├╯██╰┤ ", "   ╵╰──╯  "],
-      };
-      const octopi = [
-        { agent: "claude", x: 0.28, y: agent === "claude" ? (state === "working" ? 0.30 : state === "asking" ? 0.50 : 0.88) : 0.88 },
-        { agent: "opencode", x: 0.52, y: agent === "opencode" ? (state === "working" ? 0.30 : state === "asking" ? 0.50 : 0.88) : 0.88 },
-      ];
-      const jellyfish = { agent: "codex", x: 0.50, y: agent === "codex" ? (state === "working" ? 0.10 : state === "asking" ? 0.50 : 0.85) : 0.85 };
-      const crayfish = { agent: "openclaw", x: 0.75, y: agent === "openclaw" && state === "working" ? 0.50 : 0.85 };
-      const terrCreatures = [...octopi, jellyfish, crayfish].map(creature => ({
-        ...creature,
-        x: w * ((focus ? 0.30 : 0.32) + creature.x * (focus ? 0.60 : 0.56)),
-        y: 110 + creature.y * (h - (focus ? 170 : 210)),
-      }));
-      for (const creature of terrCreatures) {
-        const isSelected = creature.agent === agent;
-        const selectedAccent = creature.agent === "claude" ? "#D97757" : creature.agent === "codex" ? "#8BA4FF" : creature.agent === "openclaw" ? "#FF6B6B" : "#F1ECEC";
-        const sprite = sprites[creature.agent];
-        sprite.forEach((row, i) => {
-          svg.appendChild(textNode(row, {
-            x: creature.x - (focus ? 58 : 42),
-            y: creature.y - (focus ? 18 : 12) + i * (focus ? 28 : 20) + (isSelected && state === "working" ? Math.sin(t * 4 + i) * 2 : 0),
-            fill: selectedAccent,
-            opacity: isSelected ? 1 : 0.62,
-            "font-size": focus ? 24 : 18,
-            "font-family": "ui-monospace, SFMono-Regular, Menlo, monospace",
-          }));
-        });
-        if (isSelected && state === "asking") {
-          svg.appendChild(textNode("?", {
-            x: creature.x + (focus ? 42 : 28),
-            y: creature.y + (focus ? 18 : 12),
-            fill: "#F5B942",
-            "font-size": focus ? 24 : 18,
-            "font-weight": 700,
-            "font-family": "ui-monospace, SFMono-Regular, Menlo, monospace",
-          }));
-        }
-        if (isSelected && state === "working") {
-          const burst = creature.agent === "codex" ? ["•", "•", "•", "•"] : ["✧", "✧", "✧", "✧"];
-          burst.forEach((mark, i) => {
-            svg.appendChild(textNode(mark, {
-              x: creature.x + Math.cos(t * 2 + i * Math.PI / 2) * (focus ? 34 : 26),
-              y: creature.y + Math.sin(t * 2 + i * Math.PI / 2) * (focus ? 20 : 14),
-              fill: creature.agent === "codex" ? "#AFC0FF" : "#F2C182",
-              "font-size": focus ? 18 : 14,
-              "font-family": "ui-monospace, SFMono-Regular, Menlo, monospace",
-            }));
-          });
-        }
-      }
-      svg.appendChild(textNode("~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~", {
-        x: w * 0.37,
-        y: h - 68,
-        fill: "#5E7D98",
-        "font-size": 20,
-        "font-family": "ui-monospace, SFMono-Regular, Menlo, monospace",
-      }));
+      drawHatchPlaceholder(svg, w, h, 'TUI frame not generated');
+      svg.dataset.tuiMissing = 'true';
     }
 
     function effectiveState() {
