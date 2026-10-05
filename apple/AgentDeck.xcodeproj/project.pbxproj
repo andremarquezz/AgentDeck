@@ -321,6 +321,7 @@
 		7B0F7E18D01881EF81E3F08E /* OpenClawTokenExtractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAF69E65D3118C105A193227 /* OpenClawTokenExtractTests.swift */; };
 		7B25A56536275C7DF023DFEB /* LightRaySystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = D53F4A08898B95CB592E133A /* LightRaySystem.swift */; };
 		7BDDF6B91F9378908A89E1F5 /* GatewayProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BCC68BE56702DFD637FFE02 /* GatewayProbe.swift */; };
+		7C1CBB4102C77A567092B565 /* AgentDeckPathsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D55999BEAD84484D03EEB51 /* AgentDeckPathsTests.swift */; };
 		7C82850EC02DC12B6B2C7EE0 /* MicroGlyphs.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF67F9EA0CB4FD3EE8C963A /* MicroGlyphs.swift */; };
 		7D1FA2E1BD47D35C7E3FEB23 /* Protocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = E532E5457B6DFDE324D8F11C /* Protocol.swift */; };
 		7D6011100BB1B77CAD8A709E /* DataParticleSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57722317EDF1D567981112DE /* DataParticleSystem.swift */; };
@@ -619,6 +620,7 @@
 		F1C357A840E59D7A188C808B /* OnboardingScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9965CED8937C8C1F27DFCC68 /* OnboardingScreen.swift */; };
 		F20373DB53552C2F36204EDF /* TerrariumConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403CDDF7DDFCF5D8702491EA /* TerrariumConfig.swift */; };
 		F30F046B8C2F044E12263AE8 /* DaemonPortFallbackTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA9A38D1BD38841DF83F3017 /* DaemonPortFallbackTests.swift */; };
+		F3272430808C8067A5B15F7F /* AgentDeckPathsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D55999BEAD84484D03EEB51 /* AgentDeckPathsTests.swift */; };
 		F352145007826B5BE9683A3D /* WearableTabletPreviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 573B908900BFBC530F17EAB6 /* WearableTabletPreviews.swift */; };
 		F4150CA5E9A31CD575F69F0C /* SessionGrouping.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAB8DFED8E277FFB6136742 /* SessionGrouping.swift */; };
 		F42F09D300661953D5F0EAFF /* StateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA46D3D4A84FBDE6C8B3AB62 /* StateMachine.swift */; };
@@ -691,6 +693,7 @@
 		0B93CE0A5FD951A9FD021DB2 /* CreatureFloorSpacingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatureFloorSpacingTests.swift; sourceTree = "<group>"; };
 		0BDA4F07842CEFAA838A0A2B /* PocketSansWorld_12.cpfont */ = {isa = PBXFileReference; path = PocketSansWorld_12.cpfont; sourceTree = "<group>"; };
 		0C97EE2C9DA1A4FA137619AF /* CodexExecChildren.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexExecChildren.swift; sourceTree = "<group>"; };
+		0D55999BEAD84484D03EEB51 /* AgentDeckPathsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentDeckPathsTests.swift; sourceTree = "<group>"; };
 		0DD3A6826EADF11BB4C4F139 /* BubbleSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubbleSystem.swift; sourceTree = "<group>"; };
 		0F083DDE39507B6693AED227 /* ApmeCategoryE2ETests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApmeCategoryE2ETests.swift; sourceTree = "<group>"; };
 		117F3C33248F92F5E98E4ECB /* HermesObserverGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HermesObserverGateTests.swift; sourceTree = "<group>"; };
@@ -1069,6 +1072,7 @@
 		2A19A20A106E79B114EDF545 /* AgentDeckTests */ = {
 			isa = PBXGroup;
 			children = (
+				0D55999BEAD84484D03EEB51 /* AgentDeckPathsTests.swift */,
 				3AB5FA66873A6E7FACA1B8EE /* ApmeActivityHistoryTests.swift */,
 				0F083DDE39507B6693AED227 /* ApmeCategoryE2ETests.swift */,
 				94B060A15BF6B6EFD1848C81 /* ApmeClassifierBackendTests.swift */,
@@ -1843,6 +1847,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7C1CBB4102C77A567092B565 /* AgentDeckPathsTests.swift in Sources */,
 				AE2FE91B1BA01200F4E17122 /* ApmeActivityHistoryTests.swift in Sources */,
 				BDEDD6038EA83D66CC78F12C /* ApmeCategoryE2ETests.swift in Sources */,
 				11267120A1E59EB9DA314A75 /* ApmeClassifierBackendTests.swift in Sources */,
@@ -1927,6 +1932,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F3272430808C8067A5B15F7F /* AgentDeckPathsTests.swift in Sources */,
 				21B888794E0EE0FDE78954AB /* ApmeActivityHistoryTests.swift in Sources */,
 				38B8B9D479D582EE034C05DB /* ApmeCategoryE2ETests.swift in Sources */,
 				E2A2D16B6B22232302404F71 /* ApmeClassifierBackendTests.swift in Sources */,
