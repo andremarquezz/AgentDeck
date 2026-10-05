@@ -131,11 +131,12 @@ actor DaemonTimelineStore {
     private var suppressLocalChatTool = false
     func setSuppressLocalChatTool(_ v: Bool) { suppressLocalChatTool = v }
 
-    func add(_ entry: DaemonTimelineEntry, bypassSuppression: Bool = false) {
+    @discardableResult
+    func add(_ entry: DaemonTimelineEntry, bypassSuppression: Bool = false) -> Bool {
         if suppressLocalChatTool, !bypassSuppression, Self.projectedTypes.contains(entry.type) {
-            return
+            return false
         }
-        guard let entry = Self.normalizeForStorage(entry) else { return }
+        guard let entry = Self.normalizeForStorage(entry) else { return false }
 
         // Task hierarchy rows bypass exact dedup — they're keyed by taskId, not
         // content, so two `task_milestone` rows carrying identical raw
@@ -157,7 +158,7 @@ actor DaemonTimelineStore {
                 if entry.type == "scheduled", let sid = entry.sessionId, !sid.isEmpty,
                    let other = existing.sessionId, !other.isEmpty, sid != other { return false }
                 return true
-            }) != nil { return }
+            }) != nil { return false }
         }
 
         insertSorted(entry)
@@ -166,6 +167,7 @@ actor DaemonTimelineStore {
         }
         dirty = true
         flush()
+        return true
     }
 
     /// Insert keeping `entries` ascending by ts. Live emits normally arrive

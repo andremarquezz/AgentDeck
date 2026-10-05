@@ -57,8 +57,10 @@ for vector in timelineVectors {
     let store = DaemonTimelineStore(persistFile: URL(fileURLWithPath: "/unused-ci-parity.json"))
     let before = try JSONSerialization.data(withJSONObject: vector["before"]!)
     let incoming = try JSONSerialization.data(withJSONObject: vector["incoming"]!)
-    await store.add(try JSONDecoder().decode(DaemonTimelineEntry.self, from: before))
-    await store.add(try JSONDecoder().decode(DaemonTimelineEntry.self, from: incoming))
+    let firstAccepted = await store.add(try JSONDecoder().decode(DaemonTimelineEntry.self, from: before))
+    let incomingAccepted = await store.add(try JSONDecoder().decode(DaemonTimelineEntry.self, from: incoming))
+    precondition(firstAccepted)
+    precondition(incomingAccepted == (vector["action"] as! String == "add"), "Rejected duplicate must not broadcast")
     let actual = await store.getAll()
     precondition(actual.count == (vector["action"] as! String == "add" ? 2 : 1), "Scheduled CI dedup mismatch")
 }

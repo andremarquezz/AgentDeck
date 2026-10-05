@@ -33,8 +33,11 @@ final class TimelineCrossDaemonFormatTests: XCTestCase {
             let store = DaemonTimelineStore(persistFile: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
             let before = try JSONSerialization.data(withJSONObject: XCTUnwrap(vector["before"] as? [String: Any]))
             let incoming = try JSONSerialization.data(withJSONObject: XCTUnwrap(vector["incoming"] as? [String: Any]))
-            await store.add(try JSONDecoder().decode(DaemonTimelineEntry.self, from: before))
-            await store.add(try JSONDecoder().decode(DaemonTimelineEntry.self, from: incoming))
+            let firstAccepted = await store.add(try JSONDecoder().decode(DaemonTimelineEntry.self, from: before))
+            let incomingAccepted = await store.add(try JSONDecoder().decode(DaemonTimelineEntry.self, from: incoming))
+            XCTAssertTrue(firstAccepted)
+            XCTAssertEqual(incomingAccepted, vector["action"] as? String == "add",
+                           "Only accepted rows may be broadcast: \(vector["name"] ?? "")")
             let actual = await store.getAll()
             XCTAssertEqual(actual.count, vector["action"] as? String == "add" ? 2 : 1, vector["name"] as? String ?? "")
         }

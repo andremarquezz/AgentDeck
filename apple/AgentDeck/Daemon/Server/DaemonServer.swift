@@ -6225,7 +6225,9 @@ final class DaemonServer {
                     agentType: isCodexEvent ? "codex-cli" : "claude-code", repeatCount: nil, automated: nil)
                 entry.sessionId = rawSid
                 entry.summaryKind = "none"
-                await timelineStore.add(entry, bypassSuppression: true)
+                if await timelineStore.add(entry, bypassSuppression: true) {
+                    broadcastRaw(["type": "timeline_event", "entry": claudeCodeEntryDict(entry)])
+                }
                 broadcastSessionsList()
             }
         }
@@ -11787,7 +11789,11 @@ final class DaemonServer {
                 agentType: "hermes", repeatCount: nil, automated: nil)
             entry.sessionId = rawSid
             entry.summaryKind = "none"
-            Task { await timelineStore.add(entry, bypassSuppression: true) }
+            Task {
+                if await timelineStore.add(entry, bypassSuppression: true) {
+                    broadcastRaw(["type": "timeline_event", "entry": claudeCodeEntryDict(entry)])
+                }
+            }
         }
         let apmeHook = Self.normalizeApmeObservedHook(
             event: event,
