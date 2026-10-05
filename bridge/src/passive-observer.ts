@@ -74,6 +74,10 @@ export interface CodexRolloutSummary extends TranscriptSummary {
   cwd?: string;
   startedAt?: number;
   effort?: string;
+  /** Codex's own words from `turn_context`: `plan` while the collaboration
+   *  mode is plan, otherwise `sandbox_policy.type` (read-only /
+   *  workspace-write / danger-full-access). */
+  permissionMode?: string;
   hasPendingCalls?: boolean;
   /** Internal companion rollouts never become top-level dashboard sessions. */
   isSubagent: boolean;
@@ -540,6 +544,7 @@ export function parseCodexRollout(raw: string): CodexRolloutSummary {
   let startedAt: number | undefined;
   let modelName: string | undefined;
   let effort: string | undefined;
+  let permissionMode: string | undefined;
   let currentTask: string | undefined;
   let goal: string | undefined;
   let totalTokens = 0;
@@ -635,6 +640,11 @@ export function parseCodexRollout(raw: string): CodexRolloutSummary {
       if (!payload) continue;
       modelName = stringAt(payload, 'model') ?? modelName;
       effort = stringAt(payload, 'effort') ?? effort;
+      const sandbox = objectAt(payload, 'sandbox_policy');
+      const collaboration = objectAt(payload, 'collaboration_mode');
+      permissionMode = (collaboration && stringAt(collaboration, 'mode') === 'plan')
+        ? 'plan'
+        : (sandbox ? stringAt(sandbox, 'type') : undefined) ?? permissionMode;
       contextWindow = numberAt(payload, 'model_context_window') || contextWindow;
     }
   }
@@ -647,8 +657,11 @@ export function parseCodexRollout(raw: string): CodexRolloutSummary {
     sessionId,
     cwd,
     startedAt,
-    modelName: effort && modelName ? `${modelName} ${effort}` : modelName,
+    // Effort rides its own field; folding it into the model string hid it from
+    // every surface that renders `effortLevel`.
+    modelName,
     effort,
+    permissionMode,
     state,
     currentTask,
     goal,
@@ -900,6 +913,8 @@ export async function collectCodexSessionsFromRollouts(
         alive: true,
         state,
         modelName: parsed.modelName,
+        ...(parsed.effort ? { effortLevel: parsed.effort } : {}),
+        ...(parsed.permissionMode ? { permissionMode: parsed.permissionMode } : {}),
         startedAt: parsed.startedAt ? new Date(parsed.startedAt).toISOString() : new Date().toISOString(),
         controlMode: 'observed',
         cwd,

@@ -541,7 +541,15 @@ export interface SessionInfo {
   alive: boolean;
   state?: string;  // sibling's current state from /health query
   modelName?: string;  // sibling's current model from /health query
-  effortLevel?: string;  // sibling's current effort (max/xhigh/high/medium/low/default/fast)
+  /** The agent's own reasoning-effort word, verbatim (Claude `effort.level`,
+   *  Codex `turn_context.effort`). An open set: each agent and model has its
+   *  own levels, so surfaces render it as-is and never assume which one is the
+   *  default. Absent means the agent has not reported one. */
+  effortLevel?: string;
+  /** The agent's own permission-mode word, verbatim — Claude `permission_mode`
+   *  (default / acceptEdits / plan / auto / …), Codex `plan` or its
+   *  `sandbox_policy.type`. Open set, rendered as-is; absent = not reported. */
+  permissionMode?: string;
   startedAt?: string;  // ISO 8601 session start time
   weight?: number;  // explicit deck/tab sort override (integer in SESSION_WEIGHT_MIN..MAX, default 0); lower sorts first — see sortSessions
   currentTool?: string;

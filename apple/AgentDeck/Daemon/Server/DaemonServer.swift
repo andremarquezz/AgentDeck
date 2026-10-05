@@ -400,6 +400,13 @@ enum CodexRolloutResponseReader {
     private static let maxDayDirs = 30
     private static let tailBytes = 128 * 1024
 
+    /// The rollout's latest `turn_context` payload — Codex's own record of the
+    /// turn's model, effort, sandbox and collaboration mode (#463).
+    static func latestTurnContext(sessionId: String, sessionsRoot: URL? = nil) -> [String: Any]? {
+        guard let file = locateRollout(sessionId: sessionId, sessionsRoot: sessionsRoot) else { return nil }
+        return ObservedAgentSettings.latestTurnContext(inRolloutTail: readTail(file, maxBytes: tailBytes))
+    }
+
     static func lastAgentMessage(sessionId: String, sessionsRoot: URL? = nil) -> String? {
         guard let file = locateRollout(sessionId: sessionId, sessionsRoot: sessionsRoot) else { return nil }
         let text = readTail(file, maxBytes: tailBytes)
@@ -6186,6 +6193,9 @@ final class DaemonServer {
             }
         default: break
         }
+        if let sessionId, !isOpenCodeEvent {
+            noteObservedAgentSettings(event: event, json: json, sessionId: sessionId, isCodex: isCodexEvent)
+        }
         if isOpenCodeEvent, let sessionId {
             applyOpenCodeWait(sessionId: sessionId, event: event,
                 id: (json["permission_id"] as? String) ?? (json["question_id"] as? String),
@@ -7443,6 +7453,43 @@ final class DaemonServer {
     /// Apply a per-session state/tool update coming from a hook event and
     /// broadcast the refreshed sessions list. No-op when the sessionId is
     /// nil or refers to a session we never registered via `session_start`.
+    /// Model / effort / permission mode in the agent's own words (#463), from
+    /// the hook payload and — for Codex, whose hooks carry only the model — the
+    /// rollout's latest `turn_context`, read at turn boundaries inside the
+    /// `~/.codex` bookmark scope. Observed rows only: a managed bridge pushes
+    /// its own values.
+    private func noteObservedAgentSettings(event: String, json: [String: Any], sessionId: String, isCodex: Bool) {
+        guard var entry = pushedSessionsById[sessionId], entry.controlMode == "observed" else { return }
+        var reading = isCodex
+            ? ObservedAgentSettings.codex(fromHook: json)
+            : ObservedAgentSettings.claude(fromHook: json)
+        if isCodex, event == "codex_stop" || event == "codex_user_prompt_submit" || event == "codex_session_start",
+           let context = codexRolloutTurnContext(sessionId: sessionId) {
+            // The hook's model is the live slug; the rollout supplies the rest.
+            reading = ObservedAgentSettings.merge(reading, into: ObservedAgentSettings.codex(turnContext: context))
+        }
+        guard !reading.isEmpty else { return }
+        let current = ObservedAgentSettings.Reading(
+            model: entry.modelName, effortLevel: entry.effortLevel, permissionMode: entry.permissionMode)
+        let next = ObservedAgentSettings.merge(reading, into: current)
+        guard next != current else { return }
+        entry.modelName = next.model
+        entry.effortLevel = next.effortLevel
+        entry.permissionMode = next.permissionMode
+        pushedSessionsById[sessionId] = entry
+        upsertIntoCachedSessions(entry)
+        scheduleSessionsListBroadcast()
+    }
+
+    private func codexRolloutTurnContext(sessionId: String) -> [String: Any]? {
+        let bare = Self.codexBareId(sessionId)
+        return AppPreferences.shared.withCodexDirectoryAccess { dir -> [String: Any]? in
+            CodexRolloutResponseReader.latestTurnContext(
+                sessionId: bare,
+                sessionsRoot: dir.appendingPathComponent("sessions", isDirectory: true))
+        } ?? CodexRolloutResponseReader.latestTurnContext(sessionId: bare)
+    }
+
     private func updateSessionHookState(
         sessionId: String?,
         state newState: String,

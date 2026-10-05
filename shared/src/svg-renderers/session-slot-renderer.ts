@@ -286,7 +286,10 @@ function stateLabel(state?: string, agentType?: AgentType): string {
 export function formatModelEffort(modelName?: string, effortLevel?: string, maxLen = 14): string {
   if (!modelName) return '';
   const aliased = aliasModelName(modelName);
-  const showEffort = effortLevel && effortLevel !== 'medium' && effortLevel !== 'default';
+  // Effort levels and their defaults differ per agent and per model (#463), so
+  // every reported level is shown — only the literal word 'default' (= no
+  // explicit level) is omitted.
+  const showEffort = effortLevel && effortLevel !== 'default';
   if (!showEffort) return truncate(aliased, maxLen);
   const combined = `${aliased} · ${effortLevel}`;
   if (combined.length <= maxLen) return combined;
@@ -758,7 +761,7 @@ export function renderDetailInfo(
     `<text x="20" y="34" font-size="18" font-weight="800" text-anchor="start" fill="#ffffff" font-family="${fontFam}">${escXml(truncate(nameForDisplay, 10))}</text>`,
     // Model and mode yield their rows to the prompt for the same reason.
     (modelName && agent !== 'openclaw' && !promptEls) ? `<text x="20" y="56" font-size="12" font-weight="600" text-anchor="start" fill="#94a3b8" font-family="${fontFam}">${escXml(formatModelEffort(modelName, effortLevel, 17))}</text>` : '',
-    (mode && mode !== 'default' && agent !== 'openclaw' && !promptEls) ? `<text x="20" y="74" font-size="11" font-weight="700" text-anchor="start" fill="#a78bfa" font-family="${fontFam}">${escXml(mode.toUpperCase())}</text>` : '',
+    (mode && mode !== 'default' && agent !== 'openclaw' && !promptEls) ? `<text x="20" y="74" font-size="11" font-weight="700" text-anchor="start" fill="#a78bfa" font-family="${fontFam}">${escXml(truncate(mode.toUpperCase(), 17))}</text>` : '',
     promptEls,
     `<text x="20" y="120" font-size="12" font-weight="700" text-anchor="start" fill="${tool ? '#fbbf24' : sColor}" font-family="${fontFam}">${escXml(toolDisplay)}</text>`,
   ].join('');

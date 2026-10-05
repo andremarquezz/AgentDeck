@@ -2430,6 +2430,10 @@ struct ADSessionInfo: Codable, Equatable {
     var cwd: String?
     /// Optional compact device label; never a session identity or folding key.
     var displayName: String?
+    /// The agent's own reasoning-effort word, verbatim (Claude `effort.level`, Codex
+    /// `turn_context.effort`). An open set: each agent and model has its own levels, so surfaces
+    /// render it as-is and never assume which one is the default. Absent means the agent has not
+    /// reported one.
     var effortLevel: String?
     var elapsedSec: Double?
     var foldedSessionIds: [String]?
@@ -2451,6 +2455,10 @@ struct ADSessionInfo: Codable, Equatable {
     var liveAnswerable: Bool?
     var modelName: String?
     var options: [ADPromptOption]?
+    /// The agent's own permission-mode word, verbatim — Claude `permission_mode` (default /
+    /// acceptEdits / plan / auto / …), Codex `plan` or its `sandbox_policy.type`. Open set,
+    /// rendered as-is; absent = not reported.
+    var permissionMode: String?
     var pid: Double?
     var port: Double
     var projectName: String
@@ -2514,6 +2522,7 @@ struct ADSessionInfo: Codable, Equatable {
         case liveAnswerable = "liveAnswerable"
         case modelName = "modelName"
         case options = "options"
+        case permissionMode = "permissionMode"
         case pid = "pid"
         case port = "port"
         case projectName = "projectName"
@@ -2574,6 +2583,7 @@ extension ADSessionInfo {
         liveAnswerable: Bool?? = nil,
         modelName: String?? = nil,
         options: [ADPromptOption]?? = nil,
+        permissionMode: String?? = nil,
         pid: Double?? = nil,
         port: Double? = nil,
         projectName: String? = nil,
@@ -2614,6 +2624,7 @@ extension ADSessionInfo {
             liveAnswerable: liveAnswerable ?? self.liveAnswerable,
             modelName: modelName ?? self.modelName,
             options: options ?? self.options,
+            permissionMode: permissionMode ?? self.permissionMode,
             pid: pid ?? self.pid,
             port: port ?? self.port,
             projectName: projectName ?? self.projectName,

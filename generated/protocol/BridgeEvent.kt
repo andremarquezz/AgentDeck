@@ -1240,6 +1240,12 @@ data class SessionInfo (
      */
     val displayName: String? = null,
 
+    /**
+     * The agent's own reasoning-effort word, verbatim (Claude `effort.level`, Codex
+     * `turn_context.effort`). An open set: each agent and model has its own levels, so surfaces
+     * render it as-is and never assume which one is the default. Absent means the agent has not
+     * reported one.
+     */
     val effortLevel: String? = null,
 
     @Json(name = "elapsedSec")
@@ -1270,6 +1276,14 @@ data class SessionInfo (
 
     val modelName: String? = null,
     val options: List<PromptOption>? = null,
+
+    /**
+     * The agent's own permission-mode word, verbatim — Claude `permission_mode` (default /
+     * acceptEdits / plan / auto / …), Codex `plan` or its `sandbox_policy.type`. Open set,
+     * rendered as-is; absent = not reported.
+     */
+    val permissionMode: String? = null,
+
     val pid: Double? = null,
     val port: Double,
     val projectName: String,

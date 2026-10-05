@@ -17,7 +17,8 @@ export interface EnrichedSession {
   state?: string;
   modelName?: string;
   effortLevel?: string;
-  /** Claude Code permission mode (default/acceptEdits/plan/bypassPermissions) — managed sessions only. */
+  /** The agent's own permission-mode word, verbatim: Claude `permission_mode`
+   *  (default/acceptEdits/plan/auto/…); Codex `plan` or its `sandbox_policy.type`. */
   permissionMode?: string;
   startedAt?: string;
   /** Explicit deck/tab sort override (default 0); lower sorts first. */

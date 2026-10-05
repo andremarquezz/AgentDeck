@@ -1219,7 +1219,13 @@ function buildDetail(
   const last = slots[slots.length - 1];
   out.set(first, { svg: renderBackButton(), action: { kind: 'back' } });
   out.set(slots[1] ?? first, {
-    svg: renderDetailInfo(heroSess, sState as State, tool, model, undefined),
+    // Mode and effort come from the session's own row (#463). The global
+    // `state.mode` belongs to whichever session last drove the state machine,
+    // so it is only a fallback for a focused session that reports none.
+    svg: renderDetailInfo(
+      heroSess, sState as State, tool, model,
+      sess?.permissionMode ?? (focused ? state.mode || undefined : undefined),
+      undefined, sess?.effortLevel),
     action: null,
   });
 

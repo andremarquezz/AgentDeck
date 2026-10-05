@@ -360,6 +360,7 @@ export class SessionSlotManager {
   get detailState(): State { return this._detailState; }
   get detailOptions(): PromptOption[] { return this._detailOptions; }
   get detailModelName(): string | undefined { return this._detailModelName; }
+  get detailMode(): string | undefined { return this._detailMode; }
   get detailEffortLevel(): string | undefined { return this._detailEffortLevel; }
   get modelSwitching(): boolean { return this._modelSwitching; }
 
@@ -705,9 +706,8 @@ export class SessionSlotManager {
     this._detailQuestion = session?.question;
     this._detailModelName = session?.modelName;
     this._detailEffortLevel = session?.effortLevel;
-    // sessions_list carries no permission mode, and the previous session's is
-    // worse than none — the MODE card renders its own fallback.
-    this._detailMode = undefined;
+    // The row's own mode, never the previous session's (#463).
+    this._detailMode = session?.permissionMode;
     // A suggestion belongs to a turn, not to a session row — never seed one.
     this._detailSuggestedPrompt = undefined;
     this._modelSwitching = false;

@@ -26,7 +26,7 @@ export interface SlotRenderEnv {
   processingStartFrame?: (sessionId: string) => number | undefined;
   isStale: boolean;
   layout?: DeckLayout;
-  detail: { state: State; modelName?: string; effortLevel?: string };
+  detail: { state: State; modelName?: string; effortLevel?: string; mode?: string };
 }
 
 export function renderSlotConfig(config: SessionSlotConfig, env: SlotRenderEnv): string {
@@ -55,6 +55,7 @@ export function renderSlotConfig(config: SessionSlotConfig, env: SlotRenderEnv):
           env.detail.modelName ?? config.session.modelName,
           config.label,
           env.detail.effortLevel ?? config.session.effortLevel,
+          env.detail.mode ?? config.session.permissionMode,
         );
       }
       return renderStatusReadout({

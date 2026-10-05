@@ -233,3 +233,19 @@ describe('D200H observed session detail', () => {
     expect(cmds.find((c) => c.type === 'interrupt')).toBeTruthy();
   });
 });
+
+describe('D200H observed detail INFO readout (#463)', () => {
+  it('shows the row\'s own model, effort and mode words verbatim', () => {
+    const svgs = [...detailCells(observedStateEvt({
+      state: 'idle', modelName: 'gpt-6-astra', effortLevel: 'ultra', permissionMode: 'workspace-write',
+    })).values()].map((c) => c.svg).join('');
+    expect(svgs).toContain('· ultra');
+    expect(svgs).toContain('WORKSPACE-WRITE');
+  });
+
+  it('never borrows the daemon-global mode for an observed row that reports none', () => {
+    const evt = { ...observedStateEvt({ state: 'idle', modelName: 'claude-sonnet-5-5' }), mode: 'plan', permissionMode: 'plan' };
+    const svgs = [...detailCells(evt).values()].map((c) => c.svg).join('');
+    expect(svgs).not.toContain('>PLAN<');
+  });
+});
