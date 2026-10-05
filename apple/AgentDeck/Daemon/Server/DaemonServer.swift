@@ -434,7 +434,7 @@ enum CodexRolloutResponseReader {
     // (2026-09-01, 20 rollouts; max 21,736 bytes). An 8 KB window truncated
     // every real first line and the truncation guard correctly answered
     // "no claim", which read as TUI downstream. 128 KB matches tailBytes.
-    private static let headBytes = 128 * 1024
+    private static let headBytes = ObservedAgentRules.codexMetadataHeadBytes
 
     /// Whether the rollout's `session_meta` names a desktop originator.
     ///
@@ -467,13 +467,26 @@ enum CodexRolloutResponseReader {
               let payload = record["payload"] as? [String: Any] else { return nil }
         return CodexRolloutSessionMeta(
             originator: payload["originator"] as? String,
-            cwd: payload["cwd"] as? String)
+            cwd: payload["cwd"] as? String,
+            isSubagent: subagentVerdict(payload: payload, sessionId: sessionId))
+    }
+
+    /// A missing/malformed head is unknown, so a partial first write can retry
+    /// rather than permanently caching a guessed standalone identity.
+    static func subagentVerdict(payload: [String: Any], sessionId: String) -> Bool? {
+        let bare = normalizedSessionId(sessionId)
+        guard payload["id"] as? String == bare else { return nil }
+        return ObservedAgentRules.codexSessionMetaSubagentVerdict(payload)
+    }
+
+    private static func normalizedSessionId(_ sessionId: String) -> String {
+        sessionId.hasPrefix("codex:")
+            ? String(sessionId.dropFirst("codex:".count))
+            : sessionId
     }
 
     static func locateRollout(sessionId: String, sessionsRoot: URL? = nil) -> URL? {
-        let normalized = sessionId.hasPrefix("codex:")
-            ? String(sessionId.dropFirst("codex:".count))
-            : sessionId
+        let normalized = normalizedSessionId(sessionId)
         guard normalized.range(of: #"^[0-9a-fA-F-]{8,}$"#, options: .regularExpression) != nil else {
             return nil
         }
@@ -1328,6 +1341,27 @@ final class DaemonServer {
     /// drift / lost turn anchor). See the `.turnEnd` OTel case for the guard.
     private var codexOtelTurnIdBySession: [String: String] = [:]
     private var codexObservationOwnership = CodexObservationOwnership()
+    private var codexOtelSynthesizedSessionIds: Set<String> = []
+    private lazy var codexOtelSubagentFilter: CodexOtelSubagentFilter = {
+        let filter = CodexOtelSubagentFilter { threadId in
+            await Task.detached(priority: .utility) {
+                // Scope begins and ends in the worker containing the read;
+                // dispatch never waits for bookmark resolution or filesystem I/O.
+                AppPreferences.shared.withCodexDirectoryAccess { dir -> Bool? in
+                    CodexRolloutResponseReader.sessionMeta(
+                        sessionId: threadId,
+                        sessionsRoot: dir.appendingPathComponent("sessions", isDirectory: true))?.isSubagent
+                } ?? CodexRolloutResponseReader.sessionMeta(sessionId: threadId)?.isSubagent
+            }.value
+        }
+        filter.onSubagent = { [weak self] threadId in
+            guard let self else { return }
+            let sid = "codex:\(threadId)"
+            guard self.codexOtelSynthesizedSessionIds.remove(sid) != nil else { return }
+            self.retractCodexThreadState(sessionId: sid, bareId: threadId)
+        }
+        return filter
+    }()
 
     /// Open-turn chat_start anchor per Claude Code session: noted on every
     /// UserPromptSubmit, claimed by the turn's Stop hook so chat_response /
@@ -4652,6 +4686,7 @@ final class DaemonServer {
         codexProjectNameBySession.removeValue(forKey: sessionId)
         clearCodexTurnAnchor(sid: sessionId)
         codexOtelTurnIdBySession.removeValue(forKey: sessionId)
+        codexOtelSynthesizedSessionIds.remove(sessionId)
         codexLastPromptTopicBySession.removeValue(forKey: sessionId)
         codexCurrentToolBySession.removeValue(forKey: sessionId)
         lastHookAtByPushedSession.removeValue(forKey: sessionId)
@@ -5154,6 +5189,7 @@ final class DaemonServer {
     /// child): its row, its hub-driver identity, its APME run.
     private func retractCodexThreadState(sessionId sid: String, bareId bare: String) {
         codexOtelTurnIdBySession.removeValue(forKey: sid)
+        codexOtelSynthesizedSessionIds.remove(sid)
         if pushedSessionsById.removeValue(forKey: sid) != nil {
             cachedSessions.removeAll { $0.id == sid }
             lastHookAtByPushedSession.removeValue(forKey: sid)
@@ -5232,6 +5268,7 @@ final class DaemonServer {
         // Owned by hooks either way: `codex exec` exports its OTel spans in one
         // batch at exit, which must not synthesize a row for the thread the
         // roster deliberately left out.
+        codexOtelSynthesizedSessionIds.remove(sessionId)
         codexObservationOwnership.receiveHook(event: event, sessionId: sessionId, now: Date())
         let inline = Self.nonEmptyString(json["last_assistant_message"])
         await applyCodexExecChildEvents(verdict.events, inlineSummary: inline)
@@ -5735,6 +5772,7 @@ final class DaemonServer {
         }
 
         if isCodexEvent, let sessionId {
+            codexOtelSynthesizedSessionIds.remove(sessionId)
             codexObservationOwnership.receiveHook(event: event, sessionId: sessionId, now: Date())
         }
 
@@ -6908,6 +6946,7 @@ final class DaemonServer {
     }
 
     private func pruneCodexObservationOwnership(now: Date) {
+        codexOtelSynthesizedSessionIds.formIntersection(pushedSessionsById.keys)
         let cutoff = now.addingTimeInterval(-Self.codexTerminalTombstoneTTL)
         let retained = Set(pushedSessionsById.keys)
             .union(lastTerminalCodexEventBySession.filter { $0.value >= cutoff }.keys)
@@ -6921,6 +6960,7 @@ final class DaemonServer {
     /// session entry per Codex thread; either signal alone is sufficient
     /// to drive the dashboard, both together is idempotent.
     private func handleCodexTrace(_ body: Data) async {
+        guard !codexOtelSubagentFilter.isClosed else { return }
         let parsed: Any
         do {
             parsed = try JSONSerialization.jsonObject(with: body)
@@ -7035,6 +7075,7 @@ final class DaemonServer {
             )
             entry.state = "processing"
             pushedSessionsById[sid] = entry
+            codexOtelSynthesizedSessionIds.insert(sid)
             upsertIntoCachedSessions(entry)
             trackCodexProcessingState(sessionId: sid, entry: entry)
             didTouchSessionsList = true
@@ -7050,6 +7091,7 @@ final class DaemonServer {
             // suggestions) export spans like the user's work; their hooks are
             // dropped, so without this a cwd-less "Codex" row would open.
             if codexAmbientThreads.isAmbient(sid) { return nil }
+            if codexOtelSubagentFilter.check(threadId) == true { return nil }
             return sid
         }
 
@@ -10896,6 +10938,7 @@ final class DaemonServer {
     // MARK: - Shutdown
 
     func shutdown() async {
+        codexOtelSubagentFilter.close()
         DaemonLogger.shared.info("Daemon shutting down...")
         if let backgroundActivity { ProcessInfo.processInfo.endActivity(backgroundActivity) }
         backgroundActivity = nil

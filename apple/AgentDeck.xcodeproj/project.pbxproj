@@ -329,6 +329,7 @@
 		7D1FA2E1BD47D35C7E3FEB23 /* Protocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = E532E5457B6DFDE324D8F11C /* Protocol.swift */; };
 		7D6011100BB1B77CAD8A709E /* DataParticleSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57722317EDF1D567981112DE /* DataParticleSystem.swift */; };
 		7DBB3B78D2F8A74614C9047E /* Adapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 979988BB4CB2A4B5948FD360 /* Adapter.swift */; };
+		7DCDFE1CCF9C68930557C19D /* CodexOtelSubagentFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E43AD34194F04709FE69AF13 /* CodexOtelSubagentFilter.swift */; };
 		7E151A499F63C5A8F7896DD4 /* AppReviewPromptTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F0A3614C2DF6495CAB410B1 /* AppReviewPromptTests.swift */; };
 		7EE9C9A65223FD18211B0C48 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 731118DC3B388D7BE3F1CDB7 /* DesignTokens.swift */; };
 		7F2EF2FA2C61302C14EC7D77 /* TopologyRail.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8FF164B1E859BEE08BBF646 /* TopologyRail.swift */; };
@@ -357,6 +358,7 @@
 		851025D4E314BF0970A0432D /* CollaborationPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4AF6DB8355E0DFAD67F4DBD /* CollaborationPanel.swift */; };
 		85B903EFA7879FA42B54A258 /* RockFormation.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF517661B1BEF3ACD330054D /* RockFormation.swift */; };
 		85C724787BC98E91B345697E /* OpenClawPluginApprovalRules.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0874BC71B3B1DEAE2C6177D7 /* OpenClawPluginApprovalRules.generated.swift */; };
+		85DD9D97A0DC6A1737CC326B /* CodexOtelSubagentFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E43AD34194F04709FE69AF13 /* CodexOtelSubagentFilter.swift */; };
 		85EF0A636EBDCAA072478B2C /* PixooRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 730925E1194B8183122443CA /* PixooRenderer.swift */; };
 		8693E499DE95572584CC9DA9 /* OpenCodeObserverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21073CA63BB9403D46212547 /* OpenCodeObserverTests.swift */; };
 		86F7FE3919CB9698A247E2A3 /* SandDisturbance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F9B51FC480E3419A6334A20 /* SandDisturbance.swift */; };
@@ -983,6 +985,7 @@
 		E0C496748B5F5315E3551E69 /* IDotMatrixSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IDotMatrixSheet.swift; sourceTree = "<group>"; };
 		E0DF2FF90EE46351B4FC2F59 /* MenuBarDensityPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarDensityPolicyTests.swift; sourceTree = "<group>"; };
 		E2A135216D37932FE68501F4 /* CloudCreature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudCreature.swift; sourceTree = "<group>"; };
+		E43AD34194F04709FE69AF13 /* CodexOtelSubagentFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexOtelSubagentFilter.swift; sourceTree = "<group>"; };
 		E47A555A3917875178A5B7E5 /* WaterEffect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaterEffect.swift; sourceTree = "<group>"; };
 		E51DE77A285EB334A6F2005B /* ListenerLeakTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenerLeakTests.swift; sourceTree = "<group>"; };
 		E532E5457B6DFDE324D8F11C /* Protocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Protocol.swift; sourceTree = "<group>"; };
@@ -1475,6 +1478,7 @@
 				408F05BE863985A2E157A5AD /* ClaudePermissionRules.generated.swift */,
 				0C97EE2C9DA1A4FA137619AF /* CodexExecChildren.swift */,
 				009D8008C77ADBF75BE67485 /* CodexObservationOwnership.swift */,
+				E43AD34194F04709FE69AF13 /* CodexOtelSubagentFilter.swift */,
 				A0903C3EBD6675CB1D28C1FE /* HermesObserverGate.swift */,
 				603AE403ECE592BCF9FAD994 /* KiroTimelineFeed.swift */,
 				D9DCDE7C19F4BE7649995B33 /* LocalKiroObserver.swift */,
@@ -2091,6 +2095,7 @@
 				5DDA6F733312F1A880DE38C9 /* CodexFreshnessRules.generated.swift in Sources */,
 				6251CC9D4270E9F29E867B59 /* CodexObservationOwnership.swift in Sources */,
 				97549061F4CF4DE01270245E /* CodexOtelRoutes.swift in Sources */,
+				85DD9D97A0DC6A1737CC326B /* CodexOtelSubagentFilter.swift in Sources */,
 				015A03710C2A81307EDC2159 /* CodexTelemetryModule.swift in Sources */,
 				F4A65D852B783D1D78C7F1A4 /* CollaborationModel.swift in Sources */,
 				422A611A94580B34F92BBB62 /* CollaborationPanel.swift in Sources */,
@@ -2332,6 +2337,7 @@
 				D7E95F09BC44D47D05B4EC06 /* CodexFreshnessRules.generated.swift in Sources */,
 				9557B1E24F9A22C339934981 /* CodexObservationOwnership.swift in Sources */,
 				A1D061096206EB863B801727 /* CodexOtelRoutes.swift in Sources */,
+				7DCDFE1CCF9C68930557C19D /* CodexOtelSubagentFilter.swift in Sources */,
 				896B4B7AD5A5DA6FB6B4B7D4 /* CodexTelemetryModule.swift in Sources */,
 				244C343C9D7A724CBC70AD9F /* CollaborationModel.swift in Sources */,
 				851025D4E314BF0970A0432D /* CollaborationPanel.swift in Sources */,
