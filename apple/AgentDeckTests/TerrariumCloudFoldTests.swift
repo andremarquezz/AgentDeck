@@ -169,30 +169,27 @@ final class TerrariumCloudFoldTests: XCTestCase {
     }
 
     @MainActor
-    func testSmallSnailTraversesFrontAndHiddenRearGroundWithoutLoopJump() async throws {
+    func testSnailKeepsAuthoredRockForagingHierarchyAndTransforms() async throws {
         let habitat = try await Entity(contentsOf: XCTUnwrap(Bundle.main.url(forResource: "living-aquarium", withExtension: "usdz")))
+        func find(_ node: Entity) -> Entity? {
+            if node.name.replacingOccurrences(of: "_", with: " ").lowercased() == "fauna snail" { return node }
+            return node.children.compactMap { find($0) }.first
+        }
+        let authored = try XCTUnwrap(find(habitat))
+        let parent = try XCTUnwrap(authored.parent)
+        let transform = authored.transform
         let shoal = AquariumShoal()
         shoal.load(habitat)
         let snail = try XCTUnwrap(shoal.snail)
-        XCTAssertEqual(snail.children.first?.scale.x ?? 0, 0.6, accuracy: 0.01)
-        var front = false, rear = false, left = false, right = false
-        for second in 0..<3600 {
-            let t = Double(second) / 10
-            let p = AquariumShoal.snailPosition(at: t)
-            let next = AquariumShoal.snailPosition(at: t + 0.1)
-            XCTAssertLessThan(simd_distance(p, next), 0.025, "Slow continuous ground motion, including the loop seam")
-            XCTAssertGreaterThanOrEqual(p.y, -0.093)
-            XCTAssertLessThan(abs(p.x), 6.2)
-            front = front || p.z > 2; rear = rear || p.z < -3
-            left = left || p.x < -4; right = right || p.x > 4
-        }
-        XCTAssertTrue(front && rear && left && right)
-        XCTAssertLessThan(simd_distance(AquariumShoal.snailPosition(at: 0), AquariumShoal.snailPosition(at: 360)), 0.0001)
-        let before = snail.position
+        XCTAssertTrue(snail === authored, "Do not replace the animated habitat animal with a detached clone")
+        XCTAssertTrue(snail.parent === parent)
+        XCTAssertTrue(snail.isEnabled)
+        XCTAssertFalse(habitat.availableAnimations.isEmpty, "The shared asset owns rock contact and feeler motion")
         for _ in 0..<120 { shoal.step(1.0 / 60, residents: []) }
-        let forward = snail.orientation.act(SIMD3<Float>(1,0,0))
-        XCTAssertGreaterThan(simd_dot(snail.position - before, forward), 0)
-        XCTAssertEqual(shoal.root.children.filter { $0.name == "wandering-snail" }.count, 1)
+        XCTAssertEqual(snail.position, transform.translation, "School steering must not overwrite authored animation")
+        XCTAssertEqual(snail.scale, transform.scale)
+        XCTAssertEqual(snail.orientation.vector, transform.rotation.vector)
+        XCTAssertNil(shoal.root.findEntity(named: "wandering-snail"))
     }
 
     @MainActor

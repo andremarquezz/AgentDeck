@@ -164,16 +164,14 @@ back-face loss and body-centered tail orbiting. An edge-on fin may still look
 thin naturally; no billboard or always-facing-camera replacement is used.
 
 The native garden includes one rounded spiral-shell snail. The shrimp experiment
-was removed following visual feedback; do not restore it when rebuilding. Apple
-extracts a single runtime snail from the asset and hides its authored counterpart.
-It is rendered at 60% of the authored size. `AquariumShoal` replaces the short
-baked rock loop with a six-minute continuous ground circuit, passing in front of
-and behind both planted islands. Position follows the authored bowl/sand height;
-heading and pitch follow the path tangent. Ordinary depth occlusion can hide it
-behind rocks or plants. There is no forced visibility or visibility teleport.
-The native controller inherits the resident scene's pause/Reduce Motion behavior.
-This is a bounded authored route, not arbitrary-mesh surface navigation. The
-Blender rock loop remains an authoring preview, not the native movement source.
+was removed following visual feedback; do not restore it when rebuilding. Both
+native renderers keep the snail in the habitat hierarchy and play its authored
+rock-foraging and feeler animation. `enhance-garden-fauna.py` is the motion source
+for both USDZ and GLB; the runtimes do not replace it with a separate aquarium-wide
+route, detach it from the rock, or change its authored scale. Ordinary depth
+occlusion can hide it behind rocks or plants. There is no forced visibility or
+visibility teleport. The scene's animation playback owns pause/Reduce Motion.
+This is a bounded authored rock route, not arbitrary-mesh surface navigation.
 
 The Apple import regression checks actual exported fin volume and hinge position,
 fauna counts and animation availability. Blender mesh inspection verifies closed

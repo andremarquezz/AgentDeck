@@ -100,27 +100,8 @@ internal class AquariumResidents(private val context: Context, private val viewe
     private val overlay = AquariumResidentOverlay(context)
     private var screenX = 0f
     private var screenY = 0f
-    private var snailTime = 0.0
-    private val snailEntity = viewer.asset?.getFirstEntityByName("Fauna snail") ?: 0
-
-    /** A slow continuous circuit in the substrate plane, with heading from its tangent. */
-    private fun stepSnail(dt: Float) {
-        val snailInstance = transforms.getInstance(snailEntity)
-        if (snailInstance == 0) return
-        snailTime += dt
-        val angle = (snailTime / 400.0 * 2.0 * PI).toFloat()
-        val x = 5.2f * cos(angle)
-        val z = 2.8f * sin(angle)
-        val dx = -5.2f * sin(angle)
-        val dz = 2.8f * cos(angle)
-        // The rear bowl rises behind the planted islands; the foreground is flat.
-        val y = max(0f, -z - 2f).pow(2) * .16f - .09f
-        Matrix.setIdentityM(pose, 0)
-        Matrix.translateM(pose, 0, x, y, z)
-        Matrix.rotateM(pose, 0, atan2(-dz, dx) * 180f / PI.toFloat(), 0f, 1f, 0f)
-        Matrix.scaleM(pose, 0, .6f, .6f, .6f)
-        transforms.setTransform(snailInstance, pose)
-    }
+    // Fauna snail remains in the shared habitat hierarchy. Its authored
+    // animation follows the rock surface and feelers; applyAnimation owns it.
     private data class Fish(val entity: Int, var dx: Float = 0f, var dy: Float = 0f, var dz: Float = 0f)
     private val fish = viewer.asset?.entities?.map { entity ->
         if (viewer.asset?.getName(entity)?.startsWith("Fish yaw") == true)
@@ -290,7 +271,6 @@ internal class AquariumResidents(private val context: Context, private val viewe
             }
         }
         disturbSchool(dt)
-        stepSnail(dt)
     }
 
     private fun project(canvas: Canvas, x: Float, y: Float, z: Float): Boolean {
