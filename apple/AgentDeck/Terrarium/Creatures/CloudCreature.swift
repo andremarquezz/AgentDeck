@@ -182,6 +182,8 @@ final class CloudCreature: Creature {
                 startPoint: .zero,
                 endPoint: CGPoint(x: 24, y: 24)
             ), style: FillStyle(eoFill: true))
+            bodyCtx.opacity = 1
+            CreatureBrandFeatures.draw("codex", context: bodyCtx)
         }
     }
 

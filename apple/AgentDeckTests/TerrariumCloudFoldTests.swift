@@ -358,18 +358,69 @@ final class TerrariumCloudFoldTests: XCTestCase {
     }
 
     @MainActor
+    func testTinyMonochromeLogoExceptionKeepsInkBodyEyeContrast() throws {
+        let size = CreatureBrandFeatures.monochromeMinimumSize / 2
+        let view = CanonicalCreatureView(agentType: "claudecode", size: size, color: .black, monochrome: true)
+            .background(Color.blue)
+        let image = ImageRenderer(content: view)
+        image.scale = 240 / size
+        let bitmap = try XCTUnwrap(NSBitmapImageRep(data: XCTUnwrap(image.nsImage?.tiffRepresentation)))
+        let eye = try XCTUnwrap(bitmap.colorAt(x: 65, y: 94)?.usingColorSpace(.sRGB))
+        XCTAssertEqual(eye.redComponent, 1, accuracy: 0.01)
+        XCTAssertEqual(eye.greenComponent, 1, accuracy: 0.01)
+        XCTAssertEqual(eye.blueComponent, 1, accuracy: 0.01)
+    }
+
+    @MainActor
+    func testCanvasCreatureFeaturesAreOpaqueOnDifferentBackgroundsAndMonoKeepsBlackEyes() throws {
+        let samples: [(agent: String, x: Int, y: Int, rgb: [CGFloat]?, mono: CGFloat)] = [
+            ("claudecode", 65, 94, [0, 0, 0], 0), ("claudecode", 173, 94, [0, 0, 0], 0),
+            ("codex", 79, 110, [255, 255, 255], 1), ("codex", 150, 153, [255, 255, 255], 1),
+            ("openclaw", 80, 81, [5, 8, 16], 0), ("openclaw", 90, 76, [0, 229, 204], 1),
+            ("opencode", 120, 120, nil, 0),
+        ]
+        for monochrome in [false, true] {
+            for background in [Color.blue, Color.yellow] {
+                for sample in samples {
+                    let view = CanonicalCreatureView(agentType: sample.agent, size: 240,
+                        color: monochrome ? .black : .red, monochrome: monochrome).background(background)
+                    let reference = sample.rgb.map { rgb in
+                        monochrome ? Color(white: Double(sample.mono)) :
+                            Color(.sRGB, red: Double(rgb[0]/255), green: Double(rgb[1]/255), blue: Double(rgb[2]/255))
+                    }
+                    let content = view.overlay(alignment: .topLeading) {
+                        if let reference { reference.frame(width: 4, height: 4) }
+                    }
+                    let image = ImageRenderer(content: content)
+                    image.scale = 1
+                    let bitmap = try XCTUnwrap(NSBitmapImageRep(data: XCTUnwrap(image.nsImage?.tiffRepresentation)))
+                    let pixel = try XCTUnwrap(bitmap.colorAt(x: sample.x, y: sample.y)?.usingColorSpace(.sRGB))
+                    // Compare a literal sRGB reference through the same renderer/color profile.
+                    // The hole sample uses an untouched background pixel instead.
+                    let referencePoint = sample.rgb == nil ? 239 : 1
+                    let rgb = try XCTUnwrap(bitmap.colorAt(x: referencePoint, y: referencePoint)?.usingColorSpace(.sRGB))
+                    XCTAssertEqual(pixel.redComponent, rgb.redComponent, accuracy: 0.03, sample.agent)
+                    XCTAssertEqual(pixel.greenComponent, rgb.greenComponent, accuracy: 0.03, sample.agent)
+                    XCTAssertEqual(pixel.blueComponent, rgb.blueComponent, accuracy: 0.03, sample.agent)
+                    XCTAssertEqual(pixel.alphaComponent, 1, accuracy: 0.01, sample.agent)
+                }
+            }
+        }
+    }
+
+    @MainActor
     func testCanonicalFeatureMaterialsSurviveWorkingIdleAndPermission() async throws {
         let library = try await Entity(contentsOf: XCTUnwrap(Bundle.main.url(forResource: "3d-residents", withExtension: "usdz")))
         XCTAssertNil(library.findEntity(named: "opencode_rear"), "A rear plate must not close OpenCode's real opening")
         let scene = AquariumResidents()
         scene.loadTemplates(library)
         scene.animate = false
-        let expected: [(id: String, name: String, white: Bool)] = [
-            ("claude", "claudecode_feature_eyes_0", false),
-            ("codex", "codex_feature_prompt_0", true),
-            ("crayfish", "openclaw_feature_eyes_2", false),
-            ("crayfish", "openclaw_feature_eye_highlight_0", true),
-            ("crayfish", "openclaw_feature_eye_highlight_1", true),
+        let expected: [(id: String, name: String, agent: String, role: String)] = [
+            ("claude", "claudecode_feature_eyes_0", "claudecode", "eyes"),
+            ("codex", "codex_feature_prompt_0", "codex", "prompt"),
+            ("crayfish", "openclaw_feature_eyes_2", "openclaw", "eyes"),
+            ("crayfish", "openclaw_feature_eye_highlight_0", "openclaw", "eye-highlight"),
+            ("crayfish", "openclaw_feature_eye_highlight_1", "openclaw", "eye-highlight"),
         ]
         for phase in ["working", "idle", "permission"] {
             var state = TerrariumState()
@@ -397,9 +448,12 @@ final class TerrariumCloudFoldTests: XCTestCase {
                 let material = try XCTUnwrap(model.model?.materials.first as? PhysicallyBasedMaterial)
                 let rgb = try XCTUnwrap(material.emissiveColor.__color.converted(
                     to: CGColorSpace(name: CGColorSpace.linearSRGB)!, intent: .defaultIntent, options: nil)?.components)
-                for component in rgb.prefix(3) {
-                    XCTAssertEqual(component, feature.white ? 1 : 0, accuracy: 0.01,
-                        phase + ": preserve canonical opaque " + feature.name)
+                let sourceColor = try XCTUnwrap(CreatureBrandFeatures.layers[feature.agent]?.first { $0.role == feature.role }?.color)
+                let source = try XCTUnwrap(NSColor(sourceColor).cgColor.converted(
+                    to: CGColorSpace(name: CGColorSpace.linearSRGB)!, intent: .defaultIntent, options: nil)?.components)
+                for (actual, expected) in zip(rgb.prefix(3), source.prefix(3)) {
+                    XCTAssertEqual(actual, expected, accuracy: 0.005,
+                        phase + ": preserve source RGB with correct linear material conversion " + feature.name)
                 }
             }
         }

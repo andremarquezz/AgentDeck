@@ -178,3 +178,38 @@ class EinkAnimationTimingTest {
             hypot((fish.x - start.first).toDouble(), (fish.y - start.second).toDouble())
         }.toFloat()
 }
+
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+class CreatureFeatureCanvasTest {
+    @Test fun `native Canvas fills source features independently of background and preserves OpenCode hole`() {
+        val samples = listOf(
+            Triple("claudecode", 65 to 94, android.graphics.Color.BLACK),
+            Triple("claudecode", 173 to 94, android.graphics.Color.BLACK),
+            Triple("codex", 79 to 110, android.graphics.Color.WHITE),
+            Triple("codex", 150 to 153, android.graphics.Color.WHITE),
+            Triple("openclaw", 80 to 81, android.graphics.Color.rgb(5, 8, 16)),
+            Triple("openclaw", 90 to 76, android.graphics.Color.rgb(0, 229, 204)),
+            Triple("opencode", 120 to 120, null),
+        )
+        for (background in listOf(android.graphics.Color.BLUE, android.graphics.Color.YELLOW)) {
+            for ((agent, point, expected) in samples) {
+                val bitmap = android.graphics.Bitmap.createBitmap(240, 240, android.graphics.Bitmap.Config.ARGB_8888)
+                val canvas = android.graphics.Canvas(bitmap)
+                canvas.drawColor(background)
+                canvas.scale(10f, 10f)
+                val paint = android.graphics.Paint().apply { color = android.graphics.Color.RED }
+                val geometry = dev.agentdeck.terrarium.CreatureGeometry
+                val paths = when (agent) {
+                    "claudecode" -> listOf(geometry.octopusNativePath)
+                    "codex" -> listOf(geometry.codexNativePath)
+                    "openclaw" -> geometry.openClawBodyNativePaths
+                    else -> listOf(geometry.openCodeNativePath)
+                }
+                for (path in paths) canvas.drawPath(path, paint)
+                dev.agentdeck.terrarium.CreatureBrandFeatures.drawNative(canvas, paint, agent)
+                assertEquals(agent, expected ?: background, bitmap.getPixel(point.first, point.second))
+            }
+        }
+    }
+}

@@ -2,10 +2,12 @@
 No added eyes, shells, fins, tentacles, insignia, or substitute body shapes.
 """
 from pathlib import Path
-import bpy, bmesh, math, re, json, hashlib
+import bpy, bmesh, math, re, json, hashlib, sys
 from mathutils.bvhtree import BVHTree
 from mathutils import Vector
 ROOT=Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT/'assets/terrarium'))
+from brand_materials import linear_rgb
 scene=bpy.data.scenes.new('AgentDeck 3D Residents');bpy.context.window.scene=scene
 tokens=(ROOT/'design/tokens.css').read_text()
 brands=['claudecode','codex','openclaw','opencode','antigravity','kiro']
@@ -16,8 +18,8 @@ feature_materials = {}
 def feature_material(rgb):
     key = tuple(rgb)
     if key not in feature_materials:
-        mat = bpy.data.materials.new('Canonical opaque ' + ('black' if max(rgb) == 0 else 'white'))
-        mat.diffuse_color = (*[value / 255 for value in rgb], 1)
+        mat = bpy.data.materials.new('Canonical opaque RGB ' + '-'.join(map(str, rgb)))
+        mat.diffuse_color = (*linear_rgb(rgb), 1)
         mat.use_nodes = True
         nodes = mat.node_tree.nodes
         nodes.clear()
@@ -287,7 +289,7 @@ for obj, expected_rgb in feature_meshes:
     if hit is None or hit[1] != obj:
         raise RuntimeError(obj.name + ': canonical feature is hidden behind the body')
     actual = list(obj.data.materials[0].diffuse_color[:3])
-    if any(abs(value - expected / 255) > .00001 for value, expected in zip(actual, expected_rgb)):
+    if any(abs(value - expected) > .00001 for value, expected in zip(actual, linear_rgb(expected_rgb))):
         raise RuntimeError(obj.name + ': wrong opaque feature material')
     print('VERIFIED_VISIBLE_FEATURE', obj.name, expected_rgb)
 

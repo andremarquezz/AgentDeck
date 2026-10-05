@@ -280,6 +280,7 @@ class CloudCreature(
             scale(markScale, markScale, pivot = Offset.Zero)
         }) {
             drawPath(codexPath, brush = gradient, alpha = alpha)
+            dev.agentdeck.terrarium.CreatureBrandFeatures.draw(this, "codex")
         }
     }
 

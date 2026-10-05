@@ -663,6 +663,17 @@ private fun drawGrassStroke(canvas: android.graphics.Canvas, paint: Paint, baseX
 
 /** E-ink octopus — 14×5 pixel block rendering matching the color OctopusCreature grid. */
 @Suppress("UNUSED_PARAMETER")
+private fun drawMonochromeCreatureOutline(canvas: android.graphics.Canvas, paint: Paint, path: android.graphics.Path) {
+    val outline = Paint(paint).apply {
+        shader = null
+        color = GRAY_CREATURE
+        alpha = 255
+        style = Paint.Style.STROKE
+        strokeWidth = dev.agentdeck.terrarium.CreatureBrandFeatures.MONOCHROME_OUTLINE_WIDTH
+    }
+    canvas.drawPath(path, outline)
+}
+
 private fun drawEinkOctopus(
     canvas: android.graphics.Canvas, paint: Paint, w: Int, h: Int,
     state: OctopusVisualState,
@@ -715,7 +726,10 @@ private fun drawEinkOctopus(
     canvas.translate(cx, cy)
     canvas.scale(svgScale, svgScale)
     canvas.translate(-CreatureGeometry.OCTOPUS_VIEWBOX / 2f, -CreatureGeometry.OCTOPUS_VIEWBOX / 2f)
+    if (!einkColorEnabled && dev.agentdeck.terrarium.CreatureBrandFeatures.monochromeLightBodyAgents.contains("claudecode")) paint.color = GRAY_AIR
     drawAquariumMark(canvas, paint, CreatureGeometry.octopusNativePath)
+    if (!einkColorEnabled && dev.agentdeck.terrarium.CreatureBrandFeatures.monochromeLightBodyAgents.contains("claudecode")) drawMonochromeCreatureOutline(canvas, paint, CreatureGeometry.octopusNativePath)
+    dev.agentdeck.terrarium.CreatureBrandFeatures.drawNative(canvas, paint, "claudecode", monochromeCreature = !einkColorEnabled)
     canvas.restore()
 
     // Name tag FIRST (behind bubble) — multi-session only
@@ -916,6 +930,7 @@ private fun drawEinkCloud(
     }
     path.transform(matrix)
     drawAquariumMark(canvas, paint, path)
+    dev.agentdeck.terrarium.CreatureBrandFeatures.drawNative(canvas, paint, "codex", matrix, monochromeCreature = !einkColorEnabled)
 
     // Effective body extents for positioning
     val bodyHeight = markSize / 2f
@@ -1070,15 +1085,18 @@ private fun drawEinkOpenCode(
         einkPick(GRAY_OPENCODE_INNER, COLOR_OPENCODE_OUTER)
     }
 
-    // Thick rounded-rect stroke = hollow ring (stroke centered → inset by thick/2).
-    paint.style = Paint.Style.STROKE
+    // Use the exact source ring, including its true opening and square corners.
+    val ring = android.graphics.Path(CreatureGeometry.openCodeNativePath)
+    val bounds = android.graphics.RectF().also { ring.computeBounds(it, true) }
+    val ringScale = rectH / bounds.height()
+    val transform = android.graphics.Matrix().apply {
+        setScale(ringScale, ringScale)
+        postTranslate(cx - bounds.centerX() * ringScale, cy - bounds.centerY() * ringScale)
+    }
+    ring.transform(transform)
+    paint.style = Paint.Style.FILL
     paint.color = frameColor
-    paint.strokeWidth = thick
-    canvas.drawRoundRect(
-        cx - rectW / 2f + thick / 2f, cy - rectH / 2f + thick / 2f,
-        cx + rectW / 2f - thick / 2f, cy + rectH / 2f - thick / 2f,
-        cornerR, cornerR, paint,
-    )
+    drawAquariumMark(canvas, paint, ring)
 
     // Working state: subtle outer glow
     if (state == OctopusVisualState.WORKING) {
@@ -1298,8 +1316,12 @@ private fun drawEinkCrayfish(
         einkPick(GRAY_CRAY_BODY, COLOR_CRAY_BODY)
     }
     paint.alpha = if (state == CrayfishVisualState.DORMANT) 105 else 255
-    for (path in CreatureGeometry.openClawBodyNativePaths) drawAquariumMark(canvas, paint, path)
-    for (path in CreatureGeometry.openClawEyeNativePaths) drawAquariumMark(canvas, paint, path)
+    if (!einkColorEnabled && dev.agentdeck.terrarium.CreatureBrandFeatures.monochromeLightBodyAgents.contains("openclaw")) paint.color = GRAY_AIR
+    for (path in CreatureGeometry.openClawBodyNativePaths) {
+        drawAquariumMark(canvas, paint, path)
+        if (!einkColorEnabled) drawMonochromeCreatureOutline(canvas, paint, path)
+    }
+    dev.agentdeck.terrarium.CreatureBrandFeatures.drawNative(canvas, paint, "openclaw", monochromeCreature = !einkColorEnabled)
     paint.alpha = 255
 
     canvas.restore() // main transform

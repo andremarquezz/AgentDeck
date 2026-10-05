@@ -5,12 +5,15 @@ Run blender -b --python design/ips10/creatures.py after build-3d-residents.py.
 from pathlib import Path
 import hashlib
 import json
+import sys
 import bpy
 from bpy_extras.object_utils import world_to_camera_view
 from mathutils import Vector
 
 OUT = Path(__file__).resolve().parent
 ROOT = OUT.parents[1]
+sys.path.insert(0, str(ROOT/'assets/terrarium'))
+from brand_materials import linear_rgb
 contract = json.loads((ROOT/'design/creatures/brand-features.generated.json').read_text())['agents']
 previous = bpy.context.window.scene
 scene = bpy.data.scenes.new('IPS10 canonical creature reliefs')
@@ -99,7 +102,7 @@ try:
                 continue
             feature = objects[brand+'_feature_'+descriptor['role']+'_'+str(descriptor['pathIndex'])]
             color = feature.data.materials[0].node_tree.nodes['Principled BSDF'].inputs['Emission Color'].default_value
-            assert all(abs(actual-expected/255) < .00001 for actual, expected in zip(color[:3], descriptor['rgb'])), 'Relief feature material drift'
+            assert all(abs(actual-expected) < .00001 for actual, expected in zip(color[:3], linear_rgb(descriptor['rgb']))), 'Relief feature material drift'
         root.location = (0, 0, 0)
         root.rotation_euler = (0, 0, 0)
         root.scale = (1.8, 1.8, 1.8)

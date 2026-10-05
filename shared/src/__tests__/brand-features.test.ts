@@ -134,3 +134,9 @@ it('OpenClaw feature colors come from the pinned original color reference, not i
   expect(definition.features[0].monochromeCreature).toBe('ink');
   expect(definition.features[1].monochromeCreature).toBe('paper');
 });
+
+it('native vector/color/monochrome mirrors retain exact source feature contours', async () => {
+  const { VECTOR_OUTPUTS, emitSwiftBrandFeatures, emitKotlinBrandFeatures } = await import('../../../scripts/generate-brand-features.mjs');
+  expect(readFileSync(root + '/' + VECTOR_OUTPUTS.swift, 'utf8')).toBe(emitSwiftBrandFeatures());
+  expect(readFileSync(root + '/' + VECTOR_OUTPUTS.kotlin, 'utf8')).toBe(emitKotlinBrandFeatures());
+});

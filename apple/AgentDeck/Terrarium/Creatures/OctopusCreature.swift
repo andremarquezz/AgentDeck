@@ -291,18 +291,7 @@ final class OctopusCreature: Creature {
                          style: FillStyle(eoFill: true))
         }
 
-        // Sleeping: cover top half of eye cutouts (half-closed effect)
-        if visualState == .sleeping {
-            // Left eye
-            let lx = 6 * s + offsetX
-            let ly = 8.102 * s + offsetY
-            context.fill(Path(CGRect(x: lx, y: ly, width: 1.488 * s, height: 1.4 * s)),
-                         with: .color(bodyColor.opacity(Double(alpha) * 0.7)))
-            // Right eye
-            let rx = 16.51 * s + offsetX
-            context.fill(Path(CGRect(x: rx, y: ly, width: 1.49 * s, height: 1.4 * s)),
-                         with: .color(bodyColor.opacity(Double(alpha) * 0.7)))
-        }
+        CreatureBrandFeatures.draw("claudecode", context: context, transform: t)
     }
 
     private func bodyColorForState() -> Color {
