@@ -218,7 +218,7 @@ struct MonitorScreen: View {
         if preferences.showTimeline {
             VStack {
                 Spacer()
-                TimelineStripView()
+                TimelineStripView(usesMetalHabitat: preferences.effectiveDashboardType == .aquarium3D)
                     .frame(height: geo.size.height * MonitorLayout.sandFraction)
             }
             .opacity(disconnected || (preferences.effectiveDashboardType == .aquarium3D && hudHidden) ? 0 : 1)
