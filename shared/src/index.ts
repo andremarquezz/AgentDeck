@@ -26,6 +26,7 @@ export * from './format-utils.js';
 export * from './timeline-summarizer.js';
 export * from './session-utils.js';
 export * from './creature-layout.js';
+export * from './brand-features.js';
 export * from './terrarium-rules.js';
 export * from './state-colors.js';
 export * from './session-state-presentation.js';

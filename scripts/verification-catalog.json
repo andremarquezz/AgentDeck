@@ -666,6 +666,7 @@
         "plugin-ulanzi/src/__tests__/*.test.ts",
         "shared/src/__tests__/svg-renderers/*.test.ts",
         "shared/src/__tests__/brand-assets-contract.test.ts",
+        "shared/src/__tests__/brand-features.test.ts",
         "shared/src/__tests__/hermes-brand.test.ts",
         "scripts/__tests__/plugin-deployment.test.ts"
       ]
