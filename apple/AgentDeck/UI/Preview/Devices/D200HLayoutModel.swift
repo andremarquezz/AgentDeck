@@ -24,7 +24,10 @@
 // against; `scripts/check-preview-mirror-sync.mjs` verifies they match the
 // current `git hash-object` of each file and fails CI when the origin drifts
 // ahead of this mirror. Update them whenever you re-port.
-// SYNC-HASH shared/src/d200h-layout.ts 7f5dc168d8a976c727953ad7471ba635c4a377db
+// Pin moved 2026-10-06 with NO port (#463): the detail INFO now passes the row's
+// `permissionMode` / `effortLevel` to `renderDetailInfo`; this preview's INFO slot
+// draws neither the model line nor a mode line, so nothing visible changes here.
+// SYNC-HASH shared/src/d200h-layout.ts b5fb1fad4aecc2d7948e9668f8853dd77056cf0a
 // SYNC-HASH shared/src/session-utils.ts 9ff8581b7ce0e779cfd4443a16ba7d85ed7d9964
 //
 // INTENTIONALLY OMITTED (not needed by a read-only preview):
