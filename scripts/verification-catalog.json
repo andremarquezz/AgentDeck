@@ -36,12 +36,14 @@
         "line/function/branch/statement coverage of bridge, shared, plugin and hooks stays above the floor in vitest.config.ts",
         "generated Swift/Kotlin/C++ mirrors match their TypeScript source of truth (contract tests)",
         "CI wait command intent classification and generated Swift drift; identical command vectors execute in both TS and Swift on macOS, including strict JSON booleans, UTF-16 bounds and safe identity extraction; unsupported or ambiguous input is rejected; Hermes normalized CI evidence is allow-listed, bounded and matched by opaque invocation ID in both trackers",
-        "CI compact transport requires explicit agentWaiting=true for pending phases while preserving terminal verdicts; common vectors execute in Node and Swift, plus the firmware ArduinoJson projection when its build dependency is installed"
+        "CI compact transport requires explicit agentWaiting=true for pending phases while preserving terminal verdicts; common vectors execute in Node and Swift, plus the firmware ArduinoJson projection when its build dependency is installed",
+        "README/overview 1.8.0 supplement references resolve to real assets, user-controlled captioned video, and Pages assembly paths; WebVTT cues are nonempty and ordered"
       ],
       "does_not_prove": [
         "anything about native apps, firmware or real devices",
         "macOS-only halves (Swift toolchain, launchd) — those cases are marked skipped on Linux and appear as skipped in this report",
-        "CI wait daemon/wire/UI integration or actual GitHub run state; the classifier observes intent only"
+        "CI wait daemon/wire/UI integration or actual GitHub run state; the classifier observes intent only",
+        "public video pixel fidelity, duration, browser subtitle playback, or actual Pages publication"
       ]
     },
     {
@@ -705,7 +707,8 @@
         "scripts/__tests__/npm-registry-visibility.test.ts",
         "scripts/__tests__/native-palette.test.ts",
         "scripts/__tests__/verification-catalog.test.ts",
-        "scripts/__tests__/build-health-report.test.ts"
+        "scripts/__tests__/build-health-report.test.ts",
+        "scripts/__tests__/public-media.test.ts"
       ]
     }
   ]
