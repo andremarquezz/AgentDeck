@@ -222,5 +222,39 @@ final class HermesAquariumTests: XCTestCase {
         rig.pose(swim)
         XCTAssertFalse(alert.isEnabled)
     }
+    @MainActor
+    func testAquariumAssetLifecycleIgnoresCancellationRetriesAndRejectsStaleCompletions() async throws {
+        let loader = AquariumAssetLoader()
+        await loader.load { _ in throw CancellationError() }
+        XCTAssertNil(loader.failure)
+        XCTAssertNil(loader.loaded)
+        await loader.load { _ in throw CocoaError(.fileReadCorruptFile) }
+        XCTAssertNotNil(loader.failure, "Actual import errors remain visible")
+        var gate: CheckedContinuation<Entity, Error>?
+        let obsolete = Task { await loader.load { _ in try await withCheckedThrowingContinuation { gate = $0 } } }
+        while gate == nil { await Task.yield() }
+        loader.invalidate()
+        await loader.load { _ in Entity() }
+        let current = try XCTUnwrap(loader.loaded?.habitat)
+        gate?.resume(throwing: CocoaError(.fileReadCorruptFile))
+        await obsolete.value
+        XCTAssertTrue(loader.loaded?.habitat === current)
+        XCTAssertNil(loader.failure, "An obsolete load cannot replace a newer successful scene")
+    }
+
+    @MainActor
+    func testAquariumAssetLoaderImportsEveryBundledNativeResource() async throws {
+        let loader = AquariumAssetLoader()
+        await loader.load()
+        XCTAssertNil(loader.failure)
+        let loaded = try XCTUnwrap(loader.loaded)
+        XCTAssertFalse(loaded.habitat.visualBounds(relativeTo: nil).isEmpty)
+        XCTAssertFalse(loaded.ciStation.visualBounds(relativeTo: nil).isEmpty)
+        let scene = AquariumResidents()
+        scene.loadTemplates(loaded.residents)
+        scene.loadHermesTemplate(loaded.hermes)
+        XCTAssertEqual(scene.templateCount, 7)
+    }
+
 }
 #endif
