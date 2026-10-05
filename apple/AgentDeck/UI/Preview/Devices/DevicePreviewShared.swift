@@ -153,6 +153,8 @@ struct PreviewDisplaySession: Identifiable {
     /// e-ink, perimeter satellite pixels on the LED matrix — never as another
     /// session. Zero means "draw nothing", not "unknown".
     var subagentCount: Int = 0
+    var ciWait: CiWaitStatus? = nil
+    var activity: String? = nil
 }
 
 /// Providers without a session creature use their official brand mark.
@@ -227,7 +229,7 @@ extension DevicePreviewSelection {
                     // draws no satellites yet. Plumbing them through
                     // LivePreviewData is a separate change; leaving it at 0 is
                     // honest (nothing drawn) rather than invented.
-                    subagentCount: 0
+                    subagentCount: 0, ciWait: s.waitingOn, activity: s.activity
                 )
             }
         }

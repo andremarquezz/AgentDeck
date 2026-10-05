@@ -61,6 +61,7 @@ data class TerrariumState(
     val tetra: TetraVisualState,
     val environment: EnvironmentVisualState,
     val ciWaitLabels: Map<String, String> = emptyMap(),
+    val ciWaitingIds: Set<String> = emptySet(),
     val currentTool: String? = null,
     val toolProgress: String? = null,
     val projectName: String? = null,
@@ -374,6 +375,7 @@ fun DashboardState.toTerrariumState(
     }
 
     return TerrariumState(
+        ciWaitingIds = siblingSessions.filter { it.waitingOn?.agentWaiting == true && it.state?.startsWith("awaiting") != true }.map { it.id }.toSet(),
         ciWaitLabels = siblingSessions.filter { it.waitingOn != null && it.state?.startsWith("awaiting") != true }
             .mapNotNull { session -> session.activity?.let { session.id to it } }.toMap(),
         octopus = octopus,

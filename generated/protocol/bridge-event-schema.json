@@ -516,6 +516,30 @@
         "agentWaiting": {
           "type": "boolean"
         },
+        "checks": {
+          "additionalProperties": false,
+          "properties": {
+            "failed": {
+              "type": "number"
+            },
+            "passed": {
+              "type": "number"
+            },
+            "pending": {
+              "type": "number"
+            },
+            "total": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "total",
+            "passed",
+            "failed",
+            "pending"
+          ],
+          "type": "object"
+        },
         "evidence": {
           "enum": [
             "tool_input",
@@ -555,6 +579,9 @@
         },
         "runId": {
           "type": "number"
+        },
+        "runUrl": {
+          "type": "string"
         }
       },
       "required": [

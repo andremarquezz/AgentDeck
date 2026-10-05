@@ -22,7 +22,7 @@ import { TERRARIUM_RULES } from '@agentdeck/shared';
 
 import { State } from '../types.js';
 import {
-  PASSIVE_OFFLINE_LABEL,
+  PASSIVE_OFFLINE_LABEL, CI_WAIT_VISUAL, CI_WAIT_CUE,
   type SubagentActivityBySession,
   type SubagentVisualActivity,
 } from '@agentdeck/shared';
@@ -1294,6 +1294,22 @@ function drawSubagentOrbits(
  * `layout='micro'` renders the Timebox Mini Agent Beacon;
  * `'standard'` is the full terrarium.
  */
+/** A separate CI glyph; permission/error signals always keep priority. */
+function drawCiCue(buf: Uint8Array, size: number, sessions: SessionInfo[] | null, now: number): void {
+  if (sessions?.some(s => s.alive && s.state?.startsWith('awaiting'))) return;
+  const wait = sessions?.find(s => s.alive && s.waitingOn)?.waitingOn;
+  if (!wait || now % CI_WAIT_CUE.cycleMs < CI_WAIT_CUE.showAfterMs) return;
+  const value = CI_WAIT_CUE.colors[wait.phase];
+  const hex = typeof value === 'string' ? value : CI_WAIT_CUE.colors.unknown;
+  const color = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  const left = 1, top = size === 11 ? 1 : size - 9;
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+    const offset = ((top + y) * size + left + x) * 3;
+    const lit = CI_WAIT_VISUAL.shrimp[y] & (1 << (7 - x));
+    for (let channel = 0; channel < 3; channel++) buf[offset + channel] = lit ? color[channel] : 0;
+  }
+}
+
 export function renderFrame(
   stateEvent: StateUpdateEvent | null,
   usageEvent: UsageEvent | null,
@@ -1319,6 +1335,7 @@ export function renderFrame(
       subagentActivity,
       timeOverrideMs ?? Date.now(),
     );
+    drawCiCue(outputBuf, size, sessions, timeOverrideMs ?? Date.now());
     return outputBuf;
   }
 
@@ -1333,6 +1350,7 @@ export function renderFrame(
       subagentActivity,
       timeOverrideMs ?? Date.now(),
     );
+    drawCiCue(outputBuf, size, sessions, timeOverrideMs ?? Date.now());
     return outputBuf;
   }
 
@@ -1550,6 +1568,7 @@ export function renderFrame(
   // Usage HUD (bottom-right, screen-space)
   drawUsageHUD(outputBuf, usageEvent, animFrame);
 
+  drawCiCue(outputBuf, size, sessions, timeOverrideMs ?? Date.now());
   return outputBuf;
 }
 

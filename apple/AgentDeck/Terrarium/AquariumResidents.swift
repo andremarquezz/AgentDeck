@@ -60,6 +60,15 @@ struct AquariumResident: Equatable {
 @MainActor
 final class AquariumResidents {
     let root = Entity()
+    private var ciStation: Entity?
+    func loadCiStation(_ entity: Entity) {
+        ciStation?.removeFromParent()
+        entity.name = "ci-station"
+        entity.position = [TerrariumRules.ciStationNativeX, TerrariumRules.ciStationNativeY, TerrariumRules.ciStationNativeZ]
+        entity.scale = .init(repeating: TerrariumRules.ciStationNativeScale)
+        root.addChild(entity)
+        ciStation = entity
+    }
     private var templates: [String: Entity] = [:]
     private var substrateTemplate: Entity?
     private(set) var residents: [String: Entity] = [:]
@@ -161,6 +170,10 @@ final class AquariumResidents {
         let waterIDs = slotOrder.filter { !bottomIDs.contains($0) }
         let waterLayout = Self.layout(count: waterIDs.count, aspect: aspect)
         let bottomLayout = Self.bottomLayout(count: bottomIDs.count, aspect: aspect)
+        let queue = next.filter { state.ciWaitingIDs.contains($0.id) && $0.activity != .waiting }.map(\.id).sorted()
+        ciStation?.isEnabled = !queue.isEmpty
+        let ciFit = min(1, aspect)
+        ciStation?.position.x = TerrariumRules.ciStationNativeX * ciFit
         for item in next {
             let grounded = Self.isGrounded(item.kind)
             if grounded {
@@ -186,6 +199,14 @@ final class AquariumResidents {
                 position.y += 0.5
                 targets[item.id] = position
             }
+            if let slot = queue.firstIndex(of: item.id) {
+                let columns = Int(TerrariumRules.ciStationQueueColumns)
+                targets[item.id] = [(TerrariumRules.ciStationNativeX + Float(slot % columns) * TerrariumRules.ciStationNativeQueueGap) * ciFit,
+                    TerrariumRules.ciStationNativeQueueY + Float(slot / columns) * TerrariumRules.ciStationNativeQueueGap,
+                    TerrariumRules.ciStationNativeQueueZ]
+                size *= ciFit
+                supports[item.id]?.isEnabled = false
+            } else { supports[item.id]?.isEnabled = true }
             if residents[item.id] == nil, let template = templates[item.kind] {
                 let resident = Entity()
                 resident.name = "session|" + item.id

@@ -52,6 +52,10 @@ export const TERRARIUM_RULES = {
   pixooUsageCreatureMargin: 11,
   /** Native 3D foreground budget; the full roster remains independently accessible. */
   nativeResidentLimit: 8,
+  /** Original CI station stays left of the crayfish floor territory. Queue
+   * rows rise into water; no provider is promoted to an agent/resident ID. */
+  ciStation: { x: 0.14, y: 0.63, widthFrac: 0.13, queueGap: 0.10, queueRise: 0.09, queueColumns: 4,
+    nativeX: -2.4, nativeY: 0.65, nativeZ: 1.9, nativeScale: 0.7, nativeQueueGap: 0.85, nativeQueueY: 1.8, nativeQueueZ: 0.1 },
   /** Shared native activity rhythm and cue geometry; screen-space label sizing remains surface-specific. */
   nativeActivity: {
     idleRate: 0.65,

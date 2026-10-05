@@ -829,8 +829,13 @@ data class CiWaitStatus(
     val evidence: String = "tool_input",
     @Serializable(with = FlexibleLongSerializer::class)
     val openedAt: Long = 0,
+    val checks: CiWaitChecks? = null,
+    val runUrl: String? = null,
     val repo: String? = null,
     val ref: String? = null,
     val pr: Long? = null,
     val runId: Long? = null,
 )
+
+@Serializable
+data class CiWaitChecks(val total: Int, val passed: Int, val failed: Int, val pending: Int)

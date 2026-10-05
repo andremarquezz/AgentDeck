@@ -402,6 +402,21 @@ final class PixooRenderer {
     private var dataParticles: [DataParticle] = []
     private var tetras: [TetraState]?
 
+    private func drawCiCue(_ buf: inout [UInt8], size: Int, state: DashboardState, now: Double) {
+        guard !state.siblingSessions.contains(where: { $0.alive && ($0.state ?? "").hasPrefix("awaiting") }),
+              let wait = state.siblingSessions.first(where: { $0.alive && $0.waitingOn != nil })?.waitingOn,
+              Int(now) % CiWaitVisual.cycleMs >= CiWaitVisual.showAfterMs else { return }
+        let color = CiWaitVisual.rgb(wait.phase)
+        let top = size == 11 ? 1 : size - 9
+        for y in 0..<8 { for x in 0..<8 {
+            let offset = ((top + y) * size + x + 1) * 3
+            let lit = CiWaitVisual.shrimp[y] & (1 << (7 - x)) != 0
+            buf[offset] = lit ? color.0 : 0
+            buf[offset + 1] = lit ? color.1 : 0
+            buf[offset + 2] = lit ? color.2 : 0
+        } }
+    }
+
     func render(dashboardState: DashboardState) -> Data {
         return renderSequence(dashboardState: dashboardState, frameCount: 1).first!
     }
@@ -547,6 +562,7 @@ final class PixooRenderer {
             }
 
             drawUsageHUD(&output, dashboardState: dashboardState, animFrame: animFrame)
+            drawCiCue(&output, size: 64, state: dashboardState, now: nowMs + Double(i * intervalMs))
             frames.append(Data(output))
         }
 
@@ -599,6 +615,7 @@ final class PixooRenderer {
         }
         MicroGlyphs.paintBeacon(&out, creature: creature, aggregate: aggregate, animFrame: animFrame)
 
+        drawCiCue(&out, size: n, state: dashboardState, now: Date().timeIntervalSince1970 * 1000)
         return Data(out)
     }
 
@@ -791,6 +808,7 @@ final class PixooRenderer {
             if width > 0 { for x in 3..<(3 + width) { set(x, y, color) } }
         }
 
+        drawCiCue(&out, size: 32, state: dashboardState, now: Date().timeIntervalSince1970 * 1000)
         return Data(out)
     }
 

@@ -1,4 +1,4 @@
-import { ciWaitLabel } from '../ci-wait.js';
+import { ciWaitDetail } from '../ci-wait.js';
 /**
  * Session slot button SVG renderer for v4 dynamic layout.
  *
@@ -585,7 +585,7 @@ export function renderSessionSlot(
 
   const watermark = `<g transform="translate(92, 80)" opacity="${isIdle ? '0.62' : '0.55'}">${agentLogoIcon(agent, 72, 1, 0, 0)}</g>`;
   const badgeObj = isIdle && !session.waitingOn ? `<rect x="100" y="14" width="28" height="16" rx="8" fill="#ffffff" opacity="0.1" /><text x="114" y="25" font-size="10" font-weight="700" text-anchor="middle" fill="#A1A1AA" font-family="${fontFam}">ACT</text>` : '';
-  const toolStr = !isAsking && session.waitingOn ? ciWaitLabel(session.waitingOn)! : isWorking ? 'Running task' : modelText;
+  const toolStr = !isAsking && session.waitingOn ? ciWaitDetail(session.waitingOn)! : isWorking ? 'Running task' : modelText;
 
   const elements = [
     `<defs>${defs}</defs>`,
@@ -726,7 +726,7 @@ export function renderDetailInfo(
   const watermark = `<g transform="translate(92, 80)" opacity="0.42">${agentLogoIcon(agent, 48, 1, 0, 0)}</g>`;
   const badgeObj = `<rect x="100" y="14" width="28" height="16" rx="8" fill="#ffffff" opacity="0.1" /><text x="114" y="25" font-size="10" font-weight="700" text-anchor="middle" fill="#A1A1AA" font-family="${fontFam}">INFO</text>`;
   const toolDisplay = !effectiveState?.startsWith('awaiting') && session.waitingOn
-    ? ciWaitLabel(session.waitingOn)! : tool ? `▶ ${truncate(tool, 18)}` : stateLbl;
+    ? ciWaitDetail(session.waitingOn)! : tool ? `▶ ${truncate(tool, 18)}` : stateLbl;
   // An awaiting session's INFO cell must state WHAT is being asked. This cell
   // used to render project + model + state and nothing else, while the D200H —
   // whose whole detail view is this cell plus the option keys — passed the

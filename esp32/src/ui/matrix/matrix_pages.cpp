@@ -7,6 +7,8 @@
 #include "official_dot_glyphs_generated.h"
 #include "config.h"
 #include "state/agent_state.h"
+#include "state/ci_wait_generated.h"
+#include "ui/product_palette.generated.h"
 #include "../../../boards/board_config.h"
 #include "net/wifi_manager.h"
 #include "net/serial_client.h"
@@ -442,6 +444,7 @@ void MatrixPages::renderAgents(CRGB* leds, float animTime) {
         AgentKind kind;
         int instanceIdx;
         uint8_t subagentCount;
+        uint8_t ciPhase;
     };
     AgentInfo agents[6];
     int agentCount = 0;
@@ -470,6 +473,7 @@ void MatrixPages::renderAgents(CRGB* leds, float animTime) {
         }
         if (strcmp(g_state.sessions[i].agentType, "daemon") == 0) continue;
         strncpy(agents[agentCount].state, g_state.sessions[i].state, 19);
+        agents[agentCount].ciPhase = g_state.sessions[i].ciPhase;
         agents[agentCount].state[19] = '\0';
         agents[agentCount].subagentCount =
             g_state.activeSubagentsForSession(g_state.sessions[i].id);
@@ -674,8 +678,18 @@ void MatrixPages::renderAgents(CRGB* leds, float animTime) {
         for (int i = 0; i < agentCount; i++) {
             int x = i * spacing;
             CRGB bc = agentColor(agents[i].state, agents[i].kind, agents[i].instanceIdx);
-            drawOfficialMatrixGlyph(leds, x, agentSprite(agents[i].kind), bc,
-                                    agents[i].kind == AGENT_ANTIGRAVITY);
+            if (agents[i].ciPhase && !strstr(agents[i].state, "awaiting") && fmodf(animTime * 1000.0f, CiWaitVisual::CYCLE_MS) >= CiWaitVisual::SHOW_AFTER_MS) {
+                // Alternate with the real agent mark, never replace its identity.
+                const uint8_t phase = agents[i].ciPhase;
+                CRGB color(phase == CiWaitVisual::FAILED ? ProductPalette::UiError :
+                    phase == CiWaitVisual::PASSED ? ProductPalette::UiOk :
+                    phase == CiWaitVisual::UNKNOWN ? ProductPalette::UiIdle : ProductPalette::UiCyan);
+                for (uint8_t y = 0; y < 8; y++) for (uint8_t dx = 0; dx < 8; dx++)
+                    if (CiWaitVisual::SHRIMP[y] & (0x80 >> dx)) setPixel(leds, x + dx, y, color);
+            } else {
+                drawOfficialMatrixGlyph(leds, x, agentSprite(agents[i].kind), bc,
+                                        agents[i].kind == AGENT_ANTIGRAVITY);
+            }
             drawSubagentSatellites(x, agents[i].subagentCount);
         }
     } else {
@@ -706,8 +720,18 @@ void MatrixPages::renderAgents(CRGB* leds, float animTime) {
             int x = i * spacing - scrollOffset;
             if (x > agentMaxX || x < -7) continue;
             CRGB bc = agentColor(agents[i].state, agents[i].kind, agents[i].instanceIdx);
-            drawOfficialMatrixGlyph(leds, x, agentSprite(agents[i].kind), bc,
-                                    agents[i].kind == AGENT_ANTIGRAVITY);
+            if (agents[i].ciPhase && !strstr(agents[i].state, "awaiting") && fmodf(animTime * 1000.0f, CiWaitVisual::CYCLE_MS) >= CiWaitVisual::SHOW_AFTER_MS) {
+                // Alternate with the real agent mark, never replace its identity.
+                const uint8_t phase = agents[i].ciPhase;
+                CRGB color(phase == CiWaitVisual::FAILED ? ProductPalette::UiError :
+                    phase == CiWaitVisual::PASSED ? ProductPalette::UiOk :
+                    phase == CiWaitVisual::UNKNOWN ? ProductPalette::UiIdle : ProductPalette::UiCyan);
+                for (uint8_t y = 0; y < 8; y++) for (uint8_t dx = 0; dx < 8; dx++)
+                    if (CiWaitVisual::SHRIMP[y] & (0x80 >> dx)) setPixel(leds, x + dx, y, color);
+            } else {
+                drawOfficialMatrixGlyph(leds, x, agentSprite(agents[i].kind), bc,
+                                        agents[i].kind == AGENT_ANTIGRAVITY);
+            }
             drawSubagentSatellites(x, agents[i].subagentCount);
         }
     }

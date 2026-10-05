@@ -55,9 +55,9 @@ export function ciPhaseFromCommit(checks: Record<string, unknown>, statuses: Rec
   return phases.includes('failed') ? 'failed' : 'passed';
 }
 
-export async function probeCiWait(wait: CiWaitStatus): Promise<CiWaitStatus['phase']> {
+export async function probeCiWait(wait: CiWaitStatus): Promise<Pick<CiWaitStatus, 'phase' | 'checks' | 'runUrl'>> {
   const path = ciWaitProbePath(wait);
-  if (!path) return 'unknown';
+  if (!path) return { phase: 'unknown' };
   const get = async (endpoint: string) => {
     const { stdout } = await execute('gh', ['api', '--hostname', 'github.com', endpoint], {
       timeout: 8_000, maxBuffer: 256 * 1024, windowsHide: true,
@@ -67,13 +67,31 @@ export async function probeCiWait(wait: CiWaitStatus): Promise<CiWaitStatus['pha
   };
   try {
     const response = await get(path);
-    if (wait.runId) return ciPhaseFromResponse(response);
+    if (wait.runId) return { phase: ciPhaseFromResponse(response), runUrl: githubRunUrl(response.html_url) };
     const sha = wait.pr ? (response.head as { sha?: unknown } | undefined)?.sha : response.sha;
-    if (typeof sha !== 'string' || !/^[a-f0-9]{40}$/.test(sha)) return 'unknown';
+    if (typeof sha !== 'string' || !/^[a-f0-9]{40}$/.test(sha)) return { phase: 'unknown' };
     const [checks, statuses] = await Promise.all([
       get(`repos/${wait.repo}/commits/${sha}/check-runs`),
       get(`repos/${wait.repo}/commits/${sha}/status`),
     ]);
-    return ciPhaseFromCommit(checks, statuses);
-  } catch { return 'unknown'; }
+    return { phase: ciPhaseFromCommit(checks, statuses), checks: ciCheckCounts(checks, statuses), runUrl: githubRunUrl(response.html_url) };
+  } catch { return { phase: 'unknown' }; }
+}
+
+function githubRunUrl(value: unknown): string | undefined {
+  if (typeof value !== 'string' || value.length > 2048) return undefined;
+  try { const url = new URL(value); return url.protocol === 'https:' && url.hostname === 'github.com' && !url.username && !url.password ? url.href : undefined; }
+  catch { return undefined; }
+}
+export function ciCheckCounts(checks: Record<string, unknown>, statuses: Record<string, unknown>): CiWaitStatus['checks'] {
+  if (!Array.isArray(checks.check_runs) || checks.total_count !== checks.check_runs.length ||
+      !Array.isArray(statuses.statuses) || statuses.total_count !== statuses.statuses.length) return undefined;
+  const phases = checks.check_runs.map(ciPhaseFromResponse);
+  for (const row of statuses.statuses) {
+    const state = row?.state;
+    phases.push(state === 'success' ? 'passed' : state === 'failure' ? 'failed' : state === 'pending' ? 'queued' : 'unknown');
+  }
+  if (!phases.length || phases.includes('unknown')) return undefined;
+  return { total: phases.length, passed: phases.filter(p => p === 'passed').length,
+    failed: phases.filter(p => p === 'failed').length, pending: phases.filter(p => p === 'queued' || p === 'running').length };
 }

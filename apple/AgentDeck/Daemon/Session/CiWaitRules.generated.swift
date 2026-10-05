@@ -4,6 +4,33 @@
 import Foundation
 import CoreFoundation
 
+enum CiWaitVisual {
+    static let cycleMs = 6000
+    static let showAfterMs = 3000
+    static func rgb(_ phase: String) -> (UInt8, UInt8, UInt8) {
+        let colors: [String: UInt32] = ["unknown": 0x9a9aa2, "queued": 0x3ED6E8, "running": 0x3ED6E8, "passed": 0x52D988, "failed": 0xFF6B6B]
+        let value = colors[phase] ?? colors["unknown"]!
+        return (UInt8((value >> 16) & 255), UInt8((value >> 8) & 255), UInt8(value & 255))
+    }
+    static let none = 0
+    static let unknown = 1
+    static let queued = 2
+    static let running = 3
+    static let passed = 4
+    static let failed = 5
+    static let shrimp: [UInt8] = [130, 68, 56, 124, 94, 60, 82, 161]
+    static func phase(_ value: String?) -> Int {
+        switch value {
+        case "unknown": return 1
+        case "queued": return 2
+        case "running": return 3
+        case "passed": return 4
+        case "failed": return 5
+        default: return unknown
+        }
+    }
+}
+
 struct CiWaitIntent: Codable, Equatable, Sendable {
     var kind = "ci"
     var provider = "github-actions"
@@ -186,12 +213,41 @@ enum CiWaitRules {
     }
 }
 
+enum CiWaitAccounting {
+    static func foregroundMs(_ events: [[String: Any]], turnIndex: Int, start: Int, end: Int) -> Int {
+        guard start >= 0, end >= start else { return 0 }
+        var open: [String: Int] = [:], spans: [(Int, Int)] = []
+        for event in events {
+            guard event["kind"] as? String == "relation", event["relation"] as? String == "waiting_on",
+                  event["evidence"] as? String == "ci_wait_foreground", event["turnIndex"] as? Int == turnIndex,
+                  let id = event["relationId"] as? String, let ts = event["ts"] as? Int else { continue }
+            if event["phase"] as? String == "open" { if open[id] == nil { open[id] = ts } }
+            else if let began = open.removeValue(forKey: id), ts >= began { spans.append((began, ts)) }
+        }
+        for began in open.values { spans.append((began, end)) }
+        spans.sort { $0.0 < $1.0 }
+        var total = 0, through = start
+        for span in spans {
+            let left = max(start, span.0), right = min(end, span.1)
+            if right > left { total += max(0, right - max(through, left)); through = max(through, right) }
+        }
+        return total
+    }
+}
+
 #if os(macOS)
 /// Hook-scoped CI waits; generated together with the command classifier.
 @DaemonActor
 final class CiWaitTracker {
-    private struct Wait { var id: String; var background: Bool; var status: [String: Any] }
+    private struct Wait { var token: Int; var id: String; var background: Bool; var status: [String: Any] }
     private var sessions: [String: [Wait]] = [:]
+    private var nextToken = 0
+    func waitsFor(_ sid: String, now: Int) -> [(token: Int, background: Bool, openedAt: Int)] {
+        _ = snapshot(sid, now: now)
+        return (sessions[sid] ?? []).map { ($0.token, $0.background, $0.status["openedAt"] as? Int ?? now) }
+    }
+    func tokenFor(_ sid: String) -> Int? { sessions[sid]?.first?.token }
+    func isForeground(_ sid: String) -> Bool { sessions[sid]?.first?.background == false }
     func snapshot(_ sid: String, now: Int) -> [String: Any]? {
         let waits = (sessions[sid] ?? []).filter { now - ($0.status["openedAt"] as? Int ?? 0) < 86400000 }
         if waits.isEmpty { sessions.removeValue(forKey: sid); return nil }
@@ -227,7 +283,8 @@ final class CiWaitTracker {
                     if let ref = intent.ref { status["ref"] = ref }
                     if let pr = intent.pr { status["pr"] = pr }
                     if let run = intent.runId { status["runId"] = run }
-                    waits.append(Wait(id: id, background: background, status: status))
+                    nextToken += 1
+                    waits.append(Wait(token: nextToken, id: id, background: background, status: status))
                 }
             } else if event == "tool_end" || event == "tool_failure" {
                 let flag = json["is_error"] as? NSNumber

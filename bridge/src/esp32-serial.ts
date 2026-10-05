@@ -1,3 +1,4 @@
+import { ciWaitPhaseId, type CiWaitStatus } from '@agentdeck/shared';
 import { compactSessionLabels } from './compact-session-labels.js';
 import { compactProjectName } from './utils/project-name.js';
 import { ips10RosterIndices } from './ips10-roster.js';
@@ -532,6 +533,7 @@ export function prepareForSerial(event: BridgeEvent, _conn?: Pick<SerialConnecti
         // Shared activity one-liner — the glanceable "what is it doing" line
         // (TRMNL 7.5" session cards render it; other boards ignore it).
         activity: limitString(s.activity, 79),
+        ciPhase: ciWaitPhaseId(s.waitingOn as CiWaitStatus | null | undefined),
         // Daemon-computed latest milestone (TIMELINE parity for the IPS10
         // cards). Omitted when absent to spare the 4KB serial line budget.
         ...(typeof s.lastEventText === 'string' && s.lastEventText

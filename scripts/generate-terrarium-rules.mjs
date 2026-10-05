@@ -42,6 +42,7 @@ enum TerrariumRules {
     static let pixooUsageRowHeight: Int = ${rules.pixooUsageRowHeight}
     static let pixooUsageCreatureMargin: Int = ${rules.pixooUsageCreatureMargin}
     static let nativeResidentLimit: Int = ${rules.nativeResidentLimit}
+${Object.entries(rules.ciStation).map(([key, value]) => `    static let ciStation${key[0].toUpperCase() + key.slice(1)}: Float = ${f(value)}`).join('\n')}
 ${Object.entries(rules.nativeActivity).map(([key, value]) => `    static let nativeActivity${key[0].toUpperCase() + key.slice(1)}: Float = ${f(value)}`).join('\n')}
     static let nativeLabelDenseResidentCount: Int = ${rules.nativeLabel.denseResidentCount}
 ${Object.entries(rules.nativeLabel).filter(([key]) => key !== 'denseResidentCount').map(([key, value]) => `    static let nativeLabel${key[0].toUpperCase() + key.slice(1)}: Float = ${f(value)}`).join('\n')}
@@ -81,6 +82,7 @@ package dev.agentdeck.terrarium
  */
 object TerrariumRules {
     const val NATIVE_RESIDENT_LIMIT = ${rules.nativeResidentLimit}
+${Object.entries(rules.ciStation).map(([key, value]) => `    const val CI_STATION_${key.replace(/[A-Z]/g, m => '_' + m).toUpperCase()} = ${f(value)}f`).join('\n')}
 ${Object.entries(rules.nativeActivity).map(([key, value]) => `    const val NATIVE_ACTIVITY_${key.replace(/[A-Z]/g, c => '_' + c).toUpperCase()} = ${f(value)}f`).join('\n')}
     const val NATIVE_LABEL_DENSE_RESIDENT_COUNT = ${rules.nativeLabel.denseResidentCount}
 ${Object.entries(rules.nativeLabel).filter(([key]) => key !== 'denseResidentCount').map(([key, value]) => `    const val NATIVE_LABEL_${key.replace(/[A-Z]/g, c => '_' + c).toUpperCase()} = ${f(value)}f`).join('\n')}
@@ -118,6 +120,7 @@ export function emitCpp(rules) {
 // what each value means and the clearance invariant they encode.
 // C++11-safe (util/-grade): plain constexpr floats, no dependencies.
 namespace TerrariumRules {
+${Object.entries(rules.ciStation).map(([key, value]) => `constexpr float CiStation${key[0].toUpperCase() + key.slice(1)} = ${f(value)}f;`).join('\n')}
 constexpr float CrayfishHomeX = ${f(c.homeX)}f;
 constexpr float CrayfishSittingY = ${f(c.sittingY)}f;
 constexpr float CrayfishWidthFraction = ${f(c.widthFrac)}f;

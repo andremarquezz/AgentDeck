@@ -18,6 +18,19 @@ final class CiWaitRulesTests: XCTestCase {
             } else { XCTAssertNil(result, "Invented intent at vector \(index)") }
         }
     }
+    func testSharedAccountingVectors() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let data = try Data(contentsOf: root.appendingPathComponent("shared/ci-wait-accounting-vectors.json"))
+        let vectors = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [[String: Any]])
+        for vector in vectors {
+            let actual = CiWaitAccounting.foregroundMs(try XCTUnwrap(vector["events"] as? [[String: Any]]),
+                turnIndex: try XCTUnwrap(vector["turnIndex"] as? Int), start: try XCTUnwrap(vector["start"] as? Int),
+                end: try XCTUnwrap(vector["end"] as? Int))
+            XCTAssertEqual(actual, vector["expected"] as? Int, vector["name"] as? String ?? "")
+        }
+    }
+
     @DaemonActor
     func testSharedLifecycleVectors() async throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()

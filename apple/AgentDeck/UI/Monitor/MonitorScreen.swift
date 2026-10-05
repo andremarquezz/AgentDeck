@@ -58,16 +58,15 @@ struct MonitorScreen: View {
         var rows: [String] = []
         rows.reserveCapacity(stateHolder.state.siblingSessions.count)
         for session in stateHolder.state.siblingSessions {
-            rows.append([
-                session.id,
-                session.agentType ?? "",
-                session.state ?? "",
-                session.projectName ?? "",
-                session.modelName ?? "",
-                session.waitingOn?.phase ?? "",
-                session.activity ?? "",
-                "\(session.alive)",
-            ].joined(separator: "|"))
+            var fields: [String] = [session.id]
+            fields.append(session.agentType ?? "")
+            fields.append(session.state ?? "")
+            fields.append(session.projectName ?? "")
+            fields.append(session.modelName ?? "")
+            fields.append(session.waitingOn?.phase ?? "")
+            fields.append(session.activity ?? "")
+            fields.append(String(session.alive))
+            rows.append(fields.joined(separator: "|"))
         }
         rows.sort()
         return "\(primary)::\(rows.joined(separator: ","))::timeline:\(stateHolder.timelineVersion)"

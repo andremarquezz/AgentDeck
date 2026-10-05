@@ -35,6 +35,7 @@ index. If a location or gate changes, update this file in the same commit.
 | Brand type (CJK) | `design/fonts/` (IBM Plex Sans KR/JP, OFL) | `design/fonts/README.md` records origin |
 | IPS10 underwater background | `design/ips10/ocean.png` (image generation; prompt in adjacent README) | `python3 design/ips10/encode_ocean.py --check` verifies the RGB565 flash consumer; native IPS10 previews verify live overlays |
 | IPS10 creature reliefs | `design/ips10/creatures.py` → three `*-relief.png` images, derived from canonical creature masks | `python3 design/ips10/encode_creatures.py --check`; native geometry and interaction checks |
+| CI cleaner-shrimp station | `assets/terrarium/build-ci-station.py` / `ci-station.blend` → Apple USDZ and Android GLB; `shared/src/ci-wait.ts` owns the micro glyph/palette; `terrarium-rules.ts` owns placement | CI visual generator drift, accounting/lifecycle vectors, native builds; visual acceptance remains separate |
 | Real photography / captures | `assets/` (sources: `assets/hardware-photos/`) | `scripts/crop-hardware-images.mjs` crop table |
 | Android LCD aquarium habitat | `assets/terrarium/aquarium-habitat.blend` | `assets/terrarium/export-habitat.py`; manual Blender export and on-device visual review |
 | Native 3D aquarium study / TRMNL plate | `assets/terrarium/living-aquarium.blend` | `export-living-aquarium.py` / `export-paper-aquarium.py` in the same directory; native preview and panel review |

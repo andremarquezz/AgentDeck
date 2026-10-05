@@ -7,6 +7,19 @@
 // what each value means and the clearance invariant they encode.
 // C++11-safe (util/-grade): plain constexpr floats, no dependencies.
 namespace TerrariumRules {
+constexpr float CiStationX = 0.14f;
+constexpr float CiStationY = 0.63f;
+constexpr float CiStationWidthFrac = 0.13f;
+constexpr float CiStationQueueGap = 0.1f;
+constexpr float CiStationQueueRise = 0.09f;
+constexpr float CiStationQueueColumns = 4.0f;
+constexpr float CiStationNativeX = -2.4f;
+constexpr float CiStationNativeY = 0.65f;
+constexpr float CiStationNativeZ = 1.9f;
+constexpr float CiStationNativeScale = 0.7f;
+constexpr float CiStationNativeQueueGap = 0.85f;
+constexpr float CiStationNativeQueueY = 1.8f;
+constexpr float CiStationNativeQueueZ = 0.1f;
 constexpr float CrayfishHomeX = 0.78f;
 constexpr float CrayfishSittingY = 0.64f;
 constexpr float CrayfishWidthFraction = 0.11f;

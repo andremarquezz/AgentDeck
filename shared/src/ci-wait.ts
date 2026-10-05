@@ -1,3 +1,4 @@
+import { UI } from './design-tokens.js';
 /** CI wait intent, never a CI result. SSOT for the staged #433 integration.
  * No I/O, cwd inference, credentials, command text or invented run identity.
  * Unsupported shell syntax fails closed; process evidence can cover it later.
@@ -262,6 +263,11 @@ export class CiWaitTracker {
   }
   /** Bind an asynchronous result to this exact wait; a later visit cannot be
    * completed by a response from the earlier visit. */
+  waitsFor(sessionId: string, now: number): ReadonlyArray<{ token: number; background: boolean; status: CiWaitStatus }> {
+    this.snapshot(sessionId, now);
+    return (this.sessions.get(sessionId) ?? []).map(w => ({ token: w.token, background: w.background, status: { ...w.status } }));
+  }
+  isForeground(sessionId: string): boolean { return this.sessions.get(sessionId)?.[0]?.background === false; }
   tokenFor(sessionId: string): number | undefined { return this.sessions.get(sessionId)?.[0]?.token; }
   applyPhase(sessionId: string, token: number | undefined, phase: CiWaitStatus['phase']): boolean {
     const first = this.sessions.get(sessionId)?.[0];
@@ -269,6 +275,14 @@ export class CiWaitTracker {
     first.status = { ...first.status, phase, evidence: phase === 'unknown' ? 'tool_input' : 'github',
       agentWaiting: phase !== 'passed' && phase !== 'failed' };
     return true;
+  }
+  applyEvidence(sessionId: string, token: number | undefined, evidence: Pick<CiWaitStatus, 'phase' | 'checks' | 'runUrl'>): boolean {
+    const first = this.sessions.get(sessionId)?.[0];
+    if (!first || first.token !== token) return false;
+    const before = JSON.stringify(first.status);
+    this.applyPhase(sessionId, token, evidence.phase);
+    first.status = { ...first.status, checks: evidence.checks, runUrl: evidence.runUrl };
+    return before !== JSON.stringify(first.status);
   }
   closeHead(sessionId: string, openedAt: number): boolean {
     const waits = this.sessions.get(sessionId);
@@ -284,4 +298,48 @@ export class CiWaitTracker {
 export function ciWaitLabel(wait: CiWaitStatus | null | undefined): string | null {
   if (!wait) return null;
   return `CI ${wait.phase === 'unknown' ? 'wait' : wait.phase}${wait.pr ? ` #${wait.pr}` : ''}`;
+}
+
+/** Stable compact phase IDs: zero clears; unknown is never success. */
+export const CI_WAIT_CUE = {
+  cycleMs: 6000, showAfterMs: 3000,
+  colors: { unknown: UI.idle, queued: UI.cyan, running: UI.cyan, passed: UI.ok, failed: UI.error },
+} as const;
+export const CI_WAIT_VISUAL = {
+  none: 0, unknown: 1, queued: 2, running: 3, passed: 4, failed: 5,
+  // Original cleaner-shrimp silhouette, 8x8, MSB on the left.
+  shrimp: [0x82, 0x44, 0x38, 0x7c, 0x5e, 0x3c, 0x52, 0xa1],
+} as const;
+export function ciWaitPhaseId(wait: CiWaitStatus | null | undefined): number {
+  if (!wait) return CI_WAIT_VISUAL.none;
+  const value = CI_WAIT_VISUAL[wait.phase];
+  return typeof value === 'number' ? value : CI_WAIT_VISUAL.unknown;
+}
+export function ciWaitDetail(wait: CiWaitStatus | null | undefined): string | null {
+  const label = ciWaitLabel(wait);
+  if (!wait || !label) return null;
+  return label + (wait.checks ? ` · ${wait.checks.passed}/${wait.checks.total}` : '');
+}
+
+/** Union, clipped to the real turn. Concurrent waits never double-charge and
+ * a background wait never subtracts time when the agent can continue working. */
+export function ciWaitDuration(spans: ReadonlyArray<{ start: number; end: number }>, start: number, end: number): number {
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end < start) return 0;
+  const ranges = spans.filter(s => Number.isSafeInteger(s.start) && Number.isSafeInteger(s.end) && s.end >= s.start)
+    .map(s => ({ start: Math.max(start, s.start), end: Math.min(end, s.end) }))
+    .filter(s => s.end > s.start).sort((a, b) => a.start - b.start);
+  let total = 0, through = start;
+  for (const span of ranges) { total += Math.max(0, span.end - Math.max(through, span.start)); through = Math.max(through, span.end); }
+  return total;
+}
+
+export function ciWaitForegroundMs(events: ReadonlyArray<import('./sample.js').TrajectoryEvent>, turnIndex: number, start: number, end: number): number {
+  const open = new Map<string, number>(), spans: { start: number; end: number }[] = [];
+  for (const event of events) {
+    if (event.kind !== 'relation' || event.relation !== 'waiting_on' || event.evidence !== 'ci_wait_foreground' || event.turnIndex !== turnIndex || !event.relationId) continue;
+    if (event.phase === 'open') { if (!open.has(event.relationId)) open.set(event.relationId, event.ts); }
+    else { const began = open.get(event.relationId); if (began !== undefined) { spans.push({ start: began, end: event.ts }); open.delete(event.relationId); } }
+  }
+  for (const began of open.values()) spans.push({ start: began, end });
+  return ciWaitDuration(spans, start, end);
 }

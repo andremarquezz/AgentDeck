@@ -5,12 +5,14 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import * as rules from '../ci-wait.js';
-import { emitSwift, OUTPUT } from '../../../scripts/generate-ci-wait.mjs';
+import { emitSwift, OUTPUT, emitKotlin, KOTLIN_OUTPUT, emitCpp, CPP_OUTPUT } from '../../../scripts/generate-ci-wait.mjs';
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 
 describe('Node/Swift CI wait command parity', () => {
   it('keeps the native classifier generated from the common grammar and bounds', () => {
     expect(readFileSync(join(root, OUTPUT), 'utf8')).toBe(emitSwift(rules));
+    expect(readFileSync(join(root, KOTLIN_OUTPUT), 'utf8')).toBe(emitKotlin(rules));
+    expect(readFileSync(join(root, CPP_OUTPUT), 'utf8')).toBe(emitCpp(rules));
   });
   it.skipIf(process.platform !== 'darwin')('executes every common command vector in Swift', () => {
     const dir = mkdtempSync(join(tmpdir(), 'agentdeck-ci-wait-parity-'));
@@ -44,9 +46,16 @@ for scenario in scenarios {
 }
 }
 try await verifyLifecycle()
+let accountingData = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[3]))
+let accounting = try JSONSerialization.jsonObject(with: accountingData) as! [[String: Any]]
+for vector in accounting {
+    let actual = CiWaitAccounting.foregroundMs(vector["events"] as! [[String: Any]], turnIndex: vector["turnIndex"] as! Int,
+        start: vector["start"] as! Int, end: vector["end"] as! Int)
+    precondition(actual == vector["expected"] as! Int, "CI accounting mismatch")
+}
 `);
       execFileSync('swiftc', ['-swift-version', '6', join(root, OUTPUT), main, '-o', join(dir, 'parity')], { timeout: 60_000 });
-      execFileSync(join(dir, 'parity'), [join(root, 'shared/ci-wait-vectors.json'), join(root, 'shared/ci-wait-lifecycle-vectors.json')], { timeout: 10_000 });
+      execFileSync(join(dir, 'parity'), [join(root, 'shared/ci-wait-vectors.json'), join(root, 'shared/ci-wait-lifecycle-vectors.json'), join(root, 'shared/ci-wait-accounting-vectors.json')], { timeout: 10_000 });
     } finally { rmSync(dir, { recursive: true, force: true }); }
   }, 75_000);
 });

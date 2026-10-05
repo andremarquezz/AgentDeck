@@ -116,6 +116,7 @@ struct HermesCreatureState: Identifiable {
 
 struct TerrariumState {
     var ciWaitLabels: [String: String] = [:]
+    var ciWaitingIDs: Set<String> = []
     var creatures: [AgentCreatureState] = []
     var cloudCreatures: [CloudCreatureState] = []
     var opencodeCreatures: [OpenCodeCreatureState] = []
@@ -148,6 +149,7 @@ extension DashboardState {
         var result = TerrariumState()
         for session in siblingSessions where session.waitingOn != nil && !(session.state ?? "").hasPrefix("awaiting") {
             if let label = session.activity { result.ciWaitLabels[session.id] = label }
+            if session.waitingOn?.agentWaiting == true { result.ciWaitingIDs.insert(session.id) }
         }
 
         // Primary session creature (skip daemon/openclaw/codex-cli/opencode/antigravity — they're not octopuses)

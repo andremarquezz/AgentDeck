@@ -196,7 +196,7 @@
       "command": "xcodebuild test -scheme AgentDeck_macOS; xcodebuild build -scheme AgentDeck_iOS; validate-appstore-submission.sh",
       "proves": [
         "the macOS app and its in-process Swift daemon build and pass XCTest",
-        "native CI wait command intent classifier replays shared/ci-wait-vectors.json through CiWaitRulesTests",
+        "native CI wait intent, lifecycle and foreground accounting replay shared CI fixtures through CiWaitRulesTests",
         "the iOS app builds unsigned",
         "App Store metadata, screenshots and privacy manifest are within submission limits"
       ],

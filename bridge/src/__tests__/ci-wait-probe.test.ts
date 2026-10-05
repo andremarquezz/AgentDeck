@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ciPhaseFromCommit, ciPhaseFromResponse, ciWaitProbePath } from '../ci-wait-probe.js';
+import { ciCheckCounts, ciPhaseFromCommit, ciPhaseFromResponse, ciWaitProbePath } from '../ci-wait-probe.js';
 import { activityFor } from '../session-activity.js';
 import type { CiWaitStatus } from '@agentdeck/shared';
 const wait: CiWaitStatus = { kind: 'ci', provider: 'github-actions', phase: 'unknown', agentWaiting: true, evidence: 'tool_input', openedAt: 1 };
@@ -28,4 +28,11 @@ describe('CI wait provider evidence', () => {
     expect(ciPhaseFromResponse({ status: 'completed', conclusion: 'failure' })).toBe('failed');
     expect(ciPhaseFromResponse({ status: 'in_progress', conclusion: null })).toBe('running');
   });
+});
+
+it('reports counts only for complete readable evidence', () => {
+  const checks = { total_count: 2, check_runs: [{ status: 'completed', conclusion: 'success' }, { status: 'in_progress' }] };
+  expect(ciCheckCounts(checks, { total_count: 1, statuses: [{ state: 'failure' }] })).toEqual({ total: 3, passed: 1, failed: 1, pending: 1 });
+  expect(ciCheckCounts({ ...checks, total_count: 3 }, { total_count: 0, statuses: [] })).toBeUndefined();
+  expect(ciCheckCounts(checks, { total_count: 1, statuses: [{ state: 'unknown' }] })).toBeUndefined();
 });

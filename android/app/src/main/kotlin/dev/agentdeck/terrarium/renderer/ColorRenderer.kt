@@ -2,6 +2,8 @@ package dev.agentdeck.terrarium.renderer
 
 import dev.agentdeck.terrarium.CreatureNameTagLayer
 import dev.agentdeck.terrarium.CreatureNameTagRequest
+import dev.agentdeck.terrarium.CiWaitVisual
+import dev.agentdeck.ui.theme.DesignTokens
 import dev.agentdeck.terrarium.TerrariumRules
 
 import android.graphics.Paint
@@ -93,6 +95,17 @@ fun ColorTerrariumCanvas(
 
         // Layer 6: LED cables on rocks
         rockFormation.drawLEDs(this, state.environment)
+
+        if (state.ciWaitingIds.isNotEmpty()) {
+            val unit = w * TerrariumRules.CI_STATION_WIDTH_FRAC / 8f
+            val x = w * TerrariumRules.CI_STATION_X
+            val y = h * TerrariumRules.CI_STATION_Y
+            CiWaitVisual.shrimp.forEachIndexed { row, bits ->
+                for (col in 0 until 8) if (bits and (1 shl (7 - col)) != 0) {
+                    drawRect(DesignTokens.Coral.s500, Offset(x + col * unit, y + row * unit), Size(unit, unit))
+                }
+            }
+        }
 
         // Layer 6.5: Back-layer fish (behind creatures for 3D depth)
         dataParticles.drawBackLayer(this)

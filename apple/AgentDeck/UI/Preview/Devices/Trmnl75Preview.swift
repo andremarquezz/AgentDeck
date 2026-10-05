@@ -299,7 +299,7 @@ struct Trmnl75Preview: View {
                 // longer shares it with the state word, which pushed long text
                 // into the CP437 fallback font); the state word only when there
                 // is no activity or the session waits on the reader.
-                Text(stateLine(for: state))
+                Text(!awaiting && session.ciWait != nil ? (session.activity ?? "CI wait") : stateLine(for: state))
                     .font(.system(size: 8, weight: state == .processing ? .regular : .semibold))
                     .foregroundStyle(cardInk.opacity(0.72))
                     .lineLimit(1)

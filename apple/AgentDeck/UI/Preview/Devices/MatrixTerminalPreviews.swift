@@ -161,7 +161,7 @@ private struct PixooPixelGrid: View {
 // colours, and subagent satellites. Usage layout and drawStateDot changes do
 // not alter the mirrored AGENTS pixels.
 //
-// SYNC-HASH esp32/src/ui/matrix/matrix_pages.cpp fc8d3d6187b3d3944463c162f6d9ab02a75da5f1
+// SYNC-HASH esp32/src/ui/matrix/matrix_pages.cpp 63b3e9eb7d22d84f7bc8baa6b937789b08026955
 // scripts/check-preview-mirror-sync.mjs fails CI when the origin above drifts
 // from this pin — re-verify AGENTS-page parity and bump the hash together.
 
@@ -249,11 +249,13 @@ struct UlanziMatrixPreview: View {
             guard cursorX <= agentMaxX else { break }
             let agent = session.agent
             let state = session.state
+            let ci = state == .awaitingPrompt ? nil : session.ciWait
+            let ciRGB = CiWaitVisual.rgb(ci?.phase ?? "unknown")
             drawSprite(
                 ctx: &ctx, atX: cursorX,
-                alpha: Tc001Sprites.mask(for: agent),
-                bodyRGB: Tc001Sprites.bodyRGB255(agent: agent, state: state, instanceIdx: index),
-                rainbow: agent == .antigravity,
+                alpha: session.ciWait != nil && state != .awaitingPrompt ? CiWaitVisual.shrimp.flatMap { bits in (0..<8).map { col -> UInt8 in bits & (1 << (7 - col)) != 0 ? 255 : 0 } } : Tc001Sprites.mask(for: agent),
+                bodyRGB: ci != nil ? (Double(ciRGB.0), Double(ciRGB.1), Double(ciRGB.2)) : Tc001Sprites.bodyRGB255(agent: agent, state: state, instanceIdx: index),
+                rainbow: ci == nil && agent == .antigravity,
                 cellW: cellW, cellH: cellH
             )
             drawSubagentSatellites(

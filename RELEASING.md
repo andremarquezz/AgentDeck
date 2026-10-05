@@ -56,7 +56,7 @@ rename Unreleased until the delivered scope and candidate receipts are final.
 
 | Work | Candidate scope | Remaining acceptance |
 | --- | --- | --- |
-| [#433](https://github.com/puritysb/AgentDeck/issues/433) CI waits | Hook lifecycle, explicit wire clearing, bounded Node evidence, list/key/native labels | Real hook replay; concept comparison before station sculpture; firmware/matrix projection; APME wait-span accounting |
+| [#433](https://github.com/puritysb/AgentDeck/issues/433) CI waits | Hook lifecycle, explicit wire clearing, bounded Node evidence/counts, OpenCode shell evidence, native station/queue, Canvas/matrix glyphs, firmware activity, APME foreground wait accounting | Real agent-hook replay; station visual acceptance; physical-device and crowded-profile receipts; Hermes privacy-preserving CI evidence remains separate |
 | [#449](https://github.com/puritysb/AgentDeck/issues/449) delivery | Carry #451, #452, #459 and regression evidence into new artifacts | Three daemon modes plus reverse takeover on packaged candidates; organization-signed Apple archive; existing Elgato/Ulanzi review readback; DRM encoder acceptance |
 | [#423](https://github.com/puritysb/AgentDeck/issues/423) Hermes umbrella | Preserve observer-only support and measured upstream revision | Closes only with child acceptance; no duplicate implementation task |
 | [#425](https://github.com/puritysb/AgentDeck/issues/425) Hermes surfaces | Retain native/Lenovo receipts and verify crowded profiles | Remaining iPad/iPhone and physical matrix targets; versioned artifact validation |

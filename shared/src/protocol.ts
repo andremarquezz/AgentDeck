@@ -536,6 +536,8 @@ export interface CiWaitStatus {
   phase: 'unknown' | 'queued' | 'running' | 'passed' | 'failed';
   agentWaiting: boolean;
   evidence: 'tool_input' | 'github';
+  checks?: { total: number; passed: number; failed: number; pending: number };
+  runUrl?: string;
   openedAt: number;
   repo?: string;
   ref?: string;

@@ -358,3 +358,16 @@ blender --background --python-exit-code 1 --python assets/terrarium/build-hermes
 - Triangles: 148k (v18 142k). USDZ: 7.5 MB (v18 6.8 MB), including the 1024² face shading texture.
 
 **Not established:** physical-device frame time, and the user's visual acceptance.
+
+## CI cleaner-shrimp station
+
+`build-ci-station.py` creates the original station in `ci-station.blend` and
+exports `apple/AgentDeck/Resources/Aquarium/ci-station.usdz` and Android
+`residents/ci-station.glb` from the same scene. Run with Blender's background
+Python entry point. Materials read design tokens; it contains no provider mark.
+Apple and Android native 3D views move foreground waiting residents to a bounded
+queue. Permission requests retain their regular placement and priority. Canvas
+uses the 8×8 companion glyph, generated from `shared/src/ci-wait.ts`; micro
+matrices alternate that cue with the agent's original identity. Station geometry
+is in `shared/src/terrarium-rules.ts`. A rendered source review proves mesh/export
+appearance, not physical-device acceptance or owner approval.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getCreatureLayoutSnapshot } from '../pixoo/pixoo-renderer.js';
+import { getCreatureLayoutSnapshot, renderFrame } from '../pixoo/pixoo-renderer.js';
 import { State } from '../types.js';
 import type { SessionInfo } from '@agentdeck/shared/protocol';
 import type { StateUpdateEvent } from '../types.js';
@@ -265,3 +265,15 @@ describe('pixoo creature sync — Usage HUD safe area floor', () => {
   });
 });
 
+
+describe('CI micro cue', () => {
+  it('alternates a separate CI glyph and preserves permission priority', () => {
+    const wait = { kind: 'ci' as const, provider: 'github-actions' as const, phase: 'failed' as const,
+      agentWaiting: false, openedAt: 1, evidence: 'github' as const };
+    const row = session({ id: 'ci', waitingOn: wait });
+    const pixel = (buf: Uint8Array) => Array.from(buf.slice((11 + 1) * 3, (11 + 1) * 3 + 3));
+    expect(pixel(renderFrame(null, null, [row], 3500, 11, 'micro'))).toEqual([255, 107, 107]);
+    expect(pixel(renderFrame(null, null, [row], 500, 11, 'micro'))).not.toEqual([255, 107, 107]);
+    expect(pixel(renderFrame(null, null, [row, session({ id: 'permission', state: 'awaiting_permission' })], 3500, 11, 'micro'))).not.toEqual([255, 107, 107]);
+  });
+});

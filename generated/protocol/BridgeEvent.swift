@@ -2850,6 +2850,7 @@ extension ADSubagentSummary {
 // MARK: - ADCiWaitStatus
 struct ADCiWaitStatus: Codable, Equatable {
     var agentWaiting: Bool
+    var checks: ADChecks?
     var evidence: ADEvidence
     var kind: ADCiWaitStatusKind
     var openedAt: Double
@@ -2859,9 +2860,11 @@ struct ADCiWaitStatus: Codable, Equatable {
     var ref: String?
     var repo: String?
     var runId: Double?
+    var runUrl: String?
 
     enum CodingKeys: String, CodingKey {
         case agentWaiting = "agentWaiting"
+        case checks = "checks"
         case evidence = "evidence"
         case kind = "kind"
         case openedAt = "openedAt"
@@ -2871,6 +2874,7 @@ struct ADCiWaitStatus: Codable, Equatable {
         case ref = "ref"
         case repo = "repo"
         case runId = "runId"
+        case runUrl = "runUrl"
     }
 }
 
@@ -2894,6 +2898,7 @@ extension ADCiWaitStatus {
 
     func with(
         agentWaiting: Bool? = nil,
+        checks: ADChecks?? = nil,
         evidence: ADEvidence? = nil,
         kind: ADCiWaitStatusKind? = nil,
         openedAt: Double? = nil,
@@ -2902,10 +2907,12 @@ extension ADCiWaitStatus {
         provider: ADProvider? = nil,
         ref: String?? = nil,
         repo: String?? = nil,
-        runId: Double?? = nil
+        runId: Double?? = nil,
+        runUrl: String?? = nil
     ) -> ADCiWaitStatus {
         return ADCiWaitStatus(
             agentWaiting: agentWaiting ?? self.agentWaiting,
+            checks: checks ?? self.checks,
             evidence: evidence ?? self.evidence,
             kind: kind ?? self.kind,
             openedAt: openedAt ?? self.openedAt,
@@ -2914,7 +2921,70 @@ extension ADCiWaitStatus {
             provider: provider ?? self.provider,
             ref: ref ?? self.ref,
             repo: repo ?? self.repo,
-            runId: runId ?? self.runId
+            runId: runId ?? self.runId,
+            runUrl: runUrl ?? self.runUrl
+        )
+    }
+
+    func jsonData() throws -> Data {
+        return try newJSONEncoder().encode(self)
+    }
+
+    func jsonString(encoding: String.Encoding = .utf8) throws -> String? {
+        return String(data: try self.jsonData(), encoding: encoding)
+    }
+}
+
+//
+// Hashable or Equatable:
+// The compiler will not be able to synthesize the implementation of Hashable or Equatable
+// for types that require the use of JSONAny, nor will the implementation of Hashable be
+// synthesized for types that have collections (such as arrays or dictionaries).
+
+// MARK: - ADChecks
+struct ADChecks: Codable, Equatable {
+    var failed: Double
+    var passed: Double
+    var pending: Double
+    var total: Double
+
+    enum CodingKeys: String, CodingKey {
+        case failed = "failed"
+        case passed = "passed"
+        case pending = "pending"
+        case total = "total"
+    }
+}
+
+// MARK: ADChecks convenience initializers and mutators
+
+extension ADChecks {
+    init(data: Data) throws {
+        self = try newJSONDecoder().decode(ADChecks.self, from: data)
+    }
+
+    init(_ json: String, using encoding: String.Encoding = .utf8) throws {
+        guard let data = json.data(using: encoding) else {
+            throw NSError(domain: "JSONDecoding", code: 0, userInfo: nil)
+        }
+        try self.init(data: data)
+    }
+
+    init(fromURL url: URL) throws {
+        try self.init(data: try Data(contentsOf: url))
+    }
+
+    func with(
+        failed: Double? = nil,
+        passed: Double? = nil,
+        pending: Double? = nil,
+        total: Double? = nil
+    ) -> ADChecks {
+        return ADChecks(
+            failed: failed ?? self.failed,
+            passed: passed ?? self.passed,
+            pending: pending ?? self.pending,
+            total: total ?? self.total
         )
     }
 

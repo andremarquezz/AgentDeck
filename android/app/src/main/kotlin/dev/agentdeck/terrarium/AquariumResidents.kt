@@ -69,6 +69,22 @@ internal class AquariumResidents(private val context: Context, private val viewe
         /** Model-space silhouette bounds, for keeping tags off other residents. */
         val centerX: Float = 0f, val centerY: Float = 0f, val halfX: Float = .5f, val halfY: Float = .5f)
     private val bodies = linkedMapOf<String, Body>()
+    private var ciQueue = emptyList<String>()
+    private var ciStation: FilamentAsset? = null
+    private fun loadStation() {
+        if (ciStation != null) return
+        val bytes = context.assets.open("residents/ci-station.glb").use { it.readBytes() }
+        val buffer = ByteBuffer.allocateDirect(bytes.size).apply { put(bytes); flip() }
+        val asset = requireNotNull(loader.createAsset(buffer))
+        resources.loadResources(asset)
+        asset.releaseSourceData()
+        ciStation = asset
+        Matrix.setIdentityM(matrix, 0)
+        Matrix.translateM(matrix, 0, TerrariumRules.CI_STATION_NATIVE_X, TerrariumRules.CI_STATION_NATIVE_Y, TerrariumRules.CI_STATION_NATIVE_Z)
+        val scale = TerrariumRules.CI_STATION_NATIVE_SCALE
+        Matrix.scaleM(matrix, 0, scale, scale, scale)
+        transforms.setTransform(transforms.getInstance(asset.root), matrix)
+    }
     private var all = emptyList<AquariumResident>()
     private var focusedId: String? = null
     private val matrix = FloatArray(16)
@@ -136,7 +152,11 @@ internal class AquariumResidents(private val context: Context, private val viewe
 
     fun sync(state: TerrariumState, focus: String?) {
         val next = aquariumResidents(state)
-        if (all == next && focusedId == focus) return
+        val queue = visibleAquariumResidents(next, focus).filter { it.id in state.ciWaitingIds && it.state != OctopusVisualState.ASKING }.map { it.id }.sorted()
+        if (all == next && focusedId == focus && ciQueue == queue) return
+        ciQueue = queue
+        if (queue.isNotEmpty()) loadStation()
+        ciStation?.let { if (queue.isEmpty()) viewer.scene.removeEntities(it.entities) else viewer.scene.addEntities(it.entities) }
         all = next
         focusedId = focus
         val visible = visibleAquariumResidents(all, focus)
@@ -149,7 +169,11 @@ internal class AquariumResidents(private val context: Context, private val viewe
         }
         for (item in visible) {
             val existing = bodies[item.id]
-            if (existing != null) { existing.item = item; continue }
+            if (existing != null) {
+                existing.item = item
+                existing.support?.let { if (item.id in ciQueue) viewer.scene.removeEntities(it.entities) else viewer.scene.addEntities(it.entities) }
+                continue
+            }
             fun load(kind: String): FilamentAsset {
                 val bytes = context.assets.open("residents/$kind.glb").use { it.readBytes() }
                 val buffer = ByteBuffer.allocateDirect(bytes.size).apply { put(bytes); flip() }
@@ -159,7 +183,7 @@ internal class AquariumResidents(private val context: Context, private val viewe
             }
             val asset = load(item.kind)
             val support = if (item.kind == "claudecode" || item.kind == "openclaw") load("substrate") else null
-            support?.let { viewer.scene.addEntities(it.entities); it.releaseSourceData() }
+            support?.let { if (item.id !in ciQueue) viewer.scene.addEntities(it.entities); it.releaseSourceData() }
             val joints = asset.entities.toList().mapNotNull { entity ->
                 val name = asset.getName(entity) ?: ""
                 if (!name.startsWith("joint_")) null else {
@@ -178,6 +202,13 @@ internal class AquariumResidents(private val context: Context, private val viewe
 
     fun step(delta: Float, aspect: Float) {
         val dt = delta.coerceIn(0f, .05f)
+        ciStation?.let {
+            Matrix.setIdentityM(matrix, 0)
+            Matrix.translateM(matrix, 0, TerrariumRules.CI_STATION_NATIVE_X * min(1f, aspect), TerrariumRules.CI_STATION_NATIVE_Y, TerrariumRules.CI_STATION_NATIVE_Z)
+            val stationScale = TerrariumRules.CI_STATION_NATIVE_SCALE
+            Matrix.scaleM(matrix, 0, stationScale, stationScale, stationScale)
+            transforms.setTransform(transforms.getInstance(it.root), matrix)
+        }
         val blend = 1f - exp(-dt * 3f)
         val columns = if (aspect < 1f) 2 else 4
         val width = min(6f, max(2f, aspect * 4f))
@@ -190,7 +221,7 @@ internal class AquariumResidents(private val context: Context, private val viewe
             body.attention += ((if (body.item.state == OctopusVisualState.ASKING) 1f else 0f) - body.attention) * blend
             body.phase += dt * (TerrariumRules.NATIVE_ACTIVITY_IDLE_RATE + body.effort * TerrariumRules.NATIVE_ACTIVITY_WORK_RATE)
             val grounded = body.item.kind == "claudecode" || body.item.kind == "openclaw"
-            val scale = if (grounded) min(baseScale, 1.8f / sqrt(groundedCount.toFloat())) else baseScale
+            var scale = if (grounded) min(baseScale, 1.8f / sqrt(groundedCount.toFloat())) else baseScale
             body.size = scale
             val index = if (grounded) groundIndex++ else waterIndex++
             val row = index / columns
@@ -209,6 +240,15 @@ internal class AquariumResidents(private val context: Context, private val viewe
                 Matrix.translateM(matrix, 0, homeX, 0f, body.z)
                 Matrix.scaleM(matrix, 0, max(.65f, scale * 1.35f), .95f + row * .48f, max(.55f, scale))
                 transforms.setTransform(transforms.getInstance(shelf.root), matrix)
+            }
+            val ciSlot = ciQueue.indexOf(body.item.id)
+            if (ciSlot >= 0) {
+                val ciColumns = TerrariumRules.CI_STATION_QUEUE_COLUMNS.toInt()
+                scale *= min(1f, aspect)
+                body.size = scale
+                body.x = (TerrariumRules.CI_STATION_NATIVE_X + (ciSlot % ciColumns) * TerrariumRules.CI_STATION_NATIVE_QUEUE_GAP) * min(1f, aspect)
+                body.y = TerrariumRules.CI_STATION_NATIVE_QUEUE_Y + (ciSlot / ciColumns) * TerrariumRules.CI_STATION_NATIVE_QUEUE_GAP
+                body.z = TerrariumRules.CI_STATION_NATIVE_QUEUE_Z
             }
             Matrix.setIdentityM(matrix, 0)
             Matrix.translateM(matrix, 0, body.x, body.y, body.z)
@@ -296,6 +336,8 @@ internal class AquariumResidents(private val context: Context, private val viewe
             body.support?.let { viewer.scene.removeEntities(it.entities); loader.destroyAsset(it) }
         }
         bodies.clear()
+        ciStation?.let { viewer.scene.removeEntities(it.entities); loader.destroyAsset(it) }
+        ciStation = null
         resources.destroy()
         loader.destroy()
         materials.destroyMaterials()

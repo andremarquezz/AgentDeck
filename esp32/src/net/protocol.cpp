@@ -1,3 +1,4 @@
+#include "../state/ci_wait_generated.h"
 #include "../audio/wake_word.h"
 #include "../audio/mic_capture.h"
 #include "protocol.h"
@@ -521,6 +522,17 @@ static void handleSessionsList(JsonObject& obj) {
 #endif
         // Shared per-session activity one-liner (heuristic → Foundation Models
         // summary) — the most meaningful glanceable line for a dashboard row.
+        // Full WS rows carry waitingOn; compact serial rows carry the same
+        // generated phase ID. Null clears; an unknown phase stays unknown.
+        uint8_t ciPhase = CiWaitVisual::NONE;
+        if (s.containsKey("ciPhase")) {
+            const int rawPhase = s["ciPhase"].is<int>() ? s["ciPhase"].as<int>() : -1;
+            ciPhase = rawPhase >= CiWaitVisual::NONE && rawPhase <= CiWaitVisual::FAILED
+                ? (uint8_t)rawPhase : CiWaitVisual::UNKNOWN;
+        }
+        if (s["waitingOn"].is<JsonObject>()) ciPhase = CiWaitVisual::phase(s["waitingOn"]["phase"] | "unknown");
+        else if (s["waitingOn"].isNull() && s.containsKey("waitingOn")) ciPhase = CiWaitVisual::NONE;
+        g_state.sessions[i].ciPhase = ciPhase;
         copyTextU8(g_state.sessions[i].activity, sizeof(g_state.sessions[i].activity),
                    s["activity"] | "");
         // Daemon-computed latest milestone (TIMELINE parity for cards).

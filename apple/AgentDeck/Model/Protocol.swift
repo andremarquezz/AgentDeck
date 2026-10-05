@@ -1135,8 +1135,17 @@ struct CiWaitStatus: Codable, Equatable, Sendable {
     var agentWaiting: Bool
     var evidence: String
     var openedAt: Int
+    var checks: CiWaitChecks?
+    var runUrl: String?
     var repo: String?
     var ref: String?
     var pr: Int?
     var runId: Int?
+}
+
+struct CiWaitChecks: Codable, Equatable, Sendable {
+    var total: Int
+    var passed: Int
+    var failed: Int
+    var pending: Int
 }

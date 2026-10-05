@@ -9,6 +9,19 @@ package dev.agentdeck.terrarium
  */
 object TerrariumRules {
     const val NATIVE_RESIDENT_LIMIT = 8
+    const val CI_STATION_X = 0.14f
+    const val CI_STATION_Y = 0.63f
+    const val CI_STATION_WIDTH_FRAC = 0.13f
+    const val CI_STATION_QUEUE_GAP = 0.1f
+    const val CI_STATION_QUEUE_RISE = 0.09f
+    const val CI_STATION_QUEUE_COLUMNS = 4.0f
+    const val CI_STATION_NATIVE_X = -2.4f
+    const val CI_STATION_NATIVE_Y = 0.65f
+    const val CI_STATION_NATIVE_Z = 1.9f
+    const val CI_STATION_NATIVE_SCALE = 0.7f
+    const val CI_STATION_NATIVE_QUEUE_GAP = 0.85f
+    const val CI_STATION_NATIVE_QUEUE_Y = 1.8f
+    const val CI_STATION_NATIVE_QUEUE_Z = 0.1f
     const val NATIVE_ACTIVITY_IDLE_RATE = 0.65f
     const val NATIVE_ACTIVITY_WORK_RATE = 2.5f
     const val NATIVE_ACTIVITY_GROUND_TRAVEL = 0.32f

@@ -1473,6 +1473,7 @@ data class SubagentSummary (
 
 data class CiWaitStatus (
     val agentWaiting: Boolean,
+    val checks: Checks? = null,
     val evidence: Evidence,
     val kind: CiWaitStatusKind,
     val openedAt: Double,
@@ -1483,7 +1484,17 @@ data class CiWaitStatus (
     val repo: String? = null,
 
     @Json(name = "runId")
-    val runID: Double? = null
+    val runID: Double? = null,
+
+    @Json(name = "runUrl")
+    val runURL: String? = null
+)
+
+data class Checks (
+    val failed: Double,
+    val passed: Double,
+    val pending: Double,
+    val total: Double
 )
 
 enum class Evidence(val value: String) {

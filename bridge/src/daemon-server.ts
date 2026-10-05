@@ -5051,8 +5051,9 @@ export async function startDaemon(opts: DaemonOptions): Promise<void> {
       ciProbeAfter.set(id, now + 30_000);
       ciProbes.add(id);
       const token = ciWaits.tokenFor(id);
-      void probeCiWait(wait).then(phase => {
-        if (ciPollingStopped || !ciWaits.applyPhase(id, token, phase)) return;
+      void probeCiWait(wait).then(evidence => {
+        const { phase } = evidence;
+        if (ciPollingStopped || !ciWaits.applyEvidence(id, token, evidence)) return;
         if (phase === 'passed' || phase === 'failed') {
           ciResultsUntil.set(id, Date.now() + CI_WAIT_LIFECYCLE.resultAgeMs);
           core.bridgeTimeline.addEntry({ ts: Date.now(), type: 'scheduled',

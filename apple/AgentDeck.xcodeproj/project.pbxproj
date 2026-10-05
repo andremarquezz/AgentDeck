@@ -378,6 +378,7 @@
 		9197CE4EF7351E7C83BBE89F /* MatrixExpression.swift in Sources */ = {isa = PBXBuildFile; fileRef = B938F198829A3AF90F7BE842 /* MatrixExpression.swift */; };
 		91FD7626FCF73226181BD900 /* ProjectNameResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F7897FE76F480951CD34749 /* ProjectNameResolver.swift */; };
 		920821ACA214400577D14C04 /* HermesMermaid.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17A40660684AE5E16A35D4A /* HermesMermaid.swift */; };
+		922D61DD11C6D3FF72B144A3 /* ci-station.usdz in Resources */ = {isa = PBXBuildFile; fileRef = 3CB675C42D58BB1312804E05 /* ci-station.usdz */; };
 		93AB7595B2EC62D78A09A58F /* DeskPreviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83D5CE0F7637C0913938BA6B /* DeskPreviews.swift */; };
 		942417AA37DAD475B023BED1 /* PairingWindowStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6F0B91327EB48703713A68C /* PairingWindowStore.swift */; };
 		942DEF7F0BE77DF0FA264AF8 /* StateTimelineGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38C2485BC8700CBDD9EDE70E /* StateTimelineGenerator.swift */; };
@@ -410,6 +411,7 @@
 		9F33FD43466B946801E1E6D1 /* SessionOrderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1971E370D9EAF54BDE962C5 /* SessionOrderStore.swift */; };
 		9F873E9EA03C9927B275638C /* SessionFocusRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 788166EF7E8CB65CDE3D3D67 /* SessionFocusRelay.swift */; };
 		9F8B04A5AA6EF0818E975246 /* HermesObserverGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 117F3C33248F92F5E98E4ECB /* HermesObserverGateTests.swift */; };
+		A05BE918D55EB0A337106C03 /* ci-station.usdz in Resources */ = {isa = PBXBuildFile; fileRef = 3CB675C42D58BB1312804E05 /* ci-station.usdz */; };
 		A12AD232C2625E0919A0CFDF /* ProjectNameResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDF6D4E03A73AA83A363FA94 /* ProjectNameResolverTests.swift */; };
 		A14FF06EAC0C5B5CCFC81875 /* DaemonTimelineStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE17EFB01F43FCB1A53F644D /* DaemonTimelineStore.swift */; };
 		A15E15C108F9BF9818F00B0C /* HTTPServerParseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DFA860CDF8678DDE9A40D9D /* HTTPServerParseTests.swift */; };
@@ -751,6 +753,7 @@
 		3B886C1F467A011D242E296E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		3C41CE28781400748CBA9AE6 /* AquariumResidents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AquariumResidents.swift; sourceTree = "<group>"; };
 		3C6D9385857E3BEB95A91496 /* HTTPServerMainThreadStallTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPServerMainThreadStallTests.swift; sourceTree = "<group>"; };
+		3CB675C42D58BB1312804E05 /* ci-station.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = "ci-station.usdz"; sourceTree = "<group>"; };
 		3D3815BC9679F080521D52D2 /* IDotMatrixModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IDotMatrixModule.swift; sourceTree = "<group>"; };
 		3DFA860CDF8678DDE9A40D9D /* HTTPServerParseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPServerParseTests.swift; sourceTree = "<group>"; };
 		3E868DDC13347FD992B9AF3D /* PairingCredential.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingCredential.swift; sourceTree = "<group>"; };
@@ -1192,6 +1195,7 @@
 			isa = PBXGroup;
 			children = (
 				3A59CDD89266C18C80F6F324 /* 3d-residents.usdz */,
+				3CB675C42D58BB1312804E05 /* ci-station.usdz */,
 				97FD2FC56DAE932DFA3CAB82 /* hermes-mermaid.usdz */,
 				E6382C68380E57D0B8C08301 /* living-aquarium.usdz */,
 			);
@@ -1779,6 +1783,7 @@
 				9B35FF97161EEF36E9B95425 /* PocketSansWorld_12.cpfont in Resources */,
 				E59E0351EAA083B954985854 /* PrivacyInfo.xcprivacy in Resources */,
 				F1AA123E5D16742D2C7B003C /* apme-dashboard.html in Resources */,
+				922D61DD11C6D3FF72B144A3 /* ci-station.usdz in Resources */,
 				1485D7307E8E9F0E057450C1 /* hermes-mermaid.usdz in Resources */,
 				ED33FD094A4EF68734AC9886 /* jp-n3-ko.manifest.json in Resources */,
 				567713AB74E05824DBE77C48 /* jp-n3-ko.pdl in Resources */,
@@ -1800,6 +1805,7 @@
 				2EE4D025FDE45D64FD147DB4 /* PocketSansWorld_12.cpfont in Resources */,
 				26569551DB80E2C8457E1958 /* PrivacyInfo.xcprivacy in Resources */,
 				FBBDE4862E8788F5007ACBC3 /* apme-dashboard.html in Resources */,
+				A05BE918D55EB0A337106C03 /* ci-station.usdz in Resources */,
 				9AF99AF180FB27AB3470A4C2 /* hermes-mermaid.usdz in Resources */,
 				FC69321DFB051CE20F9FC541 /* jp-n3-ko.manifest.json in Resources */,
 				6EBE9EE758C949CF2BC6A868 /* jp-n3-ko.pdl in Resources */,

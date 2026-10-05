@@ -47,14 +47,18 @@ bumped, superseded by 1.0.17, and never published, so it exists only in git.
 
 ## Unreleased
 
-- Show observed Claude/Codex CI watch requests separately from agent activity.
+- Show observed Claude/Codex/OpenCode CI watch requests separately from agent activity.
   Background waits survive the end of an agent turn; foreground tool completion,
   tool failure, re-invocation and session end clear the applicable wait explicitly.
   Hook evidence alone has unknown CI status. The Node daemon can query explicitly identified GitHub
   checks with bounded requests and recognize owned watcher-process exit.
-  Session lists, deck keys and native aquarium labels expose the wait without
-  turning it into a permission request. Dedicated station art and remaining
-  firmware surfaces are tracked in #433 and are not claimed complete here.
+  Session lists and deck keys include complete check counts when available.
+  Native 3D aquariums queue waiting residents at an original cleaner-shrimp
+  station; Canvas and small matrix displays use its generated glyph. LCD/e-ink
+  keep readable CI activity, with permission requests retaining priority.
+  APME records CI relations and separates foreground blocking time from active
+  turn time; background checks never subtract active time or alter `end_source`.
+  Physical-device, real-agent receipt and visual acceptance remain tracked in #433.
 - Recover rejected z.ai credentials through Integrations, including when the
   Mac app follows the local Node daemon. Distinguish invalid credentials from
   transport failure and verified usage from successful key storage (#459).

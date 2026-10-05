@@ -33,7 +33,7 @@
 // and taught `renderDetailInfo` to draw the pending prompt, and both live
 // outside this mirror's declared scope below. Recorded so the next reader does
 // not hunt for a missing port — the pin tracks the whole file, not the subset.
-// SYNC-HASH shared/src/svg-renderers/session-slot-renderer.ts d99b7df39d985d1af02aa8244bb90b7107773c3b
+// SYNC-HASH shared/src/svg-renderers/session-slot-renderer.ts e3429591c6c038e47e72e7b11f66530ad843d493
 //
 // Scope for this first pass:
 //   - renderSessionSlot (primary session button)
@@ -174,7 +174,7 @@ struct SessionSlotView: View {
     }
     private var toolText: String {
         if mode != .asking, let wait = session.waitingOn {
-            return "CI " + (wait.phase == "unknown" ? "wait" : wait.phase) + (wait.pr.map { " #\($0)" } ?? "")
+            return "CI " + (wait.phase == "unknown" ? "wait" : wait.phase) + (wait.pr.map { " #\($0)" } ?? "") + (wait.checks.map { " · \($0.passed)/\($0.total)" } ?? "")
         }
         return mode == .working ? "Running task" : modelText
     }
