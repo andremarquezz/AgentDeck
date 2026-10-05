@@ -100,7 +100,7 @@ eyes and original teal pupils, Codex’s filled white prompt and OpenCode’s ac
 opening. It covers both 2D and 3D rendering, including generated device glyphs
 and canonical terminal cells. Very small LED/terminal samples can average away
 fine details; terminal hues require true-color support.
-Final local source gates passed 5,340 Vitest tests (8 skipped), 86 focused Swift
+Final local source gates passed 5,341 Vitest tests (8 skipped), 86 focused Swift
 checks and 460 Android unit tests. The four clean-installed npm tarballs passed
 all ten acceptance checks; macOS/iOS archive invariant checks and unsigned
 Android APK/AAB signature-absence checks passed. Actual final macOS/iPad and three
@@ -144,6 +144,9 @@ setup/pairing and real hardware-shell photographs; historical screenshots are
 not proof of the 1.8.0 appearance, and generated key assets are not device photos.
 The live preview uses canonical renderer frames, including terminal background
 colors and exact half cells, with explicit placeholders if frame data is absent.
+The earlier 39-image store gallery and aquarium movie/GIF are not approved as
+current 1.8.0 media; recapture them before submission. Representative QA proofs
+are prepared, not a completed localized store gallery.
 
 Other follow-ups: IPS10 wake-word 3-to-5-frame candidate needs a new controlled
 false-positive/missed-trigger/latency comparison before firmware inclusion;

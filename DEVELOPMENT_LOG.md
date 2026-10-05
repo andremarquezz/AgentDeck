@@ -154,7 +154,7 @@ approval of the rejected replacement. Managed-session removal (#273) and e-ink
 interaction research (#272) are separate work, not implicit 1.8.0 removals/redesigns.
 
 
-The final combined source pass completed 5,340 Vitest tests (8 skipped),
+The final combined source pass completed 5,341 Vitest tests (8 skipped),
 86 focused Swift tests and 460 Android unit tests. Canonical terminal cells now
 also feed the Swift Device Preview through generated affine color samples;
 executed Swift/Node comparisons cover 24 glyph/color cases and seven scale
@@ -211,6 +211,11 @@ declarations; focused review confirms ordinary default units still route normall
 The final integrated source at `02ba0753` passed build/typecheck, 5,340 Vitest
 tests (8 skipped), 14 isolated E2E tests, all ten packaged checks and the real
 custom-scope stop regression without changing the production PID/build/unit.
+
+The last public-demo review caught formatted reset labels being passed where
+ISO timestamps were required. The fixture now reuses the existing usage timestamp
+fields; a generated-frame regression checks all 28 agent/state screens for finite
+reset labels. This changes demo data only, not packaged/native/firmware inputs.
 
 ## 2026-10-05 — Exercise Hermes runtime recovery, packaging and native delivery
 
