@@ -1,5 +1,13 @@
 {
   "schema": "agentdeck.brand-features/v1",
+  "monochromeCreature": {
+    "minSize": 24,
+    "outlineWidth": 0.4,
+    "lightBodyAgents": [
+      "claudecode",
+      "openclaw"
+    ]
+  },
   "agents": {
     "claudecode": {
       "sourcePath": "design/brand/claudecode.svg",

@@ -15,6 +15,8 @@ struct FeatureLayer {
     uint8_t red, green, blue;
     bool monochromeInk;
 };
+constexpr int MIN_MONO_CREATURE_SIZE = 24;
+constexpr float MONO_OUTLINE_WIDTH = 0.4f;
 
 constexpr int OCTOPUS_W = 64;
 constexpr int OCTOPUS_H = 64;
@@ -92,6 +94,8 @@ constexpr int OCTOPUS_FEATURE_COUNT = 1;
 static const FeatureLayer OCTOPUS_FEATURES[1] = {
     {16, 21, 32, 9, OCTOPUS_FEATURE_0_A8, 0, 0, 0, false},
 };
+
+constexpr bool OCTOPUS_MONO_LIGHT_BODY = true;
 
 constexpr int OPENCLAW_MARK_W = 64;
 constexpr int OPENCLAW_MARK_H = 64;
@@ -174,6 +178,8 @@ static const FeatureLayer OPENCLAW_MARK_FEATURES[2] = {
     {22, 18, 21, 4, OPENCLAW_MARK_FEATURE_1_A8, 255, 255, 255, true},
 };
 
+constexpr bool OPENCLAW_MARK_MONO_LIGHT_BODY = true;
+
 constexpr int OPENCODE_W = 64;
 constexpr int OPENCODE_H = 64;
 static const uint8_t OPENCODE_A8[64 * 64] = {
@@ -248,6 +254,8 @@ constexpr int OPENCODE_FEATURE_COUNT = 0;
 static const FeatureLayer OPENCODE_FEATURES[1] = {
     {0, 0, 0, 0, nullptr, 0, 0, 0, false},
 };
+
+constexpr bool OPENCODE_MONO_LIGHT_BODY = false;
 
 constexpr int CODEX_W = 64;
 constexpr int CODEX_H = 64;
@@ -326,6 +334,8 @@ static const FeatureLayer CODEX_FEATURES[1] = {
     {15, 21, 35, 23, CODEX_FEATURE_0_A8, 255, 255, 255, false},
 };
 
+constexpr bool CODEX_MONO_LIGHT_BODY = false;
+
 constexpr int ANTIGRAVITY_W = 64;
 constexpr int ANTIGRAVITY_H = 64;
 static const uint8_t ANTIGRAVITY_A8[64 * 64] = {
@@ -400,6 +410,8 @@ constexpr int ANTIGRAVITY_FEATURE_COUNT = 0;
 static const FeatureLayer ANTIGRAVITY_FEATURES[1] = {
     {0, 0, 0, 0, nullptr, 0, 0, 0, false},
 };
+
+constexpr bool ANTIGRAVITY_MONO_LIGHT_BODY = false;
 
 constexpr int KIRO_W = 64;
 constexpr int KIRO_H = 64;
@@ -476,6 +488,8 @@ static const FeatureLayer KIRO_FEATURES[1] = {
     {0, 0, 0, 0, nullptr, 0, 0, 0, false},
 };
 
+constexpr bool KIRO_MONO_LIGHT_BODY = false;
+
 constexpr int HERMES_W = 64;
 constexpr int HERMES_H = 64;
 static const uint8_t HERMES_A8[64 * 64] = {
@@ -551,6 +565,8 @@ static const FeatureLayer HERMES_FEATURES[1] = {
     {0, 0, 0, 0, nullptr, 0, 0, 0, false},
 };
 
+constexpr bool HERMES_MONO_LIGHT_BODY = false;
+
 constexpr int ZAI_W = 64;
 constexpr int ZAI_H = 64;
 static const uint8_t ZAI_A8[64 * 64] = {
@@ -625,5 +641,7 @@ constexpr int ZAI_FEATURE_COUNT = 0;
 static const FeatureLayer ZAI_FEATURES[1] = {
     {0, 0, 0, 0, nullptr, 0, 0, 0, false},
 };
+
+constexpr bool ZAI_MONO_LIGHT_BODY = false;
 
 }  // namespace CreatureGlyphs

@@ -5,6 +5,9 @@
  * feature separation; this is a distinct monochrome adaptation, not color RGB. */
 export const BRAND_FEATURES = {
   schema: 'agentdeck.brand-features/v1',
+  // Small monochrome UI marks retain the ink-body inverse-contrast mapping.
+  // Actual creatures at/above this size honor black eyes on a light outlined body.
+  monochromeCreature: { minSize: 24, outlineWidth: 0.4, lightBodyAgents: ['claudecode', 'openclaw'] },
   agents: {
     claudecode: { sourcePath: 'design/brand/claudecode.svg', sourceHash: 'd7eb2d876b49e51cc16291a42b681d7cf4906e60e0150776dbfb353ec4ca3746',
       features: [{ role: 'eyes', mode: 'fill', monochrome: 'paper', rgb: [0, 0, 0], pathIndex: 0, subpathIndices: [1, 2] }] },
