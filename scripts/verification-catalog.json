@@ -72,6 +72,32 @@
       ]
     },
     {
+      "id": "npm-candidate-acceptance",
+      "name": "Clean npm candidate package acceptance",
+      "level": ["integration", "e2e"],
+      "where": "Local POSIX host with Node 22, 24 or 26",
+      "workflow": null,
+      "trigger": "Before npm candidate delivery, after pnpm build",
+      "blocking": false,
+      "command": "pnpm test:packaged --soak-seconds 60 --keep-artifacts",
+      "evidence": ["scripts/verify-packaged-daemon.mjs", "setup/package.json"],
+      "proves": [
+        "all four coordinated npm tarballs install in an empty prefix without workspace links or compiled test payloads",
+        "the installed daemon boots under the exact native-binding executable on an isolated port and temporary data directory",
+        "installed Claude shell hooks discover that daemon through its registry and deliver a turn",
+        "a locally fixtured GitHub API process drives failed CI, explicit re-invocation clear, a repair tool and passed rerun over real HTTP/WebSocket interfaces",
+        "captured Hermes child/cancelled-turn hooks replay correctly and twelve concurrent read-only conversations retain independent labels and identities",
+        "four volunteered device kinds appear in health; dashboard/reader/plugin peers depart, a WiFi board reconnect updates its retained identity, and compact roster frames parse below the smallest firmware JSON guard",
+        "the packaged daemon survives the requested soak and replays persisted timeline and credentials after isolated shutdown/restart"
+      ],
+      "does_not_prove": [
+        "a live GitHub CI run or real agent execution (the subprocess and hook payloads are fixtures)",
+        "physical device rendering, hardware transport or optical acceptance",
+        "Swift/Node ownership handover, store signing or publication",
+        "a long-term production soak (duration is selected by the operator)"
+      ]
+    },
+    {
       "id": "swift-codex-live",
       "name": "Sandboxed Swift Codex live acceptance",
       "level": [
@@ -194,8 +220,10 @@
       "trigger": "PRs and pushes touching apple/**, shared/** or generated/protocol/**",
       "blocking": true,
       "command": "xcodebuild test -scheme AgentDeck_macOS; xcodebuild build -scheme AgentDeck_iOS; validate-appstore-submission.sh",
+      "evidence": ["apple/AgentDeckTests/AgentDeckPathsTests.swift"],
       "proves": [
         "the macOS app and its in-process Swift daemon build and pass XCTest",
+        "explicit daemon data-directory overrides avoid legacy user-data migration and own only their temporary paths",
         "native CI wait intent, lifecycle and foreground accounting replay shared CI fixtures through CiWaitRulesTests",
         "the iOS app builds unsigned",
         "App Store metadata, screenshots and privacy manifest are within submission limits"
