@@ -661,17 +661,15 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    import "./brand-features.generated.js";
+    // Exact source contours and material roles are generated from the shared contract.
+    const originalCreatures = globalThis.CREATURE_BRAND_FEATURES.agents;
+    const featureColor = rgb => `rgb(${rgb.join(', ')})`;
+
     const SVG_NS = "http://www.w3.org/2000/svg";
 
-    const CLAUDE_PATH = "M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z";
-    const CODEX_PATH = "M9.064 3.344a4.578 4.578 0 012.285-.312c1 .115 1.891.54 2.673 1.275.01.01.024.017.037.021a.09.09 0 00.043 0 4.55 4.55 0 013.046.275l.047.022.116.057a4.581 4.581 0 012.188 2.399c.209.51.313 1.041.315 1.595a4.24 4.24 0 01-.134 1.223.123.123 0 00.03.115c.594.607.988 1.33 1.183 2.17.289 1.425-.007 2.71-.887 3.854l-.136.166a4.548 4.548 0 01-2.201 1.388.123.123 0 00-.081.076c-.191.551-.383 1.023-.74 1.494-.9 1.187-2.222 1.846-3.711 1.838-1.187-.006-2.239-.44-3.157-1.302a.107.107 0 00-.105-.024c-.388.125-.78.143-1.204.138a4.441 4.441 0 01-1.945-.466 4.544 4.544 0 01-1.61-1.335c-.152-.202-.303-.392-.414-.617a5.81 5.81 0 01-.37-.961 4.582 4.582 0 01-.014-2.298.124.124 0 00.006-.056.085.085 0 00-.027-.048 4.467 4.467 0 01-1.034-1.651 3.896 3.896 0 01-.251-1.192 5.189 5.189 0 01.141-1.6c.337-1.112.982-1.985 1.933-2.618.212-.141.413-.251.601-.33.215-.089.43-.164.646-.227a.098.098 0 00.065-.066 4.51 4.51 0 01.829-1.615 4.535 4.535 0 011.837-1.388z";
     const ANTIGRAVITY_PATH = "M21.751 22.607c1.34 1.005 3.35.335 1.508-1.508C17.73 15.74 18.904 1 12.037 1 5.17 1 6.342 15.74.815 21.1c-2.01 2.009.167 2.511 1.507 1.506 5.192-3.517 4.857-9.714 9.715-9.714 4.857 0 4.522 6.197 9.714 9.715z";
-    const OPENCLAW_BODY = "M12 2.568c-6.33 0-9.495 5.275-9.495 9.495 0 4.22 3.165 8.44 6.33 9.494v2.11h2.11v-2.11s1.055.422 2.11 0v2.11h2.11v-2.11c3.165-1.055 6.33-5.274 6.33-9.494S18.33 2.568 12 2.568z";
-    const OPENCLAW_CLAW_L = "M3.56 9.953C.396 8.898-.66 11.008.396 13.118c1.055 2.11 3.164 1.055 4.22-1.055.632-1.477 0-2.11-1.056-2.11z";
-    const OPENCLAW_CLAW_R = "M20.44 9.953c3.164-1.055 4.22 1.055 3.164 3.165-1.055 2.11-3.164 1.055-4.22-1.055-.632-1.477 0-2.11 1.056-2.11z";
-    const OPENCLAW_ANT_L = "M5.507 1.875c.476-.285 1.036-.233 1.615.037.577.27 1.223.774 1.937 1.488";
-    const OPENCLAW_ANT_R = "M16.877 1.913c.58-.27 1.14-.323 1.616-.038.476.285.43.91-.326.542-.227-.136-.547-.153-1.022.069-.478.223-1.064.668-1.756 1.361";
 
     const PIXEL_GRIDS = {
       claude: [
@@ -720,25 +718,25 @@
     const AGENTS = {
       claude: {
         label: "Claude Code",
-        referenceCopy: "Use claudecode-color.svg directly: flat terracotta glyph with two eye cutouts and a lower peg. No rear sparkle.",
+        referenceCopy: "Original Claude Code contours with opaque black eyes; no added facial details.",
         tabletCopy: "Tablets can keep the aquarium scene, but the creature itself should match the asset more closely and asking should use a soft ellipsis chip instead of a question mark.",
         deviceCopy: "Pixoo, iDotMatrix, and TC001 now rasterize the official Claude Code robot mark; motion and state color never rewrite its geometry.",
       },
       codex: {
         label: "Codex",
-        referenceCopy: "Use codex-color.svg shape language: one continuous knot/clover body with a larger, more legible >_ emphasis.",
+        referenceCopy: "Original Codex clover and opaque white >_ contours; the prompt is not a cutout.",
         tabletCopy: "The tablet version should stop feeling like overlapping blobs. Use a seamless clover silhouette and a bigger, more natural >_ placement.",
-        deviceCopy: "Pixoo, iDotMatrix, and TC001 now rasterize the official continuous Codex knot, including its >_ cutout at the resolution the panel can preserve.",
+        deviceCopy: "Pixoo, iDotMatrix, and TC001 now rasterize the official continuous Codex knot, including its white >_ detail at the resolution the panel can preserve.",
       },
       opencode: {
         label: "OpenCode",
-        referenceCopy: "Use the opencode nested-square logo directly: outer frame and inner cutout block, no creature-like reinterpretation.",
+        referenceCopy: "Original OpenCode frame with a transparent central opening; no filled inner plate.",
         tabletCopy: "Tablets can animate position and emphasis, but the mark itself should remain the nested-square glyph from the asset.",
         deviceCopy: "OpenCode works well as a square-within-square chip across e-ink, LCD, Pixoo, matrix, watch, and Stream Deck without turning into a mascot.",
       },
       openclaw: {
         label: "OpenClaw",
-        referenceCopy: "Use openclaw-color.svg directly: rounded front-facing body, compact claws, antennae, and teal eye highlights.",
+        referenceCopy: "Original OpenClaw body, claws and antennae with black eyes and bright white source highlights.",
         tabletCopy: "OpenClaw can stay more character-like than the logo-only agents, but the body and claws should still read as the front-facing openclaw mark rather than a generic lobster.",
         deviceCopy: "Pixoo and matrix should preserve claw/body recognizability first. LCD, e-ink, watch, TUI, and Stream Deck can keep the front-facing silhouette and simple claw motion.",
       },
@@ -819,27 +817,31 @@
       svg.appendChild(defs);
     }
 
-    function drawClaudeLogo(svg, cx, cy, size, palette = {}, state = "idle", t = 0) {
-      const style = STATE_STYLE[state];
-      const bob = state === "working" ? Math.sin(t * 2.3) * size * 0.012 : state === "idle" ? Math.sin(t * 0.9) * size * 0.004 : 0;
-      const scale = size / 24;
-      const fill = palette.fill || "#D97757";
-      const opacity = palette.opacity ?? style.opacity;
+    function drawOriginalCreature(svg, agent, cx, cy, size, fill, opacity, bob) {
       const group = el("g", {
-        transform: `translate(${cx} ${cy + bob}) scale(${scale}) translate(-12 -12)`,
+        transform: `translate(${cx} ${cy + bob}) scale(${size / 24}) translate(-12 -12)`,
         opacity,
       });
-      group.appendChild(el("path", {
-        d: CLAUDE_PATH,
-        fill,
-        "fill-rule": "evenodd",
-        "clip-rule": "evenodd",
-      }));
+      const definition = originalCreatures[agent];
+      for (const d of definition.bodyPaths) {
+        group.appendChild(el('path', { d, fill, 'fill-rule': 'evenodd' }));
+      }
+      for (const feature of definition.features) {
+        if (feature.mode !== 'fill') continue; // OpenCode stays open to the background.
+        group.appendChild(el('path', {
+          d: feature.paths.join(' '), fill: featureColor(feature.rgb),
+        }));
+      }
       svg.appendChild(group);
     }
 
+    function drawClaudeLogo(svg, cx, cy, size, palette = {}, state = "idle", t = 0) {
+      const bob = state === "working" ? Math.sin(t * 2.3) * size * 0.012 : state === "idle" ? Math.sin(t * 0.9) * size * 0.004 : 0;
+      drawOriginalCreature(svg, 'claudecode', cx, cy, size, palette.fill || "#D97757",
+        palette.opacity ?? STATE_STYLE[state].opacity, bob);
+    }
+
     function drawCodexLogo(svg, cx, cy, size, palette = {}, promptStyle = {}, state = "idle", t = 0) {
-      const style = STATE_STYLE[state];
       const bob = promptStyle.bob ?? (state === "working" ? Math.sin(t * 2.1) * size * 0.01 : Math.sin(t * 0.8) * size * 0.003);
       const gradId = `codex-${svg.id}-${Math.round(cx)}-${Math.round(cy)}-${Math.round(size)}`;
       addLinearGradient(svg, gradId, [
@@ -847,118 +849,25 @@
         { offset: "48%", "stop-color": palette.mid || "#7A9DFF" },
         { offset: "100%", "stop-color": palette.bottom || "#3941FF" },
       ]);
-      const scale = size / 24;
-      const group = el("g", {
-        transform: `translate(${cx} ${cy + bob}) scale(${scale}) translate(-12 -12)`,
-        opacity: palette.opacity ?? style.opacity,
-      });
-      group.appendChild(el("path", { d: CODEX_PATH, fill: `url(#${gradId})` }));
-      svg.appendChild(group);
-
-      const fontSize = promptStyle.fontSize || size * 0.28;
-      const py = cy + bob + (promptStyle.yOffset ?? size * 0.08);
-      const pColor = promptStyle.color || "#EEF1FF";
-      const pOpacity = promptStyle.opacity ?? (state === "sleeping" ? 0.64 : 1);
-      const workingFrame = Math.floor((t * 4) % 4);
-      const leftChar = state === "working" && workingFrame === 2 ? "|" : ">";
-      const rightChar = state === "working" && workingFrame === 2 ? "<" : "_";
-      const xShift = state === "working" ? Math.sin(t * 8) * size * 0.01 : 0;
-      const yShift = state === "working" ? Math.sin(t * 6) * size * 0.008 : 0;
-      svg.appendChild(textNode(leftChar, {
-        x: cx - fontSize * 0.22 + xShift,
-        y: py + yShift,
-        "font-size": fontSize,
-        "font-weight": promptStyle.fontWeight || 650,
-        "text-anchor": "middle",
-        "font-family": "SF Mono, ui-monospace, Menlo, monospace",
-        fill: pColor,
-        opacity: pOpacity,
-      }));
-      svg.appendChild(textNode(rightChar, {
-        x: cx + fontSize * 0.22 - xShift,
-        y: py - yShift,
-        "font-size": fontSize,
-        "font-weight": promptStyle.fontWeight || 650,
-        "text-anchor": "middle",
-        "font-family": "SF Mono, ui-monospace, Menlo, monospace",
-        fill: pColor,
-        opacity: pOpacity,
-      }));
+      drawOriginalCreature(svg, 'codex', cx, cy, size, `url(#${gradId})`,
+        palette.opacity ?? STATE_STYLE[state].opacity, bob);
     }
 
     function drawOpenCodeLogo(svg, cx, cy, size, palette = {}, state = "idle", t = 0) {
-      const style = STATE_STYLE[state];
       const bob = state === "working" ? Math.sin(t * 2.0) * size * 0.006 : 0;
-      const opacity = palette.opacity ?? style.opacity;
-      const outer = size;
-      const inner = size * 0.5;
-      const ring = size * 0.18;
-      svg.appendChild(el("rect", {
-        x: cx - outer / 2,
-        y: cy - outer / 2 + bob,
-        width: outer,
-        height: outer,
-        fill: palette.outer || "#F1ECEC",
-        opacity,
-      }));
-      svg.appendChild(el("rect", {
-        x: cx - (outer - ring * 2) / 2,
-        y: cy - (outer - ring * 2) / 2 + bob,
-        width: outer - ring * 2,
-        height: outer - ring * 2,
-        fill: palette.bg || "#4B4646",
-        opacity,
-      }));
-      svg.appendChild(el("rect", {
-        x: cx - inner / 2,
-        y: cy - inner / 2 + bob,
-        width: inner,
-        height: inner,
-        fill: palette.inner || "#4B4646",
-        opacity,
-      }));
+      drawOriginalCreature(svg, 'opencode', cx, cy, size, palette.outer || "#F1ECEC",
+        palette.opacity ?? STATE_STYLE[state].opacity, bob);
     }
 
     function drawOpenClawLogo(svg, cx, cy, size, palette = {}, state = "idle", t = 0) {
-      const style = STATE_STYLE[state];
       const bob = state === "working" ? Math.sin(t * 3.2) * size * 0.018 : state === "idle" ? Math.sin(t * 0.9) * size * 0.004 : 0;
       const bodyId = `oc-${svg.id}-${Math.round(cx)}-${Math.round(cy)}-${Math.round(size)}`;
       addLinearGradient(svg, bodyId, [
         { offset: "0%", "stop-color": palette.top || "#FF4D4D" },
         { offset: "100%", "stop-color": palette.bottom || "#991B1B" },
       ]);
-      const scale = size / 24;
-      const clawAngle = state === "working" ? Math.sin(t * 8) * 8 : 0;
-      const group = el("g", {
-        transform: `translate(${cx} ${cy + bob}) scale(${scale}) translate(-12 -12)`,
-        opacity: palette.opacity ?? style.opacity,
-      });
-      group.appendChild(el("path", { d: OPENCLAW_BODY, fill: `url(#${bodyId})` }));
-      const leftClaw = el("g", { transform: `rotate(${-clawAngle} 4.5 11.5)` });
-      leftClaw.appendChild(el("path", { d: OPENCLAW_CLAW_L, fill: `url(#${bodyId})` }));
-      group.appendChild(leftClaw);
-      const rightClaw = el("g", { transform: `rotate(${clawAngle} 19.5 11.5)` });
-      rightClaw.appendChild(el("path", { d: OPENCLAW_CLAW_R, fill: `url(#${bodyId})` }));
-      group.appendChild(rightClaw);
-      group.appendChild(el("path", {
-        d: OPENCLAW_ANT_L,
-        stroke: palette.antenna || "#FF6B6B",
-        "stroke-width": 0.8,
-        "stroke-linecap": "round",
-        fill: "none",
-      }));
-      group.appendChild(el("path", {
-        d: OPENCLAW_ANT_R,
-        stroke: palette.antenna || "#FF6B6B",
-        "stroke-width": 0.8,
-        "stroke-linecap": "round",
-        fill: "none",
-      }));
-      group.appendChild(el("circle", { cx: 8.835, cy: 7.843, r: 1.266, fill: "#050810" }));
-      group.appendChild(el("circle", { cx: 15.165, cy: 7.843, r: 1.266, fill: "#050810" }));
-      group.appendChild(el("circle", { cx: 9.046, cy: 7.633, r: 0.527, fill: palette.eye || "#00E5CC" }));
-      group.appendChild(el("circle", { cx: 15.376, cy: 7.633, r: 0.527, fill: palette.eye || "#00E5CC" }));
-      svg.appendChild(group);
+      drawOriginalCreature(svg, 'openclaw', cx, cy, size, `url(#${bodyId})`,
+        palette.opacity ?? STATE_STYLE[state].opacity, bob);
     }
 
     function drawAntigravityLogo(svg, cx, cy, size, palette = {}, state = "idle", t = 0) {
