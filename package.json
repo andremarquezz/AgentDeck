@@ -67,6 +67,7 @@
     "generate-collaboration-presentation": "node scripts/generate-collaboration-presentation.mjs",
     "plugin:deploy": "node plugin/scripts/deploy.mjs",
     "plugin:check": "node plugin/scripts/deploy.mjs --check",
+    "generate-tui-creatures": "node scripts/generate-tui-creatures.mjs",
     "generate-matrix-expressions": "tsx scripts/generate-matrix-expressions.mts",
     "generate-gateway-live-rules": "pnpm --filter @agentdeck/shared build && node scripts/generate-gateway-live-rules.mjs",
     "generate-ci-wait": "node scripts/generate-ci-wait.mjs",

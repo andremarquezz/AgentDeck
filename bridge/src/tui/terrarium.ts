@@ -17,10 +17,12 @@ import { OFFICIAL_DOT_GLYPHS, OFFICIAL_DOT_GLYPH_SIZE, OFFICIAL_STANDARD_FEATURE
 
 type SpriteScale = 'small' | 'large' | 'xlarge';
 
+export const TUI_SPRITE_SCALE_RULES = [
+  { scale: 'xlarge', minWidth: 160, minHeight: 35 },
+  { scale: 'large', minWidth: 100, minHeight: 20 },
+] as const;
 function getSpriteScale(width: number, height: number): SpriteScale {
-  if (width >= 160 && height >= 35) return 'xlarge';
-  if (width >= 100 && height >= 20) return 'large';
-  return 'small';
+  return TUI_SPRITE_SCALE_RULES.find(rule => width >= rule.minWidth && height >= rule.minHeight)?.scale ?? 'small';
 }
 
 // Existing terminal footprints are retained. Two colored half-block samples per
