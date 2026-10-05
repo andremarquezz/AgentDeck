@@ -237,7 +237,7 @@ import { KiroTimelineFeed } from './kiro-timeline-feed.js';
 import {
   DeviceVoiceReplyRouter, speakableReply, spokenDigest, pcmFromWav, type ReplySink,
 } from './device-voice-reply.js';
-import { rawSessionId, type AgentType, type StateSnapshot } from '@agentdeck/shared';
+import { rawSessionId, type AgentType, type SessionSetting, type StateSnapshot } from '@agentdeck/shared';
 import { codexTurnOutcomeFromRollout, codexTurnOutcomeFromRolloutPath, lastAgentMessageFromCodexRollout } from './codex-rollout-response.js';
 import { callFoundationModelsHelper } from './foundation-models-helper.js';
 import {
@@ -6068,6 +6068,40 @@ export async function startDaemon(opts: DaemonOptions): Promise<void> {
     debug('daemon', `observed steering: unsupported command ${type} for ${uuid}`);
   }
 
+  /**
+   * `query_session_settings` / `set_session_setting` (#463). Only an agent with
+   * a supported write path offers settings — today the OpenClaw Gateway
+   * (`sessions.patch`). Every other session answers an empty list: its model
+   * and effort are readouts, not switches. The answer is broadcast so every
+   * deck showing the session converges on the agent's latest values.
+   */
+  const handleSessionSettingsCommand = async (
+    cmd: Extract<PluginCommand, { type: 'query_session_settings' | 'set_session_setting' }>,
+  ): Promise<void> => {
+    const sessionId = cmd.sessionId;
+    const reply = (settings: SessionSetting[], error?: string) => core.wsServer.broadcast({
+      type: 'session_settings', sessionId, settings, ...(error ? { error } : {}),
+    } as BridgeEvent);
+    const adapter = sessionId === 'openclaw-gateway' && gatewayAdapter?.isAlive() ? gatewayAdapter : null;
+    if (!adapter) {
+      reply([]);
+      return;
+    }
+    let error: string | undefined;
+    if (cmd.type === 'set_session_setting') {
+      try {
+        await adapter.setSessionSetting(cmd.key, cmd.value);
+      } catch (err) {
+        error = err instanceof Error ? err.message : String(err);
+      }
+    }
+    try {
+      reply(await adapter.querySessionSettings(), error);
+    } catch (err) {
+      reply([], error ?? (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
   const handleDeviceCommand = (cmd: PluginCommand): void => {
     debug('daemon', `cmd: ${cmd.type}`);
     // Host push-to-talk is the daemon's own capability (host mic + speakers),
@@ -6075,6 +6109,12 @@ export async function startDaemon(opts: DaemonOptions): Promise<void> {
     // depend on what any adapter chooses to do with the legacy `voice` shape.
     if (cmd.type === 'voice') {
       handleHostVoicePtt(cmd);
+      return;
+    }
+    // Agent-native setting switches (#463) are answered by the daemon itself,
+    // never consumed by the gateway's generic command handling.
+    if (cmd.type === 'query_session_settings' || cmd.type === 'set_session_setting') {
+      void handleSessionSettingsCommand(cmd);
       return;
     }
     // Session-scoped commands are NEVER OpenClaw's to consume: a device

@@ -27,7 +27,9 @@
 // Pin moved 2026-10-06 with NO port (#463): the detail INFO now passes the row's
 // `permissionMode` / `effortLevel` to `renderDetailInfo`; this preview's INFO slot
 // draws neither the model line nor a mode line, so nothing visible changes here.
-// SYNC-HASH shared/src/d200h-layout.ts b5fb1fad4aecc2d7948e9668f8853dd77056cf0a
+// Re-ported 2026-10-06 (#463 phase 2): OpenClaw idle MODEL / THINKING picker
+// entry tiles; the picker sub-view itself is listed under INTENTIONALLY OMITTED.
+// SYNC-HASH shared/src/d200h-layout.ts 51183ee8a25a2ff645ca882f50b822e561c7e273
 // SYNC-HASH shared/src/session-utils.ts 9ff8581b7ce0e779cfd4443a16ba7d85ed7d9964
 //
 // INTENTIONALLY OMITTED (not needed by a read-only preview):
@@ -46,6 +48,9 @@
 //     carry `controlMode` / `liveAnswerable` / `requestId` / `question` and
 //     reproduce the three-way branch (pressable answer, Allow/Deny gate,
 //     display-only) the hardware shows.
+//   • The setting picker sub-view (`DeckView.picker`, #463). Its cells are the
+//     agent's live `session_settings` answer, which a static preview never has;
+//     the MODEL / THINKING entry tiles that open it ARE ported.
 //   • Animation frames (`animFrame`/`animated`) — the preview is a static frame.
 //   • resvg text sanitization (ANSI/control-char stripping) — irrelevant to a
 //     native SwiftUI text surface.
@@ -363,6 +368,10 @@ public enum D200HDeckAction: Equatable, Sendable {
     case command(type: String, payload: [String: String])
     /// Daemon down → open the companion app locally.
     case launch
+    /// Open an agent-native setting picker (#463); `key` is "model" | "effort".
+    case pickerOpen(key: String)
+    /// Leave the picker, stay on the session.
+    case pickerClose
 }
 
 /// Semantic kind of a rendered key. Each mirrors a shared `svg-renderers`
@@ -707,7 +716,15 @@ public enum D200HLayoutModel {
             // shared last-slot logic above.
             cells.append(Cell(kind: .info(icon: "activity", tone: "info"), label: "RUNNING", subtitle: (tool?.isEmpty == false ? tool : "working"), action: .none))
         } else {
-            // Idle quick-actions.
+            // Idle quick-actions. OpenClaw leads with its agent-native MODEL /
+            // THINKING picker entries (#463); with no live `session_settings`
+            // answer in a preview, they show the row's model and "choose".
+            if agentType == "openclaw" {
+                cells.append(Cell(kind: .actionPreset, label: "MODEL",
+                                  subtitle: model.isEmpty ? "choose" : formatModel(model, maxLen: 16),
+                                  action: .pickerOpen(key: "model")))
+                cells.append(Cell(kind: .actionPreset, label: "THINKING", subtitle: "choose", action: .pickerOpen(key: "effort")))
+            }
             let presets: [(String, String)] = [("GO ON", "continue"), ("REVIEW", "review the changes"), ("COMMIT", "commit the changes"), ("CLEAR", "/clear")]
             for (label, text) in presets {
                 cells.append(Cell(kind: .actionPreset, label: label, subtitle: nil, action: .command(type: "send_prompt", payload: ["text": text])))

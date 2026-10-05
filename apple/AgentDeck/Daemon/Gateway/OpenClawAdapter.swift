@@ -1534,6 +1534,40 @@ actor OpenClawAdapter {
         return dict
     }
 
+    /// Deck-switchable settings (#463) of the session the deck talks to — the
+    /// `currentSessionKey` that `chat.send` targets — read fresh from the
+    /// Gateway row and `models.list`. Returns the wire `SessionSetting` list,
+    /// or an error message when the Gateway could not be read.
+    func querySessionSettings() async -> OpenClawSessionSettings.Read {
+        guard let sessionKey = currentSessionKey else { return .init(settings: [], error: "No OpenClaw session") }
+        let listed = await rpcRequest(method: "sessions.list", params: [:])
+        guard listed.ok, let payload = listed.payload else {
+            return .init(settings: [], error: Self.rpcErrorMessage(listed.error) ?? "sessions.list failed")
+        }
+        let rows = payload["sessions"] as? [[String: Any]] ?? []
+        guard let row = rows.first(where: { $0["key"] as? String == sessionKey }) else {
+            return .init(settings: [], error: "The OpenClaw session the deck targets is not listed")
+        }
+        let catalog = await fetchModelCatalog()?.0
+        return .init(settings: OpenClawSessionSettings.settings(
+            row: row, defaults: payload["defaults"] as? [String: Any], catalog: catalog), error: nil)
+    }
+
+    /// `sessions.patch` on the deck's session; a nil value clears the override.
+    /// Returns the Gateway's error message on refusal.
+    func setSessionSetting(key: String, value: String?) async -> String? {
+        guard let sessionKey = currentSessionKey else { return "No OpenClaw session to change" }
+        guard let params = OpenClawSessionSettings.patchParams(sessionKey: sessionKey, key: key, value: value) else {
+            return "Unknown setting \(key)"
+        }
+        let response = await rpcRequest(method: "sessions.patch", params: params)
+        return response.ok ? nil : (Self.rpcErrorMessage(response.error) ?? "sessions.patch failed")
+    }
+
+    private static func rpcErrorMessage(_ error: [String: Any]?) -> String? {
+        (error?["message"] as? String) ?? (error?["code"] as? String)
+    }
+
     private func rpcRequest(method: String, params: [String: Any]) async -> RPCResponse {
         await withCheckedContinuation { continuation in
             sendRPC(method: method, params: params, continuation: continuation)

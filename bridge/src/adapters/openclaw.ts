@@ -32,6 +32,7 @@ import type {
   DeviceAuthToken,
 } from '../types.js';
 import type { AdapterContext, ChatEventPayload } from '@agentdeck/shared';
+import { openClawSessionSettings, type SessionSetting } from '@agentdeck/shared';
 import {
   isApprovalGoneError,
   parseExecApprovalRequest,
@@ -2413,6 +2414,29 @@ export class OpenClawAdapter extends EventEmitter implements AgentAdapter {
     } catch (err) {
       debug('adapter:openclaw', `sessions.list failed: ${err}`);
     }
+  }
+
+  /**
+   * Deck-switchable settings (#463) of the session the deck talks to — the
+   * same `currentSessionKey` that `send_prompt` targets — read fresh from the
+   * Gateway: the row's own thinking levels/default and the `models.list`
+   * catalog. Nothing is defaulted here; see `openClawSessionSettings`.
+   */
+  async querySessionSettings(): Promise<SessionSetting[]> {
+    const result = await this.rpcCall('sessions.list', {});
+    const rows = Array.isArray(result?.sessions) ? result.sessions : [];
+    const row = rows.find((r) => r.key === this.currentSessionKey);
+    if (!row) throw new Error('The OpenClaw session the deck targets is not listed');
+    const catalog = await this.fetchCatalogViaGateway();
+    return openClawSessionSettings(row, result.defaults, catalog);
+  }
+
+  /** `sessions.patch` on the deck's session; `null` clears back to the default. */
+  async setSessionSetting(key: SessionSetting['key'], value: string | null): Promise<void> {
+    if (!this.currentSessionKey) throw new Error('No OpenClaw session to change');
+    await this.rpcCall('sessions.patch', key === 'model'
+      ? { key: this.currentSessionKey, model: value }
+      : { key: this.currentSessionKey, thinkingLevel: value });
   }
 
   private clearCatalogRetry(): void {

@@ -4940,6 +4940,13 @@ final class DaemonServer {
             return !sid.isEmpty && sid != "openclaw-gateway"
         }()
 
+        // Agent-native setting switches (#463) are answered here, never
+        // consumed by the gateway's generic command block below.
+        if type == "query_session_settings" || type == "set_session_setting" {
+            handleSessionSettingsCommand(cmd)
+            return
+        }
+
         // Gateway adapter handles command if alive
         if !sessionScopedCmd, let gw = gatewayAdapter {
             let cmdBox = SendableDict(cmd)
@@ -4954,7 +4961,12 @@ final class DaemonServer {
                 _ = stateMachine.transition(trigger: "interrupt", source: .user); broadcastStateUpdate()
             case "select_option": Task { await gw.resolvePendingApproval(command: cmdBox.value) }
                 _ = stateMachine.transition(trigger: "user_selection", source: .user); broadcastStateUpdate()
-            case "send_prompt": Task { await gw.sendRPC(method: "chat.send", params: cmdBox.value) }
+            // `chat.send` takes `message`; the device command carries `text`
+            // (the wake path already sends it this way). Forwarding the raw
+            // command left `message` out, so a deck prompt never arrived.
+            case "send_prompt":
+                let text = (cmd["text"] as? String) ?? ""
+                Task { await gw.sendRPC(method: "chat.send", params: ["message": text]) }
                 _ = stateMachine.transition(trigger: "user_prompt_submit", source: .hook); broadcastStateUpdate()
             case "escape": Task { await gw.sendRPC(method: "chat.abort", params: [:]) }
                 _ = stateMachine.transition(trigger: "interrupt", source: .user); broadcastStateUpdate()
@@ -7453,6 +7465,33 @@ final class DaemonServer {
     /// Apply a per-session state/tool update coming from a hook event and
     /// broadcast the refreshed sessions list. No-op when the sessionId is
     /// nil or refers to a session we never registered via `session_start`.
+    /// `query_session_settings` / `set_session_setting` (#463). Only an agent
+    /// with a supported write path offers settings — today the OpenClaw Gateway
+    /// (`sessions.patch`). Every other session answers an empty list: its model
+    /// and effort are readouts. Broadcast so every deck converges.
+    private func handleSessionSettingsCommand(_ cmd: [String: Any]) {
+        guard let sessionId = cmd["sessionId"] as? String, !sessionId.isEmpty else { return }
+        let isSet = cmd["type"] as? String == "set_session_setting"
+        let key = cmd["key"] as? String ?? ""
+        let value = cmd["value"] as? String  // NSNull / absent ⇒ clear the override
+        guard sessionId == "openclaw-gateway", let gw = gatewayAdapter else {
+            broadcastSessionSettings(sessionId: sessionId, settings: [], error: nil)
+            return
+        }
+        Task { @DaemonActor [weak self] in
+            var error: String?
+            if isSet { error = await gw.setSessionSetting(key: key, value: value) }
+            let read = await gw.querySessionSettings()
+            self?.broadcastSessionSettings(sessionId: sessionId, settings: read.settings, error: error ?? read.error)
+        }
+    }
+
+    private func broadcastSessionSettings(sessionId: String, settings: [[String: Any]], error: String?) {
+        var event: [String: Any] = ["type": "session_settings", "sessionId": sessionId, "settings": settings]
+        if let error { event["error"] = error }
+        broadcastRaw(event)
+    }
+
     /// Model / effort / permission mode in the agent's own words (#463), from
     /// the hook payload and — for Codex, whose hooks carry only the model — the
     /// rollout's latest `turn_context`, read at turn boundaries inside the

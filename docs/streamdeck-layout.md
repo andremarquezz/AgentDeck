@@ -50,7 +50,9 @@ No daemon: single recovery hero. The geometric center key (`floor(rows/2) * colu
 
 No session while daemon is connected: healthy idle dashboard, not recovery UI. Slot 0 = **HUB READY / CONNECTED**, slot 1 = **NO SESSION / WAITING**, slot 2 = **AgentDeck / IDLE**, rest intentionally dark. These are icon-rich image cards; they must not fall back to text-only `Empty` buttons.
 
-**OpenClaw presets** (detail view): STATUS, MODEL (dynamic model name + switch), GATEWAY (browser). In PROCESSING, current tool/status is shown before these presets.
+**OpenClaw presets** (detail view): STATUS, MODEL, GATEWAY (browser), THINKING. In PROCESSING, current tool/status is shown before these presets, so a 4-content-key deck drops THINKING mid-turn (the Gateway applies it to subsequent turns anyway).
+
+**Agent-native setting picker** ([#463](https://github.com/puritysb/AgentDeck/issues/463)): MODEL and THINKING open a picker page instead of typing `/model`. The deck sends `query_session_settings`; the daemon reads the Gateway session the deck talks to (`currentSessionKey`) — its own `thinkingLevels` / `thinkingDefault` and the `models.list` catalog — and answers `session_settings`. Each value is one key (MORE pages), marked `current` / `default`; a leading DEFAULT key clears the override (`null`), and BACK leaves the picker, not the session. A choice is sent as `set_session_setting` and applied with Gateway `sessions.patch`; a refusal comes back as `error` and renders as REFUSED. Option lists stay off `sessions_list` (every board receives that frame). The D200H shows the same picker from MODEL / THINKING tiles at the head of the OpenClaw idle detail. Claude Code and Codex answer an empty list — their running sessions have no external switch, so the deck shows their model · effort · mode as a readout only; OpenCode offers only per-prompt overrides, so it is not offered as a session switch either.
 
 ## Agent Session UX Scenarios
 

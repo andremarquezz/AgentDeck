@@ -15,6 +15,7 @@ import {
   renderStopButton,
   renderOptionButton,
   renderPresetButton,
+  renderStatusCard,
 } from './session-slot-renderer.js';
 import { renderUsageGauge } from './usage-gauge.js';
 import { renderStatusReadout, renderSessionReadout } from './display-tile.js';
@@ -77,6 +78,16 @@ export function renderSlotConfig(config: SessionSlotConfig, env: SlotRenderEnv):
 
     case 'option':
       return renderOptionButton(config.option!, config.optionIndex ?? 0);
+
+    // A value the agent offers for a session setting (#463) — pressable, so it
+    // uses the raised status card rather than the flat readout.
+    case 'setting-option':
+      return renderStatusCard({
+        icon: config.icon ?? 'model',
+        label: config.label ?? '---',
+        subtitle: config.subtitle,
+        tone: config.tone,
+      });
 
     case 'preset':
       if (config.preset) {

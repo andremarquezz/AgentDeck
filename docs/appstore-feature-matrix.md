@@ -155,6 +155,8 @@ hooks. An absent event during inactivity is not evidence of broken integration.
 | Launch Claude / Codex / OpenCode session | No | Yes (compatibility) | `agentdeck <agent>` remains functional with no removal date. The supported default for ordinary local sessions is `agentdeck daemon install`, then a normal agent command. Tracked in #273 |
 | OpenClaw Gateway WebSocket pairing | Yes | Yes | Local WS, Keychain identity, optional user-selected token file |
 | OpenClaw CLI pairing | No | Yes | Requires external `openclaw` process |
+| Deck model / thinking picker (OpenClaw) | Yes | Yes | #463. `sessions.list` + `models.list` + `sessions.patch` over the paired Gateway WebSocket; values, labels and defaults are the Gateway's own. No subprocess |
+| Deck model · effort · mode readout (Claude / Codex) | Yes | Yes | #463. Claude hook `model` / `effort.level` / `permission_mode`; Codex hook `model` + rollout `turn_context` through the `~/.codex` bookmark. Readout only — neither agent offers a running-session switch. Tier 1 keeps Claude's SessionStart model (no transcript bookmark) |
 
 ## Infrastructure
 

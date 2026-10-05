@@ -27,6 +27,8 @@ import type {
   ApmeRecommendCommand,
   PermissionDecisionCommand,
   ReviewRunCommand,
+  QuerySessionSettingsCommand,
+  SetSessionSettingCommand,
   Esp32OtaAckCommand,
   Esp32OtaErrorCommand,
 } from "./protocol.js";
@@ -94,6 +96,12 @@ export const agentCommand = {
   },
   reviewRun(sessionId: string): ReviewRunCommand {
     return { type: "review_run", sessionId };
+  },
+  querySessionSettings(sessionId: string): QuerySessionSettingsCommand {
+    return { type: "query_session_settings", sessionId };
+  },
+  setSessionSetting(sessionId: string, key: 'model' | 'effort', value: string | null): SetSessionSettingCommand {
+    return { type: "set_session_setting", sessionId, key, value };
   },
   esp32OtaAck(otaId: string, stage: 'begin' | 'chunk' | 'end' | 'abort', seq?: number, offset?: number, written?: number): Esp32OtaAckCommand {
     return { type: "esp32_ota_ack", otaId, stage, seq, offset, written };

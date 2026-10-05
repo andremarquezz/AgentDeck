@@ -1460,6 +1460,43 @@ export type ESP32ToHostMessage =
  * and reports risk findings. Needs no agent control, so it works for every
  * session type including observed codex.
  */
+/** One value an agent offers for a session setting, in the agent's own words. */
+export interface SessionSettingOption {
+  /** The id the agent accepts back (OpenClaw thinking id, `provider/model`). */
+  id: string;
+  /** The agent's own display label when it gives one; render `id` otherwise. */
+  label?: string;
+}
+
+/**
+ * A session setting the deck can switch, as the agent itself describes it (#463).
+ * Every value comes from the agent at request time — the deck never invents a
+ * level, a list or a default, so an agent update cannot drift away from it.
+ */
+export interface SessionSetting {
+  key: 'model' | 'effort';
+  /** The value in effect now (an override or the inherited one). */
+  current?: string;
+  /** The agent's own default for this session/model; absent when it gives none. */
+  default?: string;
+  /** True when `current` is an explicit session override (clearing returns to `default`). */
+  overridden?: boolean;
+  options: SessionSettingOption[];
+}
+
+/**
+ * Answer to `query_session_settings` / `set_session_setting`. Kept off
+ * `sessions_list` on purpose: option lists are large and every board receives
+ * that frame. `error` carries the agent's rejection (e.g. a level the model no
+ * longer accepts); `settings` is then the freshest known state, possibly empty.
+ */
+export interface SessionSettingsEvent {
+  type: 'session_settings';
+  sessionId: string;
+  settings: SessionSetting[];
+  error?: string;
+}
+
 export interface ReviewStatusEvent {
   type: 'review_status';
   sessionId: string;
@@ -1510,6 +1547,7 @@ export type BridgeEvent =
   | ApmeRecommendationEvent
   | ReviewStatusEvent
   | ReviewResultEvent
+  | SessionSettingsEvent
   | SurfaceWelcomeEvent
   | Esp32OtaBeginEvent
   | Esp32OtaChunkEvent
@@ -1696,6 +1734,24 @@ export interface PermissionDecisionCommand {
   decision: 'allow' | 'deny';
 }
 
+/** Ask the daemon which settings this session can switch (→ `session_settings`). */
+export interface QuerySessionSettingsCommand {
+  type: 'query_session_settings';
+  sessionId: string;
+}
+
+/**
+ * Switch a session setting to one of the agent-offered option ids. `null`
+ * clears the override and returns to the agent's own default. Answered with a
+ * fresh `session_settings` event (with `error` when the agent refused).
+ */
+export interface SetSessionSettingCommand {
+  type: 'set_session_setting';
+  sessionId: string;
+  key: 'model' | 'effort';
+  value: string | null;
+}
+
 export type PluginCommand =
   | ResponseCommand
   | SelectOptionCommand
@@ -1718,6 +1774,8 @@ export type PluginCommand =
   | ApmeRecommendCommand
   | PermissionDecisionCommand
   | ReviewRunCommand
+  | QuerySessionSettingsCommand
+  | SetSessionSettingCommand
   | Esp32OtaAckCommand
   | Esp32OtaErrorCommand;
 

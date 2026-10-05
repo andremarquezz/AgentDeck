@@ -3,7 +3,7 @@
  * shared layout engine (`buildLayoutMap`) consumes. Focused-session selection
  * follows the AgentDeck rule: focusedSessionId ?? sessionId.
  */
-import type { BridgeEvent, SessionInfo } from '@agentdeck/shared';
+import type { BridgeEvent, SessionInfo, SessionSetting } from '@agentdeck/shared';
 
 export class StateStore {
   /** Last raw state_update event (carries focused session's project/model/etc). */
@@ -23,6 +23,12 @@ export class StateStore {
    * error (refusal) or the TTL (daemon dead / message lost).
    */
   private pendingReviewUntil = new Map<string, number>();
+  /** Latest `session_settings` answer per session (#463) — the agent's own values. */
+  private sessionSettings = new Map<string, { settings: SessionSetting[]; error?: string }>();
+
+  settingsFor(sessionId: string): { settings: SessionSetting[]; error?: string } | undefined {
+    return this.sessionSettings.get(sessionId);
+  }
 
   /** Local press-ack for REVIEW — show REVIEWING before the daemon round trip. */
   markReviewPending(sessionId: string): void {
@@ -119,6 +125,15 @@ export class StateStore {
         const state = typeof e.state === 'string' ? e.state : 'idle';
         if (state === this.voiceState) return false;
         this.voiceState = state as typeof this.voiceState;
+        return true;
+      }
+      case 'session_settings': {
+        const sessionId = typeof e.sessionId === 'string' ? e.sessionId : '';
+        if (!sessionId) return false;
+        this.sessionSettings.set(sessionId, {
+          settings: Array.isArray(e.settings) ? (e.settings as SessionSetting[]) : [],
+          ...(typeof e.error === 'string' && e.error ? { error: e.error } : {}),
+        });
         return true;
       }
       case 'review_status': {

@@ -50,6 +50,6 @@ export function deckSignature(ev: Record<string, unknown>): string {
 
 /** Local preferences and placed keys change pixels even without a daemon tick. */
 export function deckViewSignature(ev: Record<string, unknown>, view: import('@agentdeck/shared').DeckView, positions: string[]): string {
-  return JSON.stringify([view.mode, view.openSessionId, view.page ?? 0,
+  return JSON.stringify([view.mode, view.openSessionId, view.page ?? 0, view.picker ?? '', view.settings ?? null,
     view.voiceState ?? 'idle', view.claudeWeeklyMode ?? 'both', view.zaiPairMode ?? 'both', [...positions].sort()]) + deckSignature(ev);
 }

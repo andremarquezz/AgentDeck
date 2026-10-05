@@ -431,6 +431,9 @@
           "$ref": "#/definitions/ReviewResultEvent"
         },
         {
+          "$ref": "#/definitions/SessionSettingsEvent"
+        },
+        {
           "$ref": "#/definitions/SurfaceWelcomeEvent"
         },
         {
@@ -1187,7 +1190,6 @@
     },
     "ReviewStatusEvent": {
       "additionalProperties": false,
-      "description": "On-demand independent review lifecycle. Triggered by the REVIEW deck button (ReviewRunCommand) — the daemon reviews the session's latest work with an independent judge model (Node: working-tree diff; Swift: APME trajectory) and reports risk findings. Needs no agent control, so it works for every session type including observed codex.",
       "properties": {
         "message": {
           "type": "string"
@@ -1414,6 +1416,88 @@
         "port",
         "projectName",
         "alive"
+      ],
+      "type": "object"
+    },
+    "SessionSetting": {
+      "additionalProperties": false,
+      "description": "A session setting the deck can switch, as the agent itself describes it (#463). Every value comes from the agent at request time — the deck never invents a level, a list or a default, so an agent update cannot drift away from it.",
+      "properties": {
+        "current": {
+          "description": "The value in effect now (an override or the inherited one).",
+          "type": "string"
+        },
+        "default": {
+          "description": "The agent's own default for this session/model; absent when it gives none.",
+          "type": "string"
+        },
+        "key": {
+          "enum": [
+            "model",
+            "effort"
+          ],
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/definitions/SessionSettingOption"
+          },
+          "type": "array"
+        },
+        "overridden": {
+          "description": "True when `current` is an explicit session override (clearing returns to `default`).",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "key",
+        "options"
+      ],
+      "type": "object"
+    },
+    "SessionSettingOption": {
+      "additionalProperties": false,
+      "description": "One value an agent offers for a session setting, in the agent's own words.",
+      "properties": {
+        "id": {
+          "description": "The id the agent accepts back (OpenClaw thinking id, `provider/model`).",
+          "type": "string"
+        },
+        "label": {
+          "description": "The agent's own display label when it gives one; render `id` otherwise.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "SessionSettingsEvent": {
+      "additionalProperties": false,
+      "description": "Answer to `query_session_settings` / `set_session_setting`. Kept off `sessions_list` on purpose: option lists are large and every board receives that frame. `error` carries the agent's rejection (e.g. a level the model no longer accepts); `settings` is then the freshest known state, possibly empty.",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "settings": {
+          "items": {
+            "$ref": "#/definitions/SessionSetting"
+          },
+          "type": "array"
+        },
+        "type": {
+          "const": "session_settings",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "sessionId",
+        "settings"
       ],
       "type": "object"
     },

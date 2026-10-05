@@ -252,6 +252,30 @@ sealed class AgentCommand {
         }
     }
 
+    data class QuerySessionSettings(val sessionId: String) : AgentCommand() {
+        override val typeTag: String = "query_session_settings"
+        override fun toJson(): String {
+            val buf = StringBuilder()
+            buf.append("{\"type\":\"query_session_settings\"")
+            buf.append(",\"sessionId\":").append(encode(sessionId))
+            buf.append("}")
+            return buf.toString()
+        }
+    }
+
+    data class SetSessionSetting(val sessionId: String, val key: String, val value: String) : AgentCommand() {
+        override val typeTag: String = "set_session_setting"
+        override fun toJson(): String {
+            val buf = StringBuilder()
+            buf.append("{\"type\":\"set_session_setting\"")
+            buf.append(",\"sessionId\":").append(encode(sessionId))
+            buf.append(",\"key\":").append(encode(key))
+            buf.append(",\"value\":").append(encode(value))
+            buf.append("}")
+            return buf.toString()
+        }
+    }
+
     data class Esp32OtaAck(val otaId: String, val stage: String, val seq: Int? = null, val offset: Int? = null, val written: Int? = null) : AgentCommand() {
         override val typeTag: String = "esp32_ota_ack"
         override fun toJson(): String {
