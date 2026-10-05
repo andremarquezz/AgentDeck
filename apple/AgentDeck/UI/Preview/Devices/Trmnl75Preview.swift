@@ -266,7 +266,7 @@ struct Trmnl75Preview: View {
                 ForEach(quiet) { session in
                     HStack(spacing: 3) {
                         PreviewCreatureGlyph(agent: session.agent, state: session.state,
-                                             size: 12, tintOverride: ink)
+                                             size: 12, tintOverride: ink, monochrome: true)
                         Text(session.projectName)
                             .font(.system(size: 9))
                             .foregroundStyle(ink)
@@ -288,7 +288,8 @@ struct Trmnl75Preview: View {
                 agent: session.agent,
                 state: state,
                 size: 34,
-                tintOverride: cardInk
+                tintOverride: cardInk,
+                monochrome: true
             )
             VStack(alignment: .leading, spacing: 2) {
                 Text(session.projectName)

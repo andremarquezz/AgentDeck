@@ -89,6 +89,7 @@ struct PreviewCreatureGlyph: View {
     let state: PixooPreviewState
     var size: CGFloat = 40
     var tintOverride: Color? = nil
+    var monochrome = false
 
     private var tint: Color { tintOverride ?? StateColors.brand(agent: agent.rawValue) }
 
@@ -96,7 +97,8 @@ struct PreviewCreatureGlyph: View {
         CanonicalCreatureView(
             agentType: agent.rawValue,
             size: size,
-            color: tint
+            color: tint,
+            monochrome: monochrome
         )
         .opacity(state == .disconnected ? 0.3 : 1.0)
         .accessibilityLabel("\(agent.displayName) \(state.displayName)")
