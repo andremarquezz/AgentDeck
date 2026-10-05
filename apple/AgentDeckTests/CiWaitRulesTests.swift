@@ -18,5 +18,25 @@ final class CiWaitRulesTests: XCTestCase {
             } else { XCTAssertNil(result, "Invented intent at vector \(index)") }
         }
     }
+    @DaemonActor
+    func testSharedLifecycleVectors() async throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let data = try Data(contentsOf: root.appendingPathComponent("shared/ci-wait-lifecycle-vectors.json"))
+        let scenarios = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [[String: Any]])
+        for scenario in scenarios {
+            let tracker = CiWaitTracker()
+            for step in try XCTUnwrap(scenario["steps"] as? [[String: Any]]) {
+                let now = try XCTUnwrap(step["at"] as? Int)
+                tracker.note("session", event: try XCTUnwrap(step["event"] as? String),
+                             json: try XCTUnwrap(step["payload"] as? [String: Any]), now: now)
+                let actual = tracker.snapshot("session", now: now)
+                if let expected = step["expected"] as? [String: Any] {
+                    XCTAssertTrue(NSDictionary(dictionary: actual ?? [:]).isEqual(to: expected))
+                } else { XCTAssertNil(actual) }
+            }
+        }
+    }
+
 }
 #endif

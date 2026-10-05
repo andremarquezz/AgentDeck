@@ -241,6 +241,30 @@ describe.skipIf(DARWIN_BLOCKED)('daemon hub (real CLI process)', () => {
     expect(reached).toBe(false);
   });
 
+  it('keeps a background CI wait through Stop and sends explicit null on re-invocation', async () => {
+    const client = await connect(daemon.port);
+    const session = { ...SESSION, session_id: 'e982a0ae-a062-42c9-b174-4022f0e53228', permission_mode: 'bypassPermissions' };
+    const row = () => client.frames.filter(f => f.type === 'sessions_list').reverse()
+      .flatMap(f => f.sessions as Array<{ id: string; waitingOn?: unknown; activity?: string }>)
+      .find(r => r.id.includes(session.session_id));
+    try {
+      await postHook(daemon.port, 'codex_session_start', session);
+      await postHook(daemon.port, 'codex_user_prompt_submit', { ...session, prompt: 'check CI' });
+      await postHook(daemon.port, 'codex_tool_start', { ...session, tool_name: 'Bash', tool_use_id: 'ci-tool',
+        tool_input: { command: 'gh run watch 42', run_in_background: true } });
+      await postHook(daemon.port, 'codex_tool_end', { ...session, tool_name: 'Bash', tool_use_id: 'ci-tool' });
+      await postHook(daemon.port, 'codex_stop', session);
+      await waitFor('CI wait roster after Stop', () => row()?.waitingOn ? true : undefined);
+      expect(row()?.activity).toBe('CI wait');
+      expect(row()?.waitingOn).toMatchObject({ phase: 'unknown', evidence: 'tool_input', agentWaiting: true });
+      expect(JSON.stringify(row()?.waitingOn)).not.toContain('gh run');
+      client.frames.length = 0;
+      await postHook(daemon.port, 'codex_user_prompt_submit', { ...session, prompt: 'CI finished; continue' });
+      await waitFor('explicit CI clear', () => row()?.waitingOn === null ? true : undefined);
+      await postHook(daemon.port, 'codex_session_end', session);
+    } finally { client.close(); }
+  });
+
   it('turns Claude hook events into the state stream and the persisted timeline', async () => {
     const client = await connect(daemon.port);
     try {
@@ -271,7 +295,7 @@ describe.skipIf(DARWIN_BLOCKED)('daemon hub (real CLI process)', () => {
           return undefined;
         }
       });
-      expect(persisted.find((e) => e.type === 'chat_start')).toMatchObject({
+      expect(persisted.find((e) => e.type === 'chat_start' && e.sessionId === SESSION.session_id)).toMatchObject({
         raw: 'e2e: say hello', sessionId: SESSION.session_id, agentType: 'claude-code',
       });
     } finally {

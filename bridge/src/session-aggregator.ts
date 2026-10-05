@@ -8,6 +8,7 @@ import {
 } from '@agentdeck/shared';
 
 export interface EnrichedSession {
+  waitingOn?: import('@agentdeck/shared').CiWaitStatus | null;
   id: string;
   port: number;
   pid?: number;

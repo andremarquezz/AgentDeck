@@ -24,7 +24,7 @@ private val klaxon = Klaxon()
     .convert(SummaryKind::class,         { SummaryKind.fromValue(it.string!!) },         { "\"${it.value}\"" })
     .convert(TimelineEntryType::class,   { TimelineEntryType.fromValue(it.string!!) },   { "\"${it.value}\"" })
     .convert(GatewayAuthStatus::class,   { GatewayAuthStatus.fromValue(it.string!!) },   { "\"${it.value}\"" })
-    .convert(Kind::class,                { Kind.fromValue(it.string!!) },                { "\"${it.value}\"" })
+    .convert(OptionKind::class,          { OptionKind.fromValue(it.string!!) },          { "\"${it.value}\"" })
     .convert(PermissionMode::class,      { PermissionMode.fromValue(it.string!!) },      { "\"${it.value}\"" })
     .convert(PromptType::class,          { PromptType.fromValue(it.string!!) },          { "\"${it.value}\"" })
     .convert(Risk::class,                { Risk.fromValue(it.string!!) },                { "\"${it.value}\"" })
@@ -32,6 +32,10 @@ private val klaxon = Klaxon()
     .convert(Outcome::class,             { Outcome.fromValue(it.string!!) },             { "\"${it.value}\"" })
     .convert(ControlMode::class,         { ControlMode.fromValue(it.string!!) },         { "\"${it.value}\"" })
     .convert(ReviewStatus::class,        { ReviewStatus.fromValue(it.string!!) },        { "\"${it.value}\"" })
+    .convert(Evidence::class,            { Evidence.fromValue(it.string!!) },            { "\"${it.value}\"" })
+    .convert(CiWaitStatusKind::class,    { CiWaitStatusKind.fromValue(it.string!!) },    { "\"${it.value}\"" })
+    .convert(Phase::class,               { Phase.fromValue(it.string!!) },               { "\"${it.value}\"" })
+    .convert(Provider::class,            { Provider.fromValue(it.string!!) },            { "\"${it.value}\"" })
     .convert(State::class,               { State.fromValue(it.string!!) },               { "\"${it.value}\"" })
     .convert(BridgeEventStatus::class,   { BridgeEventStatus.fromValue(it.string!!) },   { "\"${it.value}\"" })
     .convert(TokenStatus::class,         { TokenStatus.fromValue(it.string!!) },         { "\"${it.value}\"" })
@@ -967,19 +971,19 @@ data class OllamaModel (
 
 data class PromptOption (
     val index: Double,
-    val kind: Kind? = null,
+    val kind: OptionKind? = null,
     val label: String,
     val recommended: Boolean? = null,
     val selected: Boolean? = null,
     val shortcut: String? = null
 )
 
-enum class Kind(val value: String) {
+enum class OptionKind(val value: String) {
     Choice("choice"),
     FreeformInput("freeform_input");
 
     companion object {
-        public fun fromValue(value: String): Kind = when (value) {
+        public fun fromValue(value: String): OptionKind = when (value) {
             "choice"         -> Choice
             "freeform_input" -> FreeformInput
             else             -> throw IllegalArgumentException()
@@ -1332,6 +1336,12 @@ data class SessionInfo (
     val subagents: SubagentSummary? = null,
 
     val totalTokens: Double? = null,
+
+    /**
+     * CI is a separate axis from agent state. Explicit null clears a prior wait.
+     */
+    val waitingOn: CiWaitStatus? = null,
+
     val weight: Double? = null
 )
 
@@ -1460,6 +1470,75 @@ data class SubagentSummary (
      */
     val peak: Double
 )
+
+data class CiWaitStatus (
+    val agentWaiting: Boolean,
+    val evidence: Evidence,
+    val kind: CiWaitStatusKind,
+    val openedAt: Double,
+    val phase: Phase,
+    val pr: Double? = null,
+    val provider: Provider,
+    val ref: String? = null,
+    val repo: String? = null,
+
+    @Json(name = "runId")
+    val runID: Double? = null
+)
+
+enum class Evidence(val value: String) {
+    Github("github"),
+    ToolInput("tool_input");
+
+    companion object {
+        public fun fromValue(value: String): Evidence = when (value) {
+            "github"     -> Github
+            "tool_input" -> ToolInput
+            else         -> throw IllegalArgumentException()
+        }
+    }
+}
+
+enum class CiWaitStatusKind(val value: String) {
+    Ci("ci");
+
+    companion object {
+        public fun fromValue(value: String): CiWaitStatusKind = when (value) {
+            "ci" -> Ci
+            else -> throw IllegalArgumentException()
+        }
+    }
+}
+
+enum class Phase(val value: String) {
+    Failed("failed"),
+    Passed("passed"),
+    Queued("queued"),
+    Running("running"),
+    Unknown("unknown");
+
+    companion object {
+        public fun fromValue(value: String): Phase = when (value) {
+            "failed"  -> Failed
+            "passed"  -> Passed
+            "queued"  -> Queued
+            "running" -> Running
+            "unknown" -> Unknown
+            else      -> throw IllegalArgumentException()
+        }
+    }
+}
+
+enum class Provider(val value: String) {
+    GithubActions("github-actions");
+
+    companion object {
+        public fun fromValue(value: String): Provider = when (value) {
+            "github-actions" -> GithubActions
+            else             -> throw IllegalArgumentException()
+        }
+    }
+}
 
 /**
  * Voice assistant pipeline state (wake word → STT → LLM → TTS)

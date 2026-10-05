@@ -9,6 +9,7 @@ struct AquariumResident: Equatable {
     let title: String
     let activity: Activity
     var helpers: Int = 0
+    var ciWaitLabel: String? = nil
 
     static func foreground(_ items: [Self], focusedID: String?) -> [Self] {
         func priority(_ item: Self) -> Int {
@@ -47,7 +48,11 @@ struct AquariumResident: Equatable {
         if state.crayfishVisible {
             items.append(Self(id: "crayfish", kind: "openclaw", title: "OpenClaw", activity: state.crayfishState == .sick ? .error : state.crayfishState == .waiting ? .waiting : state.crayfishState == .routing ? .working : .idle))
         }
-        return items.sorted { $0.id < $1.id }
+        return items.map { item in
+            var copy = item
+            copy.ciWaitLabel = state.ciWaitLabels[item.id]
+            return copy
+        }.sorted { $0.id < $1.id }
     }
 }
 
@@ -236,7 +241,7 @@ final class AquariumResidents {
 
     private func rebuildLabel(for item: AquariumResident, on resident: Entity, compact: Bool) {
         resident.findEntity(named: "label")?.removeFromParent()
-        let label = makeLabel(String(item.title.prefix(22)), activity: item.activity, helpers: item.helpers, compact: compact)
+        let label = makeLabel(String(item.title.prefix(22)), activity: item.activity, helpers: item.helpers, compact: compact, ciWaitLabel: item.ciWaitLabel)
         label.isEnabled = labelsVisible && labelDecisions[item.id]?.mode != .hidden
         resident.addChild(label)
         labelCompact[item.id] = compact
@@ -506,7 +511,7 @@ final class AquariumResidents {
         return group
     }
 
-    private func makeLabel(_ title: String, activity: AquariumResident.Activity, helpers: Int, compact: Bool = false) -> Entity {
+    private func makeLabel(_ title: String, activity: AquariumResident.Activity, helpers: Int, compact: Bool = false, ciWaitLabel: String? = nil) -> Entity {
         let group = Entity()
         group.name = "label"
         let active = activity == .working
@@ -554,7 +559,7 @@ final class AquariumResidents {
             group.addChild(badge)
         }
         group.addChild(text(title, name: "title", bold: false, size: 0.16, ink: TerrariumColors.hudText, y: 0.96, maxWidth: 1.82))
-        group.addChild(text(activity.rawValue + (helpers > 0 ? " · \(helpers) agents" : ""), name: "status", bold: active, size: 0.16,
+        group.addChild(text((ciWaitLabel ?? activity.rawValue) + (helpers > 0 ? " · \(helpers) agents" : ""), name: "status", bold: active, size: 0.16,
                             ink: active ? DesignTokens.Ink.s900 : color, y: 0.70, maxWidth: 1.82))
         return group
     }

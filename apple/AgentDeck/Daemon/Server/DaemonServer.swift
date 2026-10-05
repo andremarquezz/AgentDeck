@@ -1239,6 +1239,7 @@ final class DaemonServer {
     /// jobs) — the second census axis beside `subagentCensus`. Fed by the hook
     /// pid header + hook payloads, reconciled against `sysctl` every 5 s.
     private let coordinationTracker = CoordinationTracker()
+    private let ciWaits = CiWaitTracker()
     private var coordinationTickTask: Task<Void, Never>?
     private var subagentBurstSeq = 0
     /// Children starting within this window fold into ONE dispatch row. Per
@@ -4641,6 +4642,7 @@ final class DaemonServer {
     /// stale `processing`-touched / chat-topic / current-tool residue
     /// behind. Caller decides whether to broadcast.
     private func purgeCodexSessionState(_ sessionId: String) {
+        ciWaits.forget(ObservedAgentRules.rawSessionId(sessionId))
         pushedSessionsById.removeValue(forKey: sessionId)
         cachedSessions.removeAll { $0.id == sessionId }
         codexProcessingTouchedAtBySession.removeValue(forKey: sessionId)
@@ -6208,6 +6210,26 @@ final class DaemonServer {
         // and a SendMessage call. Process-table evidence (spawned workers,
         // background jobs) is Node-only — the sandboxed daemon has no ps.
         noteCoordinationEvidence(event: event, json: json, sessionId: sessionId)
+        if let sid = sessionId {
+            let ciEvent: String = ["SessionStart": "session_start", "SessionEnd": "session_end",
+                "UserPromptSubmit": "user_prompt_submit", "PreToolUse": "tool_start",
+                "PostToolUse": "tool_end", "PostToolUseFailure": "tool_failure", "Stop": "stop",
+                "Interrupt": "interrupt"][event] ?? event.replacingOccurrences(of: "codex_", with: "")
+            let rawSid = ObservedAgentRules.rawSessionId(sid)
+            let now = Self.wireEpochMs(Date().timeIntervalSince1970 * 1000)
+            if ciWaits.note(rawSid, event: ciEvent == "turn_complete" ? "stop" : ciEvent, json: json, now: now) {
+                let wait = ciWaits.snapshot(rawSid, now: now)
+                var entry = DaemonTimelineEntry(ts: Double(now), type: "scheduled",
+                    raw: wait == nil ? "CI wait ended · result unconfirmed" : "CI wait requested",
+                    detail: nil, approvalId: nil, status: nil,
+                    agentType: isCodexEvent ? "codex-cli" : "claude-code", repeatCount: nil, automated: nil)
+                entry.sessionId = rawSid
+                entry.summaryKind = "none"
+                await timelineStore.add(entry, bypassSuppression: true)
+                broadcastSessionsList()
+            }
+        }
+
 
         // Attribute the next state_update + timeline entries to the session
         // that fired this hook: remember the sessionId, and mirror the
@@ -6686,6 +6708,7 @@ final class DaemonServer {
         guard !expired.isEmpty else { return }
 
         for sid in expired {
+            ciWaits.forget(ObservedAgentRules.rawSessionId(sid))
             hermesGate.forget(sessionKey: sid)
             let expiredEntry = pushedSessionsById[sid]
             let isPostTerminal = lastTerminalCodexEventBySession[sid]
@@ -11089,6 +11112,12 @@ final class DaemonServer {
             d["elapsedSec"] = elapsed
         }
         if let activity = sessionActivitySummary(s) { d["activity"] = activity }
+        let ciWait = ciWaits.snapshot(ObservedAgentRules.rawSessionId(s.id), now: Self.wireEpochMs(Date().timeIntervalSince1970 * 1000))
+        if let ciWait { d["waitingOn"] = ciWait } else { d["waitingOn"] = NSNull() }
+        if let ciWait, !(s.state ?? "").hasPrefix("awaiting") {
+            d["activity"] = "CI wait" + ((ciWait["pr"] as? Int).map { " #\($0)" } ?? "")
+        }
+
         // Live child-agent census — a SECOND axis to `state`, not a correction
         // to it: a parent whose turn closed is genuinely idle while its
         // subagents keep working. Hooks key children by the BARE session uuid

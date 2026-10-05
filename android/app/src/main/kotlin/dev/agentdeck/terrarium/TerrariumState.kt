@@ -60,6 +60,7 @@ data class TerrariumState(
     val crayfish: CrayfishVisualState,
     val tetra: TetraVisualState,
     val environment: EnvironmentVisualState,
+    val ciWaitLabels: Map<String, String> = emptyMap(),
     val currentTool: String? = null,
     val toolProgress: String? = null,
     val projectName: String? = null,
@@ -373,6 +374,8 @@ fun DashboardState.toTerrariumState(
     }
 
     return TerrariumState(
+        ciWaitLabels = siblingSessions.filter { it.waitingOn != null && it.state?.startsWith("awaiting") != true }
+            .mapNotNull { session -> session.activity?.let { session.id to it } }.toMap(),
         octopus = octopus,
         crayfish = effectiveCrayfish,
         tetra = tetra,

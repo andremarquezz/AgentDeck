@@ -115,6 +115,7 @@ struct HermesCreatureState: Identifiable {
 // MARK: - Terrarium State (aggregate)
 
 struct TerrariumState {
+    var ciWaitLabels: [String: String] = [:]
     var creatures: [AgentCreatureState] = []
     var cloudCreatures: [CloudCreatureState] = []
     var opencodeCreatures: [OpenCodeCreatureState] = []
@@ -145,6 +146,9 @@ extension DashboardState {
         subagentActivityBySession: [String: SubagentVisualActivity] = [:]
     ) -> TerrariumState {
         var result = TerrariumState()
+        for session in siblingSessions where session.waitingOn != nil && !(session.state ?? "").hasPrefix("awaiting") {
+            if let label = session.activity { result.ciWaitLabels[session.id] = label }
+        }
 
         // Primary session creature (skip daemon/openclaw/codex-cli/opencode/antigravity — they're not octopuses)
         // ALLOW-list, not a deny-list. This bucket used to be spelled as

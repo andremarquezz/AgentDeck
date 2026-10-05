@@ -705,6 +705,8 @@ struct SessionInfo: Codable, Sendable, Identifiable {
     /// SSOT for the session summary line — render this instead of hand-rolling
     /// model/state strings so all surfaces (TRMNL 7.5"/Android/Apple) agree.
     var activity: String?
+    /// Observed CI wait. Nil clears the optional display axis.
+    var waitingOn: CiWaitStatus?
     /// Live child-agent census. A SECOND axis to `state`, not a correction to
     /// it: a parent whose turn closed is genuinely `idle` while its subagents
     /// keep working, and the row said "idle" through a half-hour fan-out.
@@ -1122,4 +1124,19 @@ struct AnyCodable: Codable, @unchecked Sendable {
         default: try container.encodeNil()
         }
     }
+}
+
+
+/// CI evidence is independent of agent state; a full session row clears nil.
+struct CiWaitStatus: Codable, Equatable, Sendable {
+    var kind: String
+    var provider: String
+    var phase: String
+    var agentWaiting: Bool
+    var evidence: String
+    var openedAt: Int
+    var repo: String?
+    var ref: String?
+    var pr: Int?
+    var runId: Int?
 }

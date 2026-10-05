@@ -195,6 +195,62 @@ enum CiWaitRules {
         return first
     }
 }
+
+#if os(macOS)
+/// Hook-scoped CI waits; generated together with the command classifier.
+@DaemonActor
+final class CiWaitTracker {
+    private struct Wait { var id: String; var background: Bool; var status: [String: Any] }
+    private var sessions: [String: [Wait]] = [:]
+    func snapshot(_ sid: String, now: Int) -> [String: Any]? {
+        let waits = (sessions[sid] ?? []).filter { now - ($0.status["openedAt"] as? Int ?? 0) < ${mod.CI_WAIT_LIFECYCLE.maxAgeMs} }
+        if waits.isEmpty { sessions.removeValue(forKey: sid); return nil }
+        sessions[sid] = waits
+        return waits.first?.status
+    }
+    func forget(_ sid: String) { sessions.removeValue(forKey: sid) }
+    @discardableResult
+    func note(_ sid: String, event: String, json: [String: Any], now: Int) -> Bool {
+        guard !sid.isEmpty, sid.utf16.count <= ${mod.CI_WAIT_LIFECYCLE.maxSessionChars}, now >= 0, now <= ${r.maxId} else { return false }
+        let before = snapshot(sid, now: now)
+        if ["session_start", "session_end", "user_prompt_submit", "interrupt"].contains(event) {
+            sessions.removeValue(forKey: sid)
+        } else if event == "stop" {
+            sessions[sid] = (sessions[sid] ?? []).filter { $0.background }
+        } else {
+            guard let id = (json["tool_use_id"] ?? json["tool_call_id"] ?? json["call_id"]) as? String,
+                  !id.isEmpty, id.utf16.count <= ${mod.CI_WAIT_LIFECYCLE.maxToolIdChars} else { return false }
+            var waits = sessions[sid] ?? []
+            if event == "tool_start", let input = json["tool_input"] as? [String: Any] {
+                guard let tool = json["tool_name"] as? String,
+                      ["Bash", "bash", "shell", "shell_command", "exec_command"].contains(tool) else { return false }
+                let flag = input["run_in_background"] as? NSNumber
+                let background = flag.map { CFGetTypeID($0) == CFBooleanGetTypeID() && $0.boolValue } ?? false
+                guard let intent = CiWaitRules.classify(command: input["command"] ?? input["cmd"], runInBackground: true),
+                      background || intent.mode == "watch" else { return false }
+                if !waits.contains(where: { $0.id == id }) {
+                    guard waits.count < ${mod.CI_WAIT_LIFECYCLE.maxTools},
+                          sessions[sid] != nil || sessions.count < ${mod.CI_WAIT_LIFECYCLE.maxSessions} else { return false }
+                    var status: [String: Any] = ["kind": "ci", "provider": "github-actions", "phase": "unknown",
+                        "agentWaiting": true, "evidence": "tool_input", "openedAt": now]
+                    if let repo = intent.repo { status["repo"] = repo }
+                    if let ref = intent.ref { status["ref"] = ref }
+                    if let pr = intent.pr { status["pr"] = pr }
+                    if let run = intent.runId { status["runId"] = run }
+                    waits.append(Wait(id: id, background: background, status: status))
+                }
+            } else if event == "tool_end" || event == "tool_failure" {
+                let flag = json["is_error"] as? NSNumber
+                let failed = flag.map { CFGetTypeID($0) == CFBooleanGetTypeID() && $0.boolValue } ?? false
+                waits.removeAll { $0.id == id && (!$0.background || event == "tool_failure" || failed) }
+            }
+            if waits.isEmpty { sessions.removeValue(forKey: sid) } else { sessions[sid] = waits }
+        }
+        let after = snapshot(sid, now: now)
+        return !NSDictionary(dictionary: before ?? [:]).isEqual(to: after ?? [:])
+    }
+}
+#endif
 `;
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

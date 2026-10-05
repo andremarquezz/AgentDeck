@@ -47,6 +47,35 @@ Three portal facts worth keeping from the recent Android delivery:
 
 Run `pnpm verify-version` before every build or release. CI rejects a compatibility-major split or a target-internal mismatch. Release CI additionally requires a channel tag's full `X.Y.Z` to equal that target's own declared version; it does not compare the tag's minor or patch with root `VERSION`.
 
+## Next feature release candidate — CI waits and outstanding acceptance
+
+Preparation branch: `codex/release-ci-wait`, based on `b6fa21bf` (2026-10-05).
+Target a backward-compatible feature release (provisional 1.8.0), retaining
+independent channel versions and the root compatibility major. Do not tag or
+rename Unreleased until the delivered scope and candidate receipts are final.
+
+| Work | Candidate scope | Remaining acceptance |
+| --- | --- | --- |
+| [#433](https://github.com/puritysb/AgentDeck/issues/433) CI waits | Hook lifecycle, explicit wire clearing, bounded Node evidence, list/key/native labels | Real hook replay; concept comparison before station sculpture; firmware/matrix projection; APME wait-span accounting |
+| [#449](https://github.com/puritysb/AgentDeck/issues/449) delivery | Carry #451, #452, #459 and regression evidence into new artifacts | Three daemon modes plus reverse takeover on packaged candidates; organization-signed Apple archive; existing Elgato/Ulanzi review readback; DRM encoder acceptance |
+| [#423](https://github.com/puritysb/AgentDeck/issues/423) Hermes umbrella | Preserve observer-only support and measured upstream revision | Closes only with child acceptance; no duplicate implementation task |
+| [#425](https://github.com/puritysb/AgentDeck/issues/425) Hermes surfaces | Retain native/Lenovo receipts and verify crowded profiles | Remaining iPad/iPhone and physical matrix targets; versioned artifact validation |
+| [#426](https://github.com/puritysb/AgentDeck/issues/426) Hermes lifecycle | Recheck candidate observer package against pinned upstream | Test-only messaging Gateway channel and real `/new`/reset capture |
+| [#428](https://github.com/puritysb/AgentDeck/issues/428) Hermes model | Preserve current rendering while reviewing replacement separately | Original-face comparison, deformation/export checks, owner visual acceptance |
+| [#273](https://github.com/puritysb/AgentDeck/issues/273) managed replacement | Keep all managed contracts; local launcher already shipped | Remote relay design and real two-machine acceptance; terminal-only replacement decisions; no 1.x removal |
+| [#272](https://github.com/puritysb/AgentDeck/issues/272) e-ink | Collect representative actionable traffic before redesign | Board delivery/repaint and optical measurement; audio hardware and Swift pull-path decisions |
+
+Other follow-ups: IPS10 wake-word 3-to-5-frame candidate needs a new controlled
+false-positive/missed-trigger/latency comparison before firmware inclusion;
+GitHub removal of historical exposed PR artifacts remains an external cleanup
+request after credential incident containment. Neither historical installation
+state nor a passing source test is a fresh runtime receipt.
+
+Unavailable hardware does not hold unrelated channels. A confirmed regression
+holds the affected artifact. Missing visual approval does not authorize replacing
+the Hermes model. Record source, artifact, upload, submission and public state
+separately; the existing public 1.7 builds do not contain later source changes.
+
 ## A release has five states, and only one of them is "released"
 
 CI going green is the first of five, not the last. Keep them apart in your head and in anything you write down:

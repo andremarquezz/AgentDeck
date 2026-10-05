@@ -45,6 +45,28 @@ file's own rule forbids reconstructing its notes. The commit above is the
 record. `npm 1.0.16` (`37c674b8`) is a different case and needs nothing — it was
 bumped, superseded by 1.0.17, and never published, so it exists only in git.
 
+## Unreleased
+
+- Show observed Claude/Codex CI watch requests separately from agent activity.
+  Background waits survive the end of an agent turn; foreground tool completion,
+  tool failure, re-invocation and session end clear the applicable wait explicitly.
+  Hook evidence alone has unknown CI status. The Node daemon can query explicitly identified GitHub
+  checks with bounded requests and recognize owned watcher-process exit.
+  Session lists, deck keys and native aquarium labels expose the wait without
+  turning it into a permission request. Dedicated station art and remaining
+  firmware surfaces are tracked in #433 and are not claimed complete here.
+- Recover rejected z.ai credentials through Integrations, including when the
+  Mac app follows the local Node daemon. Distinguish invalid credentials from
+  transport failure and verified usage from successful key storage (#459).
+- Keep Swift-to-Node daemon handover within a shared yield budget, reject a
+  Swift process as successful Node startup, and align Kiro turn-state policy
+  across both daemons (#451).
+- Windows Codex hooks report the actual launcher PID through bounded native
+  ancestry lookup; unrelated or unreadable evidence does not invent identity
+  (#452).
+- Clarify the Hermes-capable receiver requirement and expand live lifecycle,
+  delegated-child and Windows Ulanzi transport regression evidence (#453–#455).
+
 ## 2026-10-04 — npm 1.7.0, Android 1.7.0, ESP32 1.7.0, Stream Deck 1.7.0, Ulanzi 1.7.0
 
 - ESP32 WiFi OTA reaches boards the daemon is driving over USB. Those boards

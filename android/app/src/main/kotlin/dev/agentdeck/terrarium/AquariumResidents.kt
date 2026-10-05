@@ -14,7 +14,7 @@ import kotlin.math.*
 
 /** Uses the canonical state projection, including its observed child census. */
 internal data class AquariumResident(val id: String, val kind: String, val title: String,
-    val state: OctopusVisualState, val helpers: Int = 0)
+    val state: OctopusVisualState, val helpers: Int = 0, val ciWaitLabel: String? = null)
 
 internal fun aquariumResidents(state: TerrariumState): List<AquariumResident> {
     fun project(item: AgentCreatureState, kind: String) = AquariumResident(
@@ -44,7 +44,7 @@ internal fun aquariumResidents(state: TerrariumState): List<AquariumResident> {
             CrayfishVisualState.WAITING -> OctopusVisualState.ASKING
             else -> OctopusVisualState.FLOATING
         }, state.workerCrayfishCount))
-    return (result + claw).distinctBy { it.id }
+    return (result + claw).distinctBy { it.id }.map { it.copy(ciWaitLabel = state.ciWaitLabels[it.id]) }
 }
 
 /** Keep readable models bounded; every session remains accessible in the roster. */

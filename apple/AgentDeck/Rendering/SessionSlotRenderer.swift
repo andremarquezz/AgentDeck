@@ -33,7 +33,7 @@
 // and taught `renderDetailInfo` to draw the pending prompt, and both live
 // outside this mirror's declared scope below. Recorded so the next reader does
 // not hunt for a missing port — the pin tracks the whole file, not the subset.
-// SYNC-HASH shared/src/svg-renderers/session-slot-renderer.ts e6416330835b9f94cf83535e5691395b5e28422c
+// SYNC-HASH shared/src/svg-renderers/session-slot-renderer.ts d99b7df39d985d1af02aa8244bb90b7107773c3b
 //
 // Scope for this first pass:
 //   - renderSessionSlot (primary session button)
@@ -148,6 +148,7 @@ struct SessionSlotView: View {
         return SessionSlotText.truncate(m, max: 12)
     }
     private var stateLabelText: String {
+        if mode != .asking, let wait = session.waitingOn { return "CI " + (wait.phase == "unknown" ? "WAIT" : wait.phase.uppercased()) }
         switch mode {
         case .working: return "RUNNING"
         case .asking:  return "PERMIT?"
@@ -172,7 +173,10 @@ struct SessionSlotView: View {
         }
     }
     private var toolText: String {
-        mode == .working ? "Running task" : modelText
+        if mode != .asking, let wait = session.waitingOn {
+            return "CI " + (wait.phase == "unknown" ? "wait" : wait.phase) + (wait.pr.map { " #\($0)" } ?? "")
+        }
+        return mode == .working ? "Running task" : modelText
     }
 
     var body: some View {
@@ -229,7 +233,7 @@ struct SessionSlotView: View {
 
             // Top-right badge: teal RUN pill while working, bold amber PERM pill
             // while awaiting, faint ACT pill only when idle (TS badgeObj).
-            if mode == .working {
+            if mode == .working && session.waitingOn == nil {
                 runBadge
                     .offset(x: 42, y: -50)
             }
@@ -237,7 +241,7 @@ struct SessionSlotView: View {
                 permBadge
                     .offset(x: 39, y: -50)
             }
-            if mode == .idle {
+            if mode == .idle && session.waitingOn == nil {
                 actBadge
                     .offset(x: 42, y: -50)
             }

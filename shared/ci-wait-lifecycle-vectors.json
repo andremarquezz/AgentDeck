@@ -1,0 +1,310 @@
+[
+  {
+    "name": "background wait survives Stop and unrelated tool completion; prompt clears explicitly",
+    "steps": [
+      {
+        "event": "tool_start",
+        "payload": {
+          "tool_name": "Bash",
+          "tool_use_id": "a",
+          "tool_input": {
+            "command": "gh pr checks 433 --watch",
+            "run_in_background": true
+          }
+        },
+        "at": 100,
+        "expected": {
+          "kind": "ci",
+          "provider": "github-actions",
+          "pr": 433,
+          "phase": "unknown",
+          "agentWaiting": true,
+          "evidence": "tool_input",
+          "openedAt": 100
+        }
+      },
+      {
+        "event": "tool_end",
+        "payload": {
+          "tool_use_id": "other"
+        },
+        "at": 110,
+        "expected": {
+          "kind": "ci",
+          "provider": "github-actions",
+          "pr": 433,
+          "phase": "unknown",
+          "agentWaiting": true,
+          "evidence": "tool_input",
+          "openedAt": 100
+        }
+      },
+      {
+        "event": "tool_end",
+        "payload": {
+          "tool_use_id": "a"
+        },
+        "at": 120,
+        "expected": {
+          "kind": "ci",
+          "provider": "github-actions",
+          "pr": 433,
+          "phase": "unknown",
+          "agentWaiting": true,
+          "evidence": "tool_input",
+          "openedAt": 100
+        }
+      },
+      {
+        "event": "stop",
+        "payload": {},
+        "at": 130,
+        "expected": {
+          "kind": "ci",
+          "provider": "github-actions",
+          "pr": 433,
+          "phase": "unknown",
+          "agentWaiting": true,
+          "evidence": "tool_input",
+          "openedAt": 100
+        }
+      },
+      {
+        "event": "user_prompt_submit",
+        "payload": {},
+        "at": 140,
+        "expected": null
+      }
+    ]
+  },
+  {
+    "name": "foreground watch closes on its own tool id without inferring success",
+    "steps": [
+      {
+        "event": "tool_start",
+        "payload": {
+          "tool_name": "Bash",
+          "tool_use_id": "a",
+          "tool_input": {
+            "command": "gh pr checks 433 --watch"
+          }
+        },
+        "at": 100,
+        "expected": {
+          "kind": "ci",
+          "provider": "github-actions",
+          "pr": 433,
+          "phase": "unknown",
+          "agentWaiting": true,
+          "evidence": "tool_input",
+          "openedAt": 100
+        }
+      },
+      {
+        "event": "tool_end",
+        "payload": {
+          "tool_use_id": "other"
+        },
+        "at": 120,
+        "expected": {
+          "kind": "ci",
+          "provider": "github-actions",
+          "pr": 433,
+          "phase": "unknown",
+          "agentWaiting": true,
+          "evidence": "tool_input",
+          "openedAt": 100
+        }
+      },
+      {
+        "event": "tool_end",
+        "payload": {
+          "tool_use_id": "a",
+          "exit_code": 0
+        },
+        "at": 130,
+        "expected": null
+      }
+    ]
+  },
+  {
+    "name": "failed launch clears background wait",
+    "steps": [
+      {
+        "event": "tool_start",
+        "payload": {
+          "tool_name": "Bash",
+          "tool_use_id": "a",
+          "tool_input": {
+            "command": "gh pr checks 433 --watch",
+            "run_in_background": true
+          }
+        },
+        "at": 100,
+        "expected": {
+          "kind": "ci",
+          "provider": "github-actions",
+          "pr": 433,
+          "phase": "unknown",
+          "agentWaiting": true,
+          "evidence": "tool_input",
+          "openedAt": 100
+        }
+      },
+      {
+        "event": "tool_failure",
+        "payload": {
+          "tool_use_id": "a"
+        },
+        "at": 120,
+        "expected": null
+      }
+    ]
+  },
+  {
+    "name": "interrupt closes background wait",
+    "steps": [
+      {
+        "event": "tool_start",
+        "payload": {
+          "tool_name": "Bash",
+          "tool_use_id": "a",
+          "tool_input": {
+            "command": "gh pr checks 433 --watch",
+            "run_in_background": true
+          }
+        },
+        "at": 100,
+        "expected": {
+          "kind": "ci",
+          "provider": "github-actions",
+          "pr": 433,
+          "phase": "unknown",
+          "agentWaiting": true,
+          "evidence": "tool_input",
+          "openedAt": 100
+        }
+      },
+      {
+        "event": "interrupt",
+        "payload": {},
+        "at": 120,
+        "expected": null
+      }
+    ]
+  },
+  {
+    "name": "session end closes background wait",
+    "steps": [
+      {
+        "event": "tool_start",
+        "payload": {
+          "tool_name": "Bash",
+          "tool_use_id": "a",
+          "tool_input": {
+            "command": "gh pr checks 433 --watch",
+            "run_in_background": true
+          }
+        },
+        "at": 100,
+        "expected": {
+          "kind": "ci",
+          "provider": "github-actions",
+          "pr": 433,
+          "phase": "unknown",
+          "agentWaiting": true,
+          "evidence": "tool_input",
+          "openedAt": 100
+        }
+      },
+      {
+        "event": "session_end",
+        "payload": {},
+        "at": 120,
+        "expected": null
+      }
+    ]
+  },
+  {
+    "name": "missing invocation identity and one-shot reads cannot create a wait",
+    "steps": [
+      {
+        "event": "tool_start",
+        "payload": {
+          "tool_name": "Bash",
+          "tool_input": {
+            "command": "gh pr checks 433 --watch",
+            "run_in_background": true
+          }
+        },
+        "at": 100,
+        "expected": null
+      },
+      {
+        "event": "tool_start",
+        "payload": {
+          "tool_name": "Bash",
+          "tool_use_id": "a",
+          "tool_input": {
+            "command": "gh pr checks 433"
+          }
+        },
+        "at": 120,
+        "expected": null
+      }
+    ]
+  },
+  {
+    "name": "duplicate hooks preserve start and expiration clears without result",
+    "steps": [
+      {
+        "event": "tool_start",
+        "payload": {
+          "tool_name": "Bash",
+          "tool_use_id": "a",
+          "tool_input": {
+            "command": "gh pr checks 433 --watch",
+            "run_in_background": true
+          }
+        },
+        "at": 100,
+        "expected": {
+          "kind": "ci",
+          "provider": "github-actions",
+          "pr": 433,
+          "phase": "unknown",
+          "agentWaiting": true,
+          "evidence": "tool_input",
+          "openedAt": 100
+        }
+      },
+      {
+        "event": "tool_start",
+        "payload": {
+          "tool_name": "Bash",
+          "tool_use_id": "a",
+          "tool_input": {
+            "command": "gh pr checks 433 --watch",
+            "run_in_background": true
+          }
+        },
+        "at": 120,
+        "expected": {
+          "kind": "ci",
+          "provider": "github-actions",
+          "pr": 433,
+          "phase": "unknown",
+          "agentWaiting": true,
+          "evidence": "tool_input",
+          "openedAt": 100
+        }
+      },
+      {
+        "event": "notification",
+        "payload": {},
+        "at": 86400100,
+        "expected": null
+      }
+    ]
+  }
+]

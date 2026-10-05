@@ -64,6 +64,8 @@ struct MonitorScreen: View {
                 session.state ?? "",
                 session.projectName ?? "",
                 session.modelName ?? "",
+                session.waitingOn?.phase ?? "",
+                session.activity ?? "",
                 "\(session.alive)",
             ].joined(separator: "|"))
         }

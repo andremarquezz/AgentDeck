@@ -271,6 +271,10 @@ export class PassiveSessionObserver {
    *  ancestry or argv (the coordination tracker) can reuse the `ps` this
    *  observer already pays for instead of running a second one per tick. */
   private lastProcesses: ProcInfo[] = [];
+  private processSnapshotAt = 0;
+  processSnapshot(): { processes: ProcInfo[]; capturedAt: number } {
+    return { processes: this.lastProcesses, capturedAt: this.processSnapshotAt };
+  }
   processes(): ProcInfo[] { return this.lastProcesses; }
 
   /** Headless `codex exec` rollouts the last scan found, each with the
@@ -327,6 +331,7 @@ export class PassiveSessionObserver {
     // alternative is concluding that every observed session ended at once.
     if (processes.length === 0) return;
     this.lastProcesses = processes;
+    this.processSnapshotAt = Date.now();
     const observed = [
       ...collectClaudeSessions(processes),
       ...(await collectCodexSessions(processes, this.codexRolloutCache)),

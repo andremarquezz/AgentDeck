@@ -1874,7 +1874,7 @@ extension ADOllamaModel {
 // MARK: - ADPromptOption
 struct ADPromptOption: Codable, Equatable {
     var index: Double
-    var kind: ADKind?
+    var kind: ADOptionKind?
     var label: String
     var recommended: Bool?
     var selected: Bool?
@@ -1910,7 +1910,7 @@ extension ADPromptOption {
 
     func with(
         index: Double? = nil,
-        kind: ADKind?? = nil,
+        kind: ADOptionKind?? = nil,
         label: String? = nil,
         recommended: Bool?? = nil,
         selected: Bool?? = nil,
@@ -1935,7 +1935,7 @@ extension ADPromptOption {
     }
 }
 
-enum ADKind: String, Codable, Equatable {
+enum ADOptionKind: String, Codable, Equatable {
     case choice = "choice"
     case freeformInput = "freeform_input"
 }
@@ -2490,6 +2490,8 @@ struct ADSessionInfo: Codable, Equatable {
     /// running` on the row forever — the same one-way latch that `usageStale` hit twice.
     var subagents: ADSubagentSummary?
     var totalTokens: Double?
+    /// CI is a separate axis from agent state. Explicit null clears a prior wait.
+    var waitingOn: ADCiWaitStatus?
     var weight: Double?
 
     enum CodingKeys: String, CodingKey {
@@ -2530,6 +2532,7 @@ struct ADSessionInfo: Codable, Equatable {
         case stopRequested = "stopRequested"
         case subagents = "subagents"
         case totalTokens = "totalTokens"
+        case waitingOn = "waitingOn"
         case weight = "weight"
     }
 }
@@ -2590,6 +2593,7 @@ extension ADSessionInfo {
         stopRequested: Bool?? = nil,
         subagents: ADSubagentSummary?? = nil,
         totalTokens: Double?? = nil,
+        waitingOn: ADCiWaitStatus?? = nil,
         weight: Double?? = nil
     ) -> ADSessionInfo {
         return ADSessionInfo(
@@ -2630,6 +2634,7 @@ extension ADSessionInfo {
             stopRequested: stopRequested ?? self.stopRequested,
             subagents: subagents ?? self.subagents,
             totalTokens: totalTokens ?? self.totalTokens,
+            waitingOn: waitingOn ?? self.waitingOn,
             weight: weight ?? self.weight
         )
     }
@@ -2834,6 +2839,113 @@ extension ADSubagentSummary {
     func jsonString(encoding: String.Encoding = .utf8) throws -> String? {
         return String(data: try self.jsonData(), encoding: encoding)
     }
+}
+
+//
+// Hashable or Equatable:
+// The compiler will not be able to synthesize the implementation of Hashable or Equatable
+// for types that require the use of JSONAny, nor will the implementation of Hashable be
+// synthesized for types that have collections (such as arrays or dictionaries).
+
+// MARK: - ADCiWaitStatus
+struct ADCiWaitStatus: Codable, Equatable {
+    var agentWaiting: Bool
+    var evidence: ADEvidence
+    var kind: ADCiWaitStatusKind
+    var openedAt: Double
+    var phase: ADPhase
+    var pr: Double?
+    var provider: ADProvider
+    var ref: String?
+    var repo: String?
+    var runId: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case agentWaiting = "agentWaiting"
+        case evidence = "evidence"
+        case kind = "kind"
+        case openedAt = "openedAt"
+        case phase = "phase"
+        case pr = "pr"
+        case provider = "provider"
+        case ref = "ref"
+        case repo = "repo"
+        case runId = "runId"
+    }
+}
+
+// MARK: ADCiWaitStatus convenience initializers and mutators
+
+extension ADCiWaitStatus {
+    init(data: Data) throws {
+        self = try newJSONDecoder().decode(ADCiWaitStatus.self, from: data)
+    }
+
+    init(_ json: String, using encoding: String.Encoding = .utf8) throws {
+        guard let data = json.data(using: encoding) else {
+            throw NSError(domain: "JSONDecoding", code: 0, userInfo: nil)
+        }
+        try self.init(data: data)
+    }
+
+    init(fromURL url: URL) throws {
+        try self.init(data: try Data(contentsOf: url))
+    }
+
+    func with(
+        agentWaiting: Bool? = nil,
+        evidence: ADEvidence? = nil,
+        kind: ADCiWaitStatusKind? = nil,
+        openedAt: Double? = nil,
+        phase: ADPhase? = nil,
+        pr: Double?? = nil,
+        provider: ADProvider? = nil,
+        ref: String?? = nil,
+        repo: String?? = nil,
+        runId: Double?? = nil
+    ) -> ADCiWaitStatus {
+        return ADCiWaitStatus(
+            agentWaiting: agentWaiting ?? self.agentWaiting,
+            evidence: evidence ?? self.evidence,
+            kind: kind ?? self.kind,
+            openedAt: openedAt ?? self.openedAt,
+            phase: phase ?? self.phase,
+            pr: pr ?? self.pr,
+            provider: provider ?? self.provider,
+            ref: ref ?? self.ref,
+            repo: repo ?? self.repo,
+            runId: runId ?? self.runId
+        )
+    }
+
+    func jsonData() throws -> Data {
+        return try newJSONEncoder().encode(self)
+    }
+
+    func jsonString(encoding: String.Encoding = .utf8) throws -> String? {
+        return String(data: try self.jsonData(), encoding: encoding)
+    }
+}
+
+enum ADEvidence: String, Codable, Equatable {
+    case github = "github"
+    case toolInput = "tool_input"
+}
+
+enum ADCiWaitStatusKind: String, Codable, Equatable {
+    case ci = "ci"
+}
+
+enum ADPhase: String, Codable, Equatable {
+    case failed = "failed"
+    case passed = "passed"
+    case queued = "queued"
+    case running = "running"
+    case unknown = "unknown"
+}
+
+enum ADProvider: String, Codable, Equatable {
+    case githubActions = "github-actions"
 }
 
 /// Voice assistant pipeline state (wake word → STT → LLM → TTS)

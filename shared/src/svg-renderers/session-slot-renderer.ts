@@ -1,3 +1,4 @@
+import { ciWaitLabel } from '../ci-wait.js';
 /**
  * Session slot button SVG renderer for v4 dynamic layout.
  *
@@ -509,7 +510,7 @@ export function renderSessionSlot(
   const signalColor = isWorking ? WORKING_COLOR : sColor;
   const fontFam = 'Inter, -apple-system, system-ui, Helvetica Neue, sans-serif';
   const lowResolutionKey = options?.lowResolutionKey === true;
-  const stateLbl = isWorking ? 'RUNNING' : isAsking ? 'PERMIT?' : 'IDLE';
+  const stateLbl = isAsking ? 'PERMIT?' : session.waitingOn ? `CI ${session.waitingOn.phase === 'unknown' ? 'WAIT' : session.waitingOn.phase.toUpperCase()}` : isWorking ? 'RUNNING' : 'IDLE';
   const colorText = isWorking ? '#CCFBF1' : isAsking ? '#FCD34D' : p1;
   const nameLines = wrapSessionName(nameForDisplay, lowResolutionKey ? 11 : 15);
   const nameStartY = nameLines.length === 1 ? (lowResolutionKey ? 60 : 54)
@@ -583,14 +584,14 @@ export function renderSessionSlot(
   }
 
   const watermark = `<g transform="translate(92, 80)" opacity="${isIdle ? '0.62' : '0.55'}">${agentLogoIcon(agent, 72, 1, 0, 0)}</g>`;
-  const badgeObj = isIdle ? `<rect x="100" y="14" width="28" height="16" rx="8" fill="#ffffff" opacity="0.1" /><text x="114" y="25" font-size="10" font-weight="700" text-anchor="middle" fill="#A1A1AA" font-family="${fontFam}">ACT</text>` : '';
-  const toolStr = isWorking ? 'Running task' : modelText;
+  const badgeObj = isIdle && !session.waitingOn ? `<rect x="100" y="14" width="28" height="16" rx="8" fill="#ffffff" opacity="0.1" /><text x="114" y="25" font-size="10" font-weight="700" text-anchor="middle" fill="#A1A1AA" font-family="${fontFam}">ACT</text>` : '';
+  const toolStr = !isAsking && session.waitingOn ? ciWaitLabel(session.waitingOn)! : isWorking ? 'Running task' : modelText;
 
   const elements = [
     `<defs>${defs}</defs>`,
     `<rect width="${SIZE}" height="${SIZE}" rx="16" fill="url(#${gradId})"/>`,
     `<rect x="8" y="8" width="128" height="128" rx="12" fill="#2C2C2E" opacity="0.8"/>`,
-    stateBorder, activeRing, watermark, askDot, runBadge, badgeObj,
+    stateBorder, activeRing, watermark, askDot, session.waitingOn ? '' : runBadge, badgeObj,
     `<text x="20" y="32" font-size="${lowResolutionKey ? '18' : '17'}" font-weight="800" text-anchor="start" fill="${colorText}" font-family="${fontFam}">${escXml(stateLbl)}</text>`,
     nameText,
     `<text x="20" y="${lowResolutionKey ? '128' : '120'}" font-size="${lowResolutionKey ? '15' : (isWorking ? '13' : '14')}" font-weight="500" text-anchor="start" fill="${colorText}" opacity="0.8" font-family="${fontFam}">${escXml(toolStr)}</text>`,
@@ -724,7 +725,8 @@ export function renderDetailInfo(
   const gradId = `sd-bg-detail-${agent}`;
   const watermark = `<g transform="translate(92, 80)" opacity="0.42">${agentLogoIcon(agent, 48, 1, 0, 0)}</g>`;
   const badgeObj = `<rect x="100" y="14" width="28" height="16" rx="8" fill="#ffffff" opacity="0.1" /><text x="114" y="25" font-size="10" font-weight="700" text-anchor="middle" fill="#A1A1AA" font-family="${fontFam}">INFO</text>`;
-  const toolDisplay = tool ? `▶ ${truncate(tool, 18)}` : stateLbl;
+  const toolDisplay = !effectiveState?.startsWith('awaiting') && session.waitingOn
+    ? ciWaitLabel(session.waitingOn)! : tool ? `▶ ${truncate(tool, 18)}` : stateLbl;
   // An awaiting session's INFO cell must state WHAT is being asked. This cell
   // used to render project + model + state and nothing else, while the D200H —
   // whose whole detail view is this cell plus the option keys — passed the

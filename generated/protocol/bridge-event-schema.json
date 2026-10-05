@@ -510,6 +510,63 @@
       ],
       "type": "object"
     },
+    "CiWaitStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "agentWaiting": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "enum": [
+            "tool_input",
+            "github"
+          ],
+          "type": "string"
+        },
+        "kind": {
+          "const": "ci",
+          "type": "string"
+        },
+        "openedAt": {
+          "type": "number"
+        },
+        "phase": {
+          "enum": [
+            "unknown",
+            "queued",
+            "running",
+            "passed",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "pr": {
+          "type": "number"
+        },
+        "provider": {
+          "const": "github-actions",
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "kind",
+        "provider",
+        "phase",
+        "agentWaiting",
+        "evidence",
+        "openedAt"
+      ],
+      "type": "object"
+    },
     "CodexCredits": {
       "additionalProperties": false,
       "description": "Codex credits balance, the metering Codex reports for credit-based plans (e.g. `limit_id: \"premium\"`) where the rolling 5h/7d windows are null. Mirrors the rollout's `rate_limits.credits` block.",
@@ -1399,6 +1456,17 @@
         },
         "totalTokens": {
           "type": "number"
+        },
+        "waitingOn": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/CiWaitStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "CI is a separate axis from agent state. Explicit null clears a prior wait."
         },
         "weight": {
           "type": "number"

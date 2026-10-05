@@ -195,3 +195,93 @@ export function classifyCiWaitIntent(command: unknown, runInBackground: unknown)
   if (loops.length !== 0 || found.length === 0) return null;
   return found.every(i => JSON.stringify(i) === JSON.stringify(found[0])) ? found[0] : null;
 }
+
+
+/** Lifecycle bounds are shared with the generated native implementation. */
+export const CI_WAIT_LIFECYCLE = { maxSessions: 1024, maxTools: 8, maxSessionChars: 256, maxToolIdChars: 255, maxAgeMs: 24 * 60 * 60 * 1000, resultAgeMs: 30_000 } as const;
+import type { CiWaitStatus } from './protocol.js';
+export interface CiWaitTool {
+  token: number;
+  id: string;
+  background: boolean;
+  status: CiWaitStatus;
+}
+
+/** Hook evidence only. Tool exit is NOT a GitHub conclusion: even gh can exit
+ * because auth, transport or the user failed. No raw command is retained.
+ * A missing invocation id cannot safely match concurrent tools and is ignored.
+ */
+export class CiWaitTracker {
+  private sessions = new Map<string, CiWaitTool[]>();
+  private nextToken = 0;
+
+  note(sessionId: string, event: string, json: Record<string, unknown>, now: number): boolean {
+    if (!sessionId || sessionId.length > CI_WAIT_LIFECYCLE.maxSessionChars || !Number.isSafeInteger(now) || now < 0) return false;
+    const before = JSON.stringify(this.snapshot(sessionId, now));
+    if (['session_start', 'session_end', 'user_prompt_submit', 'interrupt'].includes(event)) {
+      this.sessions.delete(sessionId);
+    } else if (event === 'stop') {
+      const waits = (this.sessions.get(sessionId) ?? []).filter(w => w.background);
+      if (waits.length) this.sessions.set(sessionId, waits); else this.sessions.delete(sessionId);
+    } else {
+      const id = json.tool_use_id ?? json.tool_call_id ?? json.call_id;
+      if (typeof id !== 'string' || !id || id.length > CI_WAIT_LIFECYCLE.maxToolIdChars) return false;
+      const input = json.tool_input as Record<string, unknown> | undefined;
+      let waits = this.sessions.get(sessionId) ?? [];
+      if (event === 'tool_start' && input && typeof input === 'object') {
+        const tool = json.tool_name;
+        if (!['Bash', 'bash', 'shell', 'shell_command', 'exec_command'].includes(String(tool))) return false;
+        const background = input.run_in_background === true;
+        const intent = classifyCiWaitIntent(input.command ?? input.cmd, true);
+        // Foreground one-shot reads and polling loops are not watch evidence.
+        if (!intent || (!background && intent.mode !== 'watch')) return false;
+        if (!waits.some(w => w.id === id)) {
+          if (waits.length >= CI_WAIT_LIFECYCLE.maxTools ||
+              (!this.sessions.has(sessionId) && this.sessions.size >= CI_WAIT_LIFECYCLE.maxSessions)) return false;
+          const { mode: _mode, ...identity } = intent;
+          waits = [...waits, { token: ++this.nextToken, id, background, status: { ...identity, phase: 'unknown',
+            agentWaiting: true, evidence: 'tool_input', openedAt: Math.trunc(now) } }];
+        }
+      } else if (event === 'tool_end' || event === 'tool_failure') {
+        waits = waits.filter(w => w.id !== id || (w.background && event !== 'tool_failure' && json.is_error !== true));
+
+      }
+      if (waits.length) this.sessions.set(sessionId, waits); else this.sessions.delete(sessionId);
+    }
+    return before !== JSON.stringify(this.snapshot(sessionId, now));
+  }
+
+  snapshot(sessionId: string, now: number): CiWaitStatus | null {
+    const waits = (this.sessions.get(sessionId) ?? []).filter(w => now - w.status.openedAt < CI_WAIT_LIFECYCLE.maxAgeMs);
+    if (!waits.length) { this.sessions.delete(sessionId); return null; }
+    this.sessions.set(sessionId, waits);
+    return { ...waits[0].status };
+  }
+  entries(now: number): [string, CiWaitStatus][] {
+    return [...this.sessions.keys()].flatMap(id => { const value = this.snapshot(id, now); return value ? [[id, value] as [string, CiWaitStatus]] : []; });
+  }
+  /** Bind an asynchronous result to this exact wait; a later visit cannot be
+   * completed by a response from the earlier visit. */
+  tokenFor(sessionId: string): number | undefined { return this.sessions.get(sessionId)?.[0]?.token; }
+  applyPhase(sessionId: string, token: number | undefined, phase: CiWaitStatus['phase']): boolean {
+    const first = this.sessions.get(sessionId)?.[0];
+    if (!first || first.token !== token || first.status.phase === phase) return false;
+    first.status = { ...first.status, phase, evidence: phase === 'unknown' ? 'tool_input' : 'github',
+      agentWaiting: phase !== 'passed' && phase !== 'failed' };
+    return true;
+  }
+  closeHead(sessionId: string, openedAt: number): boolean {
+    const waits = this.sessions.get(sessionId);
+    if (!waits?.length || waits[0].status.openedAt !== openedAt) return false;
+    waits.shift();
+    if (!waits.length) this.sessions.delete(sessionId);
+    return true;
+  }
+  forget(sessionId: string): void { this.sessions.delete(sessionId); }
+}
+
+/** A CI wait does not become PERM or WORKING. Permission prompts keep priority. */
+export function ciWaitLabel(wait: CiWaitStatus | null | undefined): string | null {
+  if (!wait) return null;
+  return `CI ${wait.phase === 'unknown' ? 'wait' : wait.phase}${wait.pr ? ` #${wait.pr}` : ''}`;
+}

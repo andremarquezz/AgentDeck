@@ -530,7 +530,22 @@ export interface CoordinationSummary {
   lastRelationAt?: number;
 }
 
+export interface CiWaitStatus {
+  kind: 'ci';
+  provider: 'github-actions';
+  phase: 'unknown' | 'queued' | 'running' | 'passed' | 'failed';
+  agentWaiting: boolean;
+  evidence: 'tool_input' | 'github';
+  openedAt: number;
+  repo?: string;
+  ref?: string;
+  pr?: number;
+  runId?: number;
+}
+
 export interface SessionInfo {
+  /** CI is a separate axis from agent state. Explicit null clears a prior wait. */
+  waitingOn?: CiWaitStatus | null;
   /** Optional compact device label; never a session identity or folding key. */
   displayName?: string;
   id: string;

@@ -26,10 +26,27 @@ for (index, vector) in vectors.enumerated() {
         let actual = try JSONSerialization.jsonObject(with: JSONEncoder().encode(result)) as! [String: Any]
         precondition(NSDictionary(dictionary: actual).isEqual(to: expected), "Wrong intent at vector \\(index)")
     } else { precondition(result == nil, "Invented intent at vector \\(index)") }
+ }
+@globalActor actor DaemonActor { static let shared = DaemonActor() }
+@DaemonActor func verifyLifecycle() throws {
+let lifecycleData = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[2]))
+let scenarios = try JSONSerialization.jsonObject(with: lifecycleData) as! [[String: Any]]
+for scenario in scenarios {
+    let tracker = CiWaitTracker()
+    for step in scenario["steps"] as! [[String: Any]] {
+        let now = step["at"] as! Int
+        tracker.note("session", event: step["event"] as! String, json: step["payload"] as! [String: Any], now: now)
+        let actual = tracker.snapshot("session", now: now)
+        if let expected = step["expected"] as? [String: Any] {
+            precondition(NSDictionary(dictionary: actual ?? [:]).isEqual(to: expected), "Lifecycle mismatch")
+        } else { precondition(actual == nil, "Wait was not cleared") }
+    }
 }
+}
+try await verifyLifecycle()
 `);
       execFileSync('swiftc', ['-swift-version', '6', join(root, OUTPUT), main, '-o', join(dir, 'parity')], { timeout: 60_000 });
-      execFileSync(join(dir, 'parity'), [join(root, 'shared/ci-wait-vectors.json')], { timeout: 10_000 });
+      execFileSync(join(dir, 'parity'), [join(root, 'shared/ci-wait-vectors.json'), join(root, 'shared/ci-wait-lifecycle-vectors.json')], { timeout: 10_000 });
     } finally { rmSync(dir, { recursive: true, force: true }); }
   }, 75_000);
 });

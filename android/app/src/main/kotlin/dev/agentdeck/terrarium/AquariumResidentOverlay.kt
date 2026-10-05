@@ -46,11 +46,11 @@ internal class AquariumResidentOverlay(context: Context) {
 
     private fun title(item: AquariumResident) = item.title.take(22)
 
-    private fun status(item: AquariumResident) = when (item.state) {
+    private fun status(item: AquariumResident) = item.ciWaitLabel ?: (when (item.state) {
         OctopusVisualState.WORKING -> "WORKING"
         OctopusVisualState.ASKING -> "WAITING"
         else -> "IDLE"
-    } + if (item.helpers > 0) " · ${item.helpers} agents" else ""
+    } + if (item.helpers > 0) " · ${item.helpers} agents" else "")
 
     /** Session state colour (DESIGN.md §2.7), never the marketing Status palette. */
     private fun stateColor(item: AquariumResident) = when (item.state) {
