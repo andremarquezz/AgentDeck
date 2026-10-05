@@ -16,5 +16,10 @@ int main() {
     row.state="awaiting_permission";row.question="Allow this?";
     assert(!strcmp(Companion::glanceText(row), "Allow this?"));
     row.ciPhase=0;
-    row.state="error";assert(!strcmp(Companion::glanceText(row), "Check this session"));
+    // An error's supplied activity is its diagnostic; clear the prior CI
+    // fixture before testing the no-diagnostic fallback.
+    row.state="error";row.activity="Build failed";
+    assert(!strcmp(Companion::glanceText(row), "Build failed"));
+    row.activity="";
+    assert(!strcmp(Companion::glanceText(row), "Check this session"));
 }
