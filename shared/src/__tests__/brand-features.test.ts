@@ -1,8 +1,9 @@
+import { agentLogoIcon, agentGlyphMono } from '../svg-renderers/agent-logos.js';
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
-import { BRAND_FEATURES, creatureFeatureLayers, featureRgbHex } from '../brand-features.js';
+import { BRAND_FEATURES, creatureFeatureLayers, closedSvgSubpaths, featureRgbHex } from '../brand-features.js';
 import { emitBrandFeatures, OUTPUT, sourcePaths } from '../../../scripts/generate-brand-features.mjs';
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 
@@ -45,7 +46,8 @@ describe('source-grounded creature feature semantics', () => {
 });
 
 it('compact feature masks stay cropped, bounded and source-grounded across 64/24/9/8 pixel surfaces', async () => {
-  const { rasterizeFeatureLayers, cppFeatureLayers } = await import('../../../scripts/creature-feature-masks.mjs');
+  const { rasterizeFeatureLayers, cppFeatureLayers, emitBrowserFeatures } = await import('../../../scripts/creature-feature-masks.mjs');
+  expect(readFileSync(root + '/tools/creature-simulator/brand-features.generated.js', 'utf8')).toBe(emitBrowserFeatures());
   let flashBytes = 0;
   for (const size of [64, 24, 9, 8]) for (const agent of Object.keys(BRAND_FEATURES.agents)) {
     const layers = await rasterizeFeatureLayers(agent, size);
@@ -70,6 +72,52 @@ it('compact feature masks stay cropped, bounded and source-grounded across 64/24
   // Cropped feature alpha alone stays far below one extra full 64px mask.
   expect(flashBytes).toBeLessThan(64 * 64);
 });
+
+
+it('actual deck creature SVGs paint literal features over both backgrounds and preserve OpenCode alpha', async () => {
+  const cases = [
+    ['claude-code', 65, 94, [0, 0, 0]], ['codex-cli', 145, 147, [255, 255, 255]],
+    ['openclaw', 83, 85, [5, 8, 16]], ['openclaw', 92, 80, [0, 229, 204]], ['opencode', 120, 120, null],
+  ] as const;
+  for (const [agent, x, y, feature] of cases) for (const background of [[40, 73, 105], [212, 231, 171]]) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240"><rect width="240" height="240" fill="${featureRgbHex(background)}"/>${agentLogoIcon(agent, 240, 1, 120, 120)}</svg>`;
+    const rgba = await sharp(Buffer.from(svg)).ensureAlpha().raw().toBuffer();
+    expect([...rgba.subarray((y * 240 + x) * 4, (y * 240 + x) * 4 + 3)]).toEqual(feature ?? background);
+  }
+});
+
+it('large paper creatures honor black eyes while compact ink-body logos retain legibility', () => {
+  const ink = featureRgbHex([0, 0, 0]), paper = featureRgbHex([255, 255, 255]);
+  const large = agentGlyphMono('claude-code', 24, 24, 48, ink, paper);
+  const tiny = agentGlyphMono('claude-code', 6, 6, 12, ink, paper);
+  const eye = creatureFeatureLayers('claudecode', sourcePaths(readFileSync(root + '/design/brand/claudecode.svg', 'utf8')))[0].paths.join(' ');
+  expect(large).toContain(`d="${eye}" fill="${ink}"`);
+  expect(large).toContain(`fill="${paper}" fill-rule="evenodd" stroke="${ink}"`);
+  expect(tiny).toContain(`d="${eye}" fill="${paper}"`);
+  expect(agentGlyphMono('codex', 24, 24, 48, ink, paper)).toContain(`fill="${ink}" fill-rule="evenodd"`);
+});
+
+
+it('OpenCode selector is the contained smaller rectangle, not an outer fill', async () => {
+  const svg = readFileSync(root + '/design/brand/opencode.svg', 'utf8');
+  const paths = closedSvgSubpaths(sourcePaths(svg)[0]);
+  const coverage = async (path: string) => {
+    const data = await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="240" height="240"><path d="${path}" fill="white"/></svg>`)).ensureAlpha().raw().toBuffer();
+    const points = Array.from({ length: 240 * 240 }, (_, i) => i).filter(i => data[i * 4 + 3] === 255);
+    return { area: points.length, minX: Math.min(...points.map(i => i % 240)), maxX: Math.max(...points.map(i => i % 240)), minY: Math.min(...points.map(i => Math.floor(i / 240))), maxY: Math.max(...points.map(i => Math.floor(i / 240))) };
+  };
+  const inner = await coverage(paths[0]), outer = await coverage(paths[1]);
+  expect(inner.area).toBeLessThan(outer.area);
+  expect(inner.minX).toBeGreaterThan(outer.minX); expect(inner.maxX).toBeLessThan(outer.maxX);
+  expect(inner.minY).toBeGreaterThan(outer.minY); expect(inner.maxY).toBeLessThan(outer.maxY);
+  expect(creatureFeatureLayers('opencode', sourcePaths(svg))[0].paths).toEqual([paths[0]]);
+});
+
+it('unknown creature identity never borrows another agent mark', () => {
+  expect(agentGlyphMono('future-agent', 12, 12, 24, 'black', 'white')).toBe('');
+  expect(agentLogoIcon('future-agent' as any, 48, 1)).toBe('');
+});
+
 
 it('OpenClaw feature colors come from the pinned original color reference, not inferred white', async () => {
   const { createHash } = await import('node:crypto');

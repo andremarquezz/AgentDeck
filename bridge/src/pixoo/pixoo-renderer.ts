@@ -1,3 +1,4 @@
+import { paintOfficialFeatures } from './official-features.js';
 import { usageRgb } from '@agentdeck/shared';
 import { TERRARIUM_RULES, ciCompanionSeed } from '@agentdeck/shared';
 /**
@@ -1079,10 +1080,7 @@ function renderCompact32Frame(
         blendPixel(outputBuf, x0 + dx, y0 + dy, lit, coverage);
       }
     }
-    if (mark.glyph === 'openClaw') {
-      set(x0 + Math.round(9.05 / 24 * slot.size), y0 + Math.round(7.63 / 24 * slot.size), [0, 229, 204]);
-      set(x0 + Math.round(15.38 / 24 * slot.size), y0 + Math.round(7.63 / 24 * slot.size), [0, 229, 204]);
-    }
+    paintOfficialFeatures(outputBuf, 32, mark.glyph, x0, y0, slot.size);
     if (mark.state === 'processing') {
       for (let spark = 0; spark < 3; spark++) {
         const angle = animFrame * 0.24 + spark * Math.PI * 2 / 3;

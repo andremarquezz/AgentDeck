@@ -815,10 +815,7 @@ final class PixooRenderer {
                     blend(x0 + dx, y0 + dy, lit, coverage)
                 }
             }
-            if mark.glyph == .openClaw {
-                set(x0 + Int(round(9.05 / 24 * Double(slot.size))), y0 + Int(round(7.63 / 24 * Double(slot.size))), Self.colors.crayfishEye)
-                set(x0 + Int(round(15.38 / 24 * Double(slot.size))), y0 + Int(round(7.63 / 24 * Double(slot.size))), Self.colors.crayfishEye)
-            }
+            OfficialFeaturePaint.paint(&out, canvasSize: n, layers: OfficialStandardFeatures.layers[mark.glyph] ?? [], sourceSize: OfficialDotGlyphs.size, x0: x0, y0: y0, target: slot.size)
             if mark.state == .processing {
                 for spark in 0..<3 {
                     let angle = Double(animFrame) * 0.24 + Double(spark) * Double.pi * 2 / 3
@@ -1690,11 +1687,7 @@ final class PixooRenderer {
             }
         }
 
-        if glyph == .openClaw && !sick {
-            for (vx, vy) in [(9.05, 7.63), (15.38, 7.63)] {
-                setPixel(&buf, x0 + Int(round(vx / 24 * Double(target))), y0 + Int(round(vy / 24 * Double(target))), Self.colors.crayfishEye)
-            }
-        }
+        OfficialFeaturePaint.paint(&buf, canvasSize: Int(sqrt(Double(buf.count / 3))), layers: OfficialStandardFeatures.layers[glyph] ?? [], sourceSize: OfficialDotGlyphs.size, x0: x0, y0: y0, target: target)
 
         if state == .awaiting {
             drawQuestionBubble(&buf, centerX: x0 + target + 1, centerY: y0)
