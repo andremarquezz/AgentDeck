@@ -16,6 +16,7 @@ let setJellyfish: TerrariumModule['setJellyfish'];
 let setOpenCode: TerrariumModule['setOpenCode'];
 let updateTerrarium: TerrariumModule['updateTerrarium'];
 let renderTerrariumFrame: TerrariumModule['renderTerrariumFrame'];
+let canonicalTerminalSprite: TerrariumModule['canonicalTerminalSprite'];
 
 let randomIndex = 0;
 const RANDOM_SEQ = [
@@ -51,6 +52,7 @@ beforeAll(async () => {
   setOpenCode = terrarium.setOpenCode;
   updateTerrarium = terrarium.updateTerrarium;
   renderTerrariumFrame = terrarium.renderTerrariumFrame;
+  canonicalTerminalSprite = terrarium.canonicalTerminalSprite;
 });
 
 beforeEach(() => {
@@ -186,8 +188,8 @@ describe('TUI terrarium snapshots', () => {
       .join('\n')
       .replace(/\x1b\[[0-9;]*m/g, '');
 
-    expect(plain).toContain('┌───┐');
-    expect(plain).toContain('│   │');
+    expect(plain).toContain('▀');
+    expect(plain).toContain('▄');
     expect(plain).not.toContain('│┌─┐│');
   });
 
@@ -204,5 +206,51 @@ describe('TUI terrarium snapshots', () => {
     updateTerrarium(ctx, 1);
     // Bubbles should move up (y decreases)
     expect(ctx.bubbles[0].y).toBeLessThan(y0);
+  });
+});
+
+
+describe('canonical colored terminal creatures', () => {
+  it('retains all existing terminal footprints at each scale', () => {
+    const expected = {
+      claudeCode: [[7, 2], [14, 3], [21, 4]], codex: [[5, 2], [10, 4], [15, 6]],
+      openClaw: [[8, 2], [16, 4], [24, 6]], openCode: [[5, 3], [5, 5], [6, 7]],
+    };
+    for (const [glyph, sizes] of Object.entries(expected)) for (const [i, scale] of ['small', 'large', 'xlarge'].entries()) {
+      const sprite = canonicalTerminalSprite(glyph, scale as 'small' | 'large' | 'xlarge', '\x1b[38;2;99;102;241m');
+      expect(sprite.braille).toHaveLength(sizes[i][1]);
+      expect(sprite.braille.every(row => row.length === sizes[i][0])).toBe(true);
+      expect(sprite.cells.flat().some(c => c.top || c.bottom)).toBe(true);
+    }
+    expect(canonicalTerminalSprite('future-agent', 'small', '').braille).toEqual([]);
+    expect(canonicalTerminalSprite('__proto__', 'small', '').braille).toEqual([]);
+  });
+
+  it('keeps the OpenCode centre transparent instead of erasing water behind it', () => {
+    const ring = canonicalTerminalSprite('openCode', 'xlarge', '\x1b[38;2;241;236;236m');
+    expect(ring.cells[3][2]).toEqual({ char: ' ', top: null, bottom: null });
+    expect(ring.cells[3][3]).toEqual({ char: ' ', top: null, bottom: null });
+  });
+
+  it('fills the original Codex marking and does not blink its geometry away', () => {
+    const sprite = canonicalTerminalSprite('codex', 'xlarge', '\x1b[38;2;99;102;241m');
+    const samples = sprite.cells.flat().flatMap(c => [c.top, c.bottom]).filter(p => p !== null);
+    expect(samples.some(p => p.alpha > .8 && p.rgb[0] > 180 && p.rgb[1] > 180)).toBe(true);
+    const ctx = initTerrarium(); ctx.bubbles = []; ctx.schools = [];
+    setJellyfish(ctx, [{ id: 'canonical', state: 'idle', agentType: 'codex-cli' }]);
+    ctx.jellyfish[0].phaseOffset = 0; ctx.jellyfish[0].x = .5; ctx.jellyfish[0].y = .5;
+    expect(renderTerrariumFrame(ctx, 120, 25, 0).slice(1)).toEqual(renderTerrariumFrame(ctx, 120, 25, 6).slice(1));
+  });
+
+  it('renders bounded lines after multi-color cells and restores each water-row background', () => {
+    const ctx = initTerrarium(); ctx.bubbles = []; ctx.schools = [];
+    setOctopi(ctx, [{ id: 'canonical', state: 'idle', agentType: 'claude-code' }]);
+    setCrayfish(ctx, true, false, undefined, false);
+    for (const [width, height] of [[60, 15], [120, 25], [180, 40]]) {
+      const lines = renderTerrariumFrame(ctx, width, height, 0);
+      expect(lines).toHaveLength(height);
+      for (const line of lines) expect(line.replace(/\x1b\[[0-9;]*m/g, '').length).toBe(width);
+      expect(lines.some(line => /[▀▄]/.test(line))).toBe(true);
+    }
   });
 });
