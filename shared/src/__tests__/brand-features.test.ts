@@ -43,3 +43,30 @@ describe('source-grounded creature feature semantics', () => {
     });
   }
 });
+
+it('compact feature masks stay cropped, bounded and source-grounded across 64/24/9/8 pixel surfaces', async () => {
+  const { rasterizeFeatureLayers, cppFeatureLayers } = await import('../../../scripts/creature-feature-masks.mjs');
+  let flashBytes = 0;
+  for (const size of [64, 24, 9, 8]) for (const agent of Object.keys(BRAND_FEATURES.agents)) {
+    const layers = await rasterizeFeatureLayers(agent, size);
+    if (agent === 'opencode') { expect(layers).toEqual([]); continue; }
+    for (const layer of layers) {
+      expect(layer.x).toBeGreaterThanOrEqual(0); expect(layer.y).toBeGreaterThanOrEqual(0);
+      expect(layer.x + layer.width).toBeLessThanOrEqual(size); expect(layer.y + layer.height).toBeLessThanOrEqual(size);
+      expect(layer.alpha).toHaveLength(layer.width * layer.height);
+      expect(layer.alpha.some((value: number) => value > 0)).toBe(true);
+      expect(layer.monochrome).toBe(layer.rgb[0] === 255 && agent === 'openclaw' ? 'ink' : 'paper');
+      if (size === 64) flashBytes += layer.alpha.length;
+    }
+    if (size === 64) {
+      const names: Record<string, string> = { claudecode: 'OCTOPUS', codex: 'CODEX', openclaw: 'OPENCLAW_MARK' };
+      expect(readFileSync(root + '/esp32/src/ui/terrarium/creature_glyphs_generated.h', 'utf8')).toContain(cppFeatureLayers(names[agent], layers));
+    }
+    if (size === 8) {
+      const names: Record<string, string> = { claudecode: 'CLAUDE_CODE', codex: 'CODEX', openclaw: 'OPEN_CLAW' };
+      expect(readFileSync(root + '/esp32/src/ui/matrix/official_dot_glyphs_generated.h', 'utf8')).toContain(cppFeatureLayers(names[agent], layers));
+    }
+  }
+  // Cropped feature alpha alone stays far below one extra full 64px mask.
+  expect(flashBytes).toBeLessThan(64 * 64);
+});

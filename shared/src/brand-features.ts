@@ -1,21 +1,23 @@
 /** Creature feature materials over unchanged upstream SVG geometry.
  * The explicit black/white user fidelity requirement is a brand exception.
- * Ordinary monochrome UI logos retain their upstream alpha contract. */
+ * Ordinary monochrome UI logos retain their upstream alpha contract.
+ * On an ink-filled 1-bit body, paper eyes/prompt and ink glints retain source
+ * feature separation; this is a distinct monochrome adaptation, not color RGB. */
 export const BRAND_FEATURES = {
   schema: 'agentdeck.brand-features/v1',
   agents: {
     claudecode: { sourcePath: 'design/brand/claudecode.svg', sourceHash: 'd7eb2d876b49e51cc16291a42b681d7cf4906e60e0150776dbfb353ec4ca3746',
-      features: [{ role: 'eyes', mode: 'fill', rgb: [0, 0, 0], pathIndex: 0, subpathIndices: [1, 2] }] },
+      features: [{ role: 'eyes', mode: 'fill', monochrome: 'paper', rgb: [0, 0, 0], pathIndex: 0, subpathIndices: [1, 2] }] },
     codex: { sourcePath: 'design/brand/codex.svg', sourceHash: 'd08b4e824cd6727e89617f59e4737273ff53e44c1da849d016dd64dfd08b33e1',
-      features: [{ role: 'prompt', mode: 'fill', rgb: [255, 255, 255], pathIndex: 0, subpathIndices: [1, 2] }] },
+      features: [{ role: 'prompt', mode: 'fill', monochrome: 'paper', rgb: [255, 255, 255], pathIndex: 0, subpathIndices: [1, 2] }] },
     openclaw: { sourcePath: 'design/brand/openclaw.svg', sourceHash: '1f0b18833ccb1c7c21ae998d237856975fc90eb8eafc14f8db05198628e8da4d',
       features: [
-        { role: 'eyes', mode: 'fill', rgb: [0, 0, 0], pathIndex: 2, subpathIndices: [1, 2] },
-        { role: 'eye-highlight', mode: 'fill', rgb: [255, 255, 255], pathIndex: 0, subpathIndices: [0] },
-        { role: 'eye-highlight', mode: 'fill', rgb: [255, 255, 255], pathIndex: 1, subpathIndices: [0] },
+        { role: 'eyes', mode: 'fill', monochrome: 'paper', rgb: [0, 0, 0], pathIndex: 2, subpathIndices: [1, 2] },
+        { role: 'eye-highlight', mode: 'fill', monochrome: 'ink', rgb: [255, 255, 255], pathIndex: 0, subpathIndices: [0] },
+        { role: 'eye-highlight', mode: 'fill', monochrome: 'ink', rgb: [255, 255, 255], pathIndex: 1, subpathIndices: [0] },
       ] },
     opencode: { sourcePath: 'design/brand/opencode.svg', sourceHash: '7cfa6e9d6726f7c9fa26c7d9aef0dfec52d20a137380454340f30f12ccbfd302',
-      features: [{ role: 'center', mode: 'hole', rgb: null, pathIndex: 0, subpathIndices: [0] }] },
+      features: [{ role: 'center', mode: 'hole', monochrome: 'hole', rgb: null, pathIndex: 0, subpathIndices: [0] }] },
   },
 } as const;
 

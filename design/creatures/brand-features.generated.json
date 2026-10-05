@@ -8,6 +8,7 @@
         {
           "role": "eyes",
           "mode": "fill",
+          "monochrome": "paper",
           "rgb": [
             0,
             0,
@@ -28,6 +29,7 @@
         {
           "role": "prompt",
           "mode": "fill",
+          "monochrome": "paper",
           "rgb": [
             255,
             255,
@@ -48,6 +50,7 @@
         {
           "role": "eyes",
           "mode": "fill",
+          "monochrome": "paper",
           "rgb": [
             0,
             0,
@@ -62,6 +65,7 @@
         {
           "role": "eye-highlight",
           "mode": "fill",
+          "monochrome": "ink",
           "rgb": [
             255,
             255,
@@ -75,6 +79,7 @@
         {
           "role": "eye-highlight",
           "mode": "fill",
+          "monochrome": "ink",
           "rgb": [
             255,
             255,
@@ -94,6 +99,7 @@
         {
           "role": "center",
           "mode": "hole",
+          "monochrome": "hole",
           "rgb": null,
           "pathIndex": 0,
           "subpathIndices": [
