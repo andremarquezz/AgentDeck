@@ -52,11 +52,14 @@ export const TERRARIUM_RULES = {
   pixooUsageCreatureMargin: 11,
   /** Native 3D foreground budget; the full roster remains independently accessible. */
   nativeResidentLimit: 8,
-  /** Original CI station stays left of the crayfish floor territory. Queue
-   * rows rise into water; no provider is promoted to an agent/resident ID. */
-  ciStation: { x: 0.14, y: 0.63, widthFrac: 0.13, queueGap: 0.13, queueRise: 0.15, queueColumns: 4, queueY: 0.46, unknownDistance: 0.04,
-    responseRate: 4, scanRate: 1.4, asleepOpacity: 0.45, hopHeight: 0.035, hopSeconds: 1.2,
-    nativeX: -2.4, nativeY: 0.65, nativeZ: 1.9, nativeScale: 0.7, nativeQueueScale: 0.55, nativeQueueGap: 1.25, nativeQueueY: 1.8, nativeQueueZ: 0.1 },
+  /** Per-session CI companion; no fixed territory or resident identity. */
+  ciCompanion: {
+    orbitRadiusX: 0.080, orbitRadiusY: 0.070, sizeFrac: 0.050, edgeInset: 0.035,
+    radiansPerSecond: 0.9, queuedSpeed: 0.55, unknownSpeed: 0.35,
+    nativeRadiusX: 1.0, nativeRadiusY: 0.36, nativeDepth: 0.45, nativeSize: 0.32,
+    staticAngle: 0.7853981633974483, resultSeconds: 4, hopHeight: 0.035, hopSeconds: 1.2,
+    seedOffset: 2166136261, seedPrime: 16777619, seedModulus: 10000,
+  },
   /** Shared native activity rhythm and cue geometry; screen-space label sizing remains surface-specific. */
   nativeActivity: {
     idleRate: 0.65,
@@ -140,3 +143,12 @@ export const TERRARIUM_RULES = {
 } as const;
 
 export type TerrariumRules = typeof TERRARIUM_RULES;
+
+
+/** Stable companion phase fraction, shared across TS/Swift/Kotlin/C++ over UTF-8 identity bytes. */
+export function ciCompanionSeed(sessionId: string): number {
+  const { seedOffset, seedPrime, seedModulus } = TERRARIUM_RULES.ciCompanion;
+  let hash = seedOffset;
+  for (const byte of new TextEncoder().encode(sessionId)) hash = Math.imul(hash ^ byte, seedPrime) >>> 0;
+  return (hash % seedModulus) / seedModulus;
+}
