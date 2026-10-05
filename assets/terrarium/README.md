@@ -109,13 +109,24 @@ rejected by the user and is superseded by this restoration.
 `build-3d-residents.py` imports the original six SVGs from `design/brand` as the
 actual full-size character geometry. It adds restrained extrusion and edge
 softening; rear closures follow the original outer contour without convex
-casings, bumps or a second body. Facial details stay on the front. No invented
+casings, bumps or a second body. OpenCode's central opening stays a real
+through-hole, with no rear closure. Facial details stay on the front. No invented
 eyes, fins, tentacles, shells or chest badges are added. It writes editable
 `3d-residents.blend` and bundled `3d-residents.usdz`:
 
 ```sh
 blender --background --python assets/terrarium/build-3d-residents.py
 ```
+
+The supplementary creature feature contract in
+`shared/src/brand-features.ts` generates `design/creatures/brand-features.generated.json`.
+The builder verifies source SVG hashes and uses the exact selected source contours:
+Claude's eyes are opaque black, Codex's `> _` is opaque white, and OpenClaw's
+original eye openings are black with its two original bright pupil paths.
+Supported Principled materials preserve these features in both USD and glTF.
+Generated mesh ray checks verify visible front details and OpenCode's open
+center from the front, back and oblique directions, while its rim remains solid.
+Native resource tests preserve feature materials across working, idle and permission.
 
 Claude's original pixel arms and four feet are split at their existing body
 junctions, retaining the rest silhouette. OpenClaw's original SVG claw paths

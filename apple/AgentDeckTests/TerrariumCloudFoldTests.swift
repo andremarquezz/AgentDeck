@@ -358,6 +358,54 @@ final class TerrariumCloudFoldTests: XCTestCase {
     }
 
     @MainActor
+    func testCanonicalFeatureMaterialsSurviveWorkingIdleAndPermission() async throws {
+        let library = try await Entity(contentsOf: XCTUnwrap(Bundle.main.url(forResource: "3d-residents", withExtension: "usdz")))
+        XCTAssertNil(library.findEntity(named: "opencode_rear"), "A rear plate must not close OpenCode's real opening")
+        let scene = AquariumResidents()
+        scene.loadTemplates(library)
+        scene.animate = false
+        let expected: [(id: String, name: String, white: Bool)] = [
+            ("claude", "claudecode_feature_eyes_0", false),
+            ("codex", "codex_feature_prompt_0", true),
+            ("crayfish", "openclaw_feature_eyes_2", false),
+            ("crayfish", "openclaw_feature_eye_highlight_0", true),
+            ("crayfish", "openclaw_feature_eye_highlight_1", true),
+        ]
+        for phase in ["working", "idle", "permission"] {
+            var state = TerrariumState()
+            state.creatures = [.init(id: "claude", projectName: "Claude", modelName: nil,
+                state: phase == "working" ? .working : phase == "permission" ? .asking : .sleeping,
+                homeX: 0, homeY: 0, scale: 1)]
+            state.cloudCreatures = [.init(id: "codex", projectName: "Codex", modelName: nil,
+                state: phase == "working" ? .pulsing : phase == "permission" ? .waiting : .drifting,
+                homeX: 0, homeY: 0, scale: 1)]
+            state.opencodeCreatures = [.init(id: "opencode", projectName: "OpenCode", modelName: nil,
+                state: phase == "working" ? .pulsing : phase == "permission" ? .waiting : .drifting,
+                homeX: 0, homeY: 0, scale: 1)]
+            state.crayfishVisible = true
+            state.crayfishState = phase == "working" ? .routing : phase == "permission" ? .waiting : .sitting
+            scene.sync(state, aspect: 1.6)
+            for feature in expected {
+                let resident = try XCTUnwrap(scene.residents[feature.id])
+                let importedFeature = try XCTUnwrap(resident.findEntity(named: feature.name), feature.name)
+                func firstMesh(_ node: Entity) -> ModelEntity? {
+                    if let model = node as? ModelEntity { return model }
+                    return node.children.compactMap { firstMesh($0) }.first
+                }
+                let model = try XCTUnwrap(firstMesh(importedFeature))
+                XCTAssertTrue(importedFeature.isEnabled && model.isEnabled, phase + ": " + feature.name)
+                let material = try XCTUnwrap(model.model?.materials.first as? PhysicallyBasedMaterial)
+                let rgb = try XCTUnwrap(material.emissiveColor.__color.converted(
+                    to: CGColorSpace(name: CGColorSpace.linearSRGB)!, intent: .defaultIntent, options: nil)?.components)
+                for component in rgb.prefix(3) {
+                    XCTAssertEqual(component, feature.white ? 1 : 0, accuracy: 0.01,
+                        phase + ": preserve canonical opaque " + feature.name)
+                }
+            }
+        }
+    }
+
+    @MainActor
     func testCanonicalCharactersHaveNoReplacementAnatomy() async throws {
         let library = try await Entity(contentsOf: XCTUnwrap(Bundle.main.url(forResource: "3d-residents", withExtension: "usdz")))
         func names(_ node: Entity) -> [String] { [node.name] + node.children.flatMap { names($0) } }
