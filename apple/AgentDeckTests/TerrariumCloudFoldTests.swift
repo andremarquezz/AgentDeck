@@ -807,6 +807,22 @@ final class TerrariumCloudFoldTests: XCTestCase {
               evidence: "github", openedAt: openedAt, checks: .init(total: 10, passed: 7, failed: 0, pending: 3), pr: 432)
     }
 
+    func testPrimaryPermissionFrameOverridesStaleIdleCiRosterForEveryCreatureKind() {
+        for kind in ["claude-code", "codex-cli", "opencode", "hermes", "kiro-cli", "antigravity"] {
+            for permission in [AgentConnectionState.awaitingPermission, .awaitingOption, .awaitingDiff] {
+                var dashboard = DashboardState()
+                dashboard.state = permission; dashboard.agentType = kind; dashboard.sessionId = "self"
+                dashboard.siblingSessions = [SessionInfo(id: "self",port: 0,projectName: "Work",agentType: kind,state: "idle")]
+                dashboard.siblingSessions[0].waitingOn = ciWait("running")
+                let state = dashboard.toTerrariumState()
+                XCTAssertEqual(AquariumResident.project(state).first?.activity,.waiting,kind)
+                XCTAssertNil(state.ciWaits["self"],kind)
+                XCTAssertNil(state.ciWaitLabels["self"],kind)
+                XCTAssertFalse(state.ciWaitingIDs.contains("self"),kind)
+            }
+        }
+    }
+
     func testCiStationVisitsKeepSeparateCodexIdentitiesAndPermissionPriority() {
         var dashboard = DashboardState()
         dashboard.state = .idle

@@ -376,12 +376,16 @@ fun DashboardState.toTerrariumState(
         }
     }
 
+    // A primary state_update may precede its still-idle sibling roster row.
+    val permissionIds = (agents + cloudCreatures + openCodeCreatures + antigravityCreatures)
+        .filter { it.visualState == OctopusVisualState.ASKING }.map { it.sessionId }.toSet()
+
     return TerrariumState(
         focusedSessionId = focusedSessionId,
-        ciWaits = siblingSessions.filter { it.state?.startsWith("awaiting") != true }
+        ciWaits = siblingSessions.filter { it.state?.startsWith("awaiting") != true && it.id !in permissionIds }
             .mapNotNull { s -> s.waitingOn?.let { s.id to it } }.toMap(),
-        ciWaitingIds = siblingSessions.filter { (it.waitingOn?.agentWaiting == true || (it.waitingOn?.phase == "failed" && it.state == "idle")) && it.state?.startsWith("awaiting") != true }.map { it.id }.toSet(),
-        ciWaitLabels = siblingSessions.filter { it.waitingOn != null && it.state?.startsWith("awaiting") != true }
+        ciWaitingIds = siblingSessions.filter { (it.waitingOn?.agentWaiting == true || (it.waitingOn?.phase == "failed" && it.state == "idle")) && it.state?.startsWith("awaiting") != true && it.id !in permissionIds }.map { it.id }.toSet(),
+        ciWaitLabels = siblingSessions.filter { it.waitingOn != null && it.state?.startsWith("awaiting") != true && it.id !in permissionIds }
             .mapNotNull { session -> session.waitingOn?.let { session.id to ciStationLabel(it) } }.toMap(),
         octopus = octopus,
         crayfish = effectiveCrayfish,

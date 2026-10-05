@@ -563,6 +563,13 @@ extension DashboardState {
             .filter { $0.exitedAsking }
             .map { (x: $0.homeX, y: $0.homeY) }
 
+        // The focused state_update can arrive before its sibling roster row.
+        // Permission activity owns the final projection even if that row still
+        // carries an idle CI wait from the previous full snapshot.
+        let permissionIDs = Set(AquariumResident.project(result).filter { $0.activity == .waiting }.map(\.id))
+        result.ciWaits = result.ciWaits.filter { !permissionIDs.contains($0.key) }
+        result.ciWaitLabels = result.ciWaitLabels.filter { !permissionIDs.contains($0.key) }
+        result.ciWaitingIDs.subtract(permissionIDs)
         return result
     }
 
