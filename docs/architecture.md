@@ -8,7 +8,7 @@ canonical: true
 status: stable
 owner: Bridge maintainers
 reviewed: 2026-08-19
-revision: 2026-08-19
+revision: 2026-10-06
 source_of_truth: docs/architecture.md
 validators: [pnpm build, pnpm test]
 ---
@@ -107,6 +107,7 @@ AGENTS.md § Key Conventions ("Cross-platform rules are SSOT-first"); this is th
 | `shared/src/session-utils.ts` (`SESSION_WEIGHT_MIN/MAX`; `SESSION_ORDER_TTL_MS`/`MAX_SESSION_ORDER_PINS`) | `pnpm generate-session-weight-rules` | vitest drift gate (`session-weight-rules.test.ts`); Swift + Kotlin mirrors, D200H hand-port literals grep-gated. The weight range is a wire contract; the order-pin TTL/cap are a cross-daemon FILE contract — both daemons read and write one `session-order.json` (#273), so a pin must not live 30 days under one daemon and 7 under the other |
 | `shared/src/openclaw-approval.ts` (exec-approval parser/decision vocabulary) | `pnpm generate-openclaw-approval-rules` | `openclaw-approval-rules-sync.test.ts`; behavior additionally pinned by `shared/openclaw-approval-error-vectors.json`, replayed by both suites |
 | `shared/src/timeline-task-display.ts` (`TIMELINE_TURN_RULES`) | `pnpm generate-observed-agent-rules` → existing Swift/Kotlin timeline rule mirrors | `observed-agent-rules.test.ts` byte drift gate; native `TimelineTests` / `TimelineStoreTest` exercise tool ownership, 80 interleaved groups, concurrent runs and orphan preservation. The retained store bounds the scan; display caps apply after grouping. |
+| `shared/src/session-utils.ts` (`CODEX_OTEL_METADATA_RULES`, Codex session-meta subagent predicates) | `pnpm generate-observed-agent-rules` → macOS-only Swift metadata policy | `observed-agent-rules.test.ts` byte drift gate; Node Codex OTel/rollout tests and native Codex OTel metadata tests cover bounded asynchronous lookup, explicit subagent evidence, unknown retries and late phantom retraction. No parent/census inference. |
 | `shared/src/gateway-live-activity.ts` (live run state and timeline bounds/vocabulary) | `pnpm generate-gateway-live-rules` → Swift reducer template | `gateway-live-activity.test.ts` drift check; Node and `GatewayLiveActivityTests` replay `tests/parity/gateway-live/turn.json` through the production reducers |
 | `shared/src/openclaw-plugin-approval.ts` (plugin-approval parser/decision vocabulary, issue #309) | `pnpm generate-openclaw-plugin-approval-rules` | `openclaw-plugin-approval-rules-sync.test.ts`. Reuses the exec mirror's `ExecApprovalDecision` Swift type rather than redeclaring the (identical) vocabulary — two independently-typed enums for one Gateway-validated union is exactly how one kind could silently accept the plain `"allow"` the other already excludes |
 | `shared/src/claude-weekly-view.ts` | Direct TS import in Stream Deck and Ulanzi | `deck-usage-modes.test.ts` exercises the three-mode cycle, fixed key allocation, unavailable readings and device isolation. Apple D200H preview mirrors the default combined layout behind its existing `SYNC-HASH` gate. |

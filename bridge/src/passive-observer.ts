@@ -30,7 +30,7 @@ import {
 } from './codex-exec-children.js';
 import { isCodexBackgroundCwd } from './codex-ambient-hooks.js';
 import { redactSecrets } from './utils/redact-secrets.js';
-import { stripUnsafeText, rawSessionId } from '@agentdeck/shared';
+import { stripUnsafeText, rawSessionId, codexSessionMetaIsSubagent } from '@agentdeck/shared';
 // The interrupt marker rule is shared with the turn watchdog / APME collector —
 // see claude-interrupt-marker.ts for why it must not be spelled twice.
 import { isClaudeInterruptMessage } from './claude-interrupt-marker.js';
@@ -571,8 +571,7 @@ export function parseCodexRollout(raw: string): CodexRolloutSummary {
       cwd = stringAt(payload, 'cwd') ?? cwd;
       originator = stringAt(payload, 'originator') ?? originator;
       startedAt = timestampMs(stringAt(payload, 'timestamp')) ?? startedAt;
-      const source = payload.source;
-      isSubagent = isSubagent || (isRecord(source) && 'subagent' in source);
+      isSubagent = isSubagent || codexSessionMetaIsSubagent(payload);
     } else if (type === 'event_msg') {
       const payload = objectAt(value, 'payload');
       if (!payload) continue;

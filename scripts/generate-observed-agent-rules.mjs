@@ -45,8 +45,36 @@ import Foundation
 /// rather than written twice.
 enum ObservedAgentRules {
     static let openCodePendingRequestLimit = ${rules.openCodePendingLimit}
+    #if os(macOS)
+    static let codexMetadataHeadBytes = ${rules.codexMetadata.headBytes}
+    static let codexMetadataCacheLimit = ${rules.codexMetadata.maxCachedThreads}
+    static let codexMetadataInFlightLimit = ${rules.codexMetadata.maxInFlight}
+    static let codexMetadataRetryMs: Double = ${rules.codexMetadata.retryMs}
+    #endif
     static let turnMergeMaxGapMs: Double = ${rules.turn.maxGapMs}
     static let turnActivityTypes: Set<String> = [${rules.turn.activityTypes.map(x => JSON.stringify(x)).join(', ')}]
+
+    #if os(macOS)
+    /// Explicit rollout discriminators; a parent id alone does not prove a child.
+    static func codexSessionMetaIsSubagent(_ payload: [String: Any]) -> Bool {
+        if let source = payload["source"] as? [String: Any], source.keys.contains("subagent") { return true }
+        guard payload["thread_source"] as? String == "subagent",
+              let parent = payload["parent_thread_id"] as? String else { return false }
+        return !parent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    static func codexSessionMetaSubagentVerdict(_ payload: [String: Any]) -> Bool? {
+        if codexSessionMetaIsSubagent(payload) { return true }
+        if payload["thread_source"] as? String == "subagent" { return nil }
+        let sourceString = payload["source"] as? String
+        let sourceObject = payload["source"] as? [String: Any]
+        let threadSource = payload["thread_source"] as? String
+        if sourceString?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            || sourceObject?.isEmpty == false
+            || threadSource?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false { return false }
+        return nil
+    }
+    #endif
 
     /// A passively-observed session is keyed \`observed:<agent>:<uuid>\` in
     /// \`sessions_list\` and on devices, while timeline rows, hook payloads and
@@ -123,6 +151,7 @@ async function main() {
     rules = {
       prefixes: [...sessionUtils.OBSERVED_SESSION_PREFIXES],
       openCodePendingLimit: sessionUtils.OPENCODE_PENDING_REQUEST_LIMIT,
+      codexMetadata: sessionUtils.CODEX_OTEL_METADATA_RULES,
       suppressed: [...timeline.TOOL_EXEC_SUPPRESSED_AGENTS],
       turn: TIMELINE_TURN_RULES,
     };

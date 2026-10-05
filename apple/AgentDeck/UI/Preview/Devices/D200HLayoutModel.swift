@@ -25,7 +25,7 @@
 // current `git hash-object` of each file and fails CI when the origin drifts
 // ahead of this mirror. Update them whenever you re-port.
 // SYNC-HASH shared/src/d200h-layout.ts 7f5dc168d8a976c727953ad7471ba635c4a377db
-// SYNC-HASH shared/src/session-utils.ts 9ff8581b7ce0e779cfd4443a16ba7d85ed7d9964
+// SYNC-HASH shared/src/session-utils.ts 1a1728e640a5dc3a8b55b61e309431c7debecad1
 //
 // INTENTIONALLY OMITTED (not needed by a read-only preview):
 //   • Actual SVG rasterization. The TS engine emits per-key SVG strings via the
