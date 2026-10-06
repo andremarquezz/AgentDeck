@@ -55,9 +55,22 @@ The six channel manifests and prepared changelog entry target backward-compatibl
 not evidence of publication. Do not tag until candidate receipts are final.
 Distribution signing, uploads and store publication are outside this preparation.
 
+The owner explicitly waived iPhone reinstall verification and physical deck
+operation on 2026-10-06. Deck acceptance for this candidate uses code tests and
+simulator scenarios; these waivers are not claims that hardware was tested.
+The final deck acceptance uses production controllers and loopback WebSocket
+peers on Classic (15 keys), XL (32), SD+ keypad (8) and D200H (14). Eight new
+integration cases plus existing timeout/correlation tests pass (199 focused
+checks); twenty production-renderer frames were inspected. Catalog paging,
+stale-target refusals, explicit-default retry, BACK/late replies and observed
+NOW/readout updates are covered. This is headless controller simulation, not an
+official host/device simulator. The final full suite passes 5,423 tests (8 skipped),
+with build/typecheck and protocol/token drift checks passing. Test-only additions
+do not change the installed executable inputs.
+
 | Work | Prepared 1.8.0 scope | Separate or external acceptance |
 | --- | --- | --- |
-| [#463](https://github.com/puritysb/AgentDeck/issues/463) deck settings | #464–#466: per-session model/effort/mode, OpenClaw setting pickers and observed NOW cards, with final-review corrections | Integrated in #460 with target binding, strict validation, correlated replies, bounded waits and visible errors; OpenCode steering and physical picker acceptance remain separate |
+| [#463](https://github.com/puritysb/AgentDeck/issues/463) deck settings | #464–#466: per-session model/effort/mode, OpenClaw setting pickers and observed NOW cards, with final-review corrections | Integrated in #460 with target binding, strict validation, correlated replies, bounded waits and visible errors; OpenCode steering remains separate; the owner accepts code/simulator verification instead of physical deck operation for 1.8.0 (2026-10-06) |
 | [#433](https://github.com/puritysb/AgentDeck/issues/433) CI waits | Claude/Codex/OpenCode/Hermes lifecycle, explicit clearing, bounded Node evidence/counts, session-bound GitHub companion orbit/result cues, readable Canvas/native cues, firmware activity, foreground APME accounting | Physical fleet/phone acceptance remains distinct from source and fixture tests; unknown evidence never claims a provider verdict |
 | [#449](https://github.com/puritysb/AgentDeck/issues/449) delivery | #451, #452, #459 plus clean installed-tarball acceptance, versioned plugin packages and unsigned Android artifacts | Distribution signing, upload, store review/publication and DRM-processed encoder acceptance are outside this preparation |
 | [#423](https://github.com/puritysb/AgentDeck/issues/423) Hermes umbrella | Observer-only support retained; pinned upstream CLI callbacks and real read-only GitHub watcher captured | Remains open while child acceptance is incomplete |
@@ -127,6 +140,12 @@ region slack; that is not runtime heap headroom. The installed board observed
 69–72 KB internal free heap and a 37 KB largest block over 63 seconds without
 reboot. Longer performance and physical panel/touch acceptance remain separate.
 
+The local delivery inventory is `dist/RELEASE-1.8.0-PREFLIGHT.txt`; the matching
+hash manifest is `dist/RELEASE-1.8.0-ARTIFACTS.json`. It identifies 75 current
+artifact records, including 62 firmware files and both current archive trees.
+Use `apple-1.8.0-pr463-final/` for Apple source verification; the preserved
+`apple-1.8.0-preflight/` archives are superseded.
+
 Previously built archives/packages are superseded wherever their inputs change.
 The deployment audit separately records source changes, package contents and
 installed/runtime identity for ESP32, Stream Deck and D200H; compilation alone
@@ -141,8 +160,8 @@ These are local test-fleet installations, not public release versions:
 | Apple | Fresh #463 macOS 1.8.0/build 5 and iPad Air M2 app installed/launched; both new Release archives pass invariant checks | iPhone 14 Pro Max retains the prior 1.8.0 candidate; the owner waived latest-candidate reinstall verification on 2026-10-06, so it is not a release-preparation blocker. Distribution signing/store delivery excluded |
 | Android | Lenovo and Crema 1.8.0/code 25 installed in place with final Timeline/typography fixes | Pantone unavailable; Play upload excluded |
 | ESP32 | All eleven connected ESP32/TC001 boards updated; twelve-target artifacts prepared | C6 unavailable; final 225 firmware inputs unchanged, so later fixes need no reflash |
-| Stream Deck | 1.8.0.0 rebuilt with #463, installed and restarted; loaded runtime hash matches validated package | Physical picker and DRM-processed encoder acceptance remain separate |
-| D200H | Ulanzi 1.8.0 rebuilt with #463 and later-page refusal fix; WASM/fonts validated, installed and restarted | Fresh process launches matching installed bytes; no in-process hash attestation. Physical picker/longer acceptance remains distinct |
+| Stream Deck | 1.8.0.0 rebuilt with #463, installed and restarted; loaded runtime hash matches validated package | Physical button-operation acceptance is waived in favor of code/simulator checks; DRM-processed artifact review remains a later marketplace step |
+| D200H | Ulanzi 1.8.0 rebuilt with #463 and later-page refusal fix; WASM/fonts validated, installed and restarted | Fresh process launches matching installed bytes; no in-process hash attestation. Code/simulator acceptance replaces physical deck operation for this release; long-term hardware-link behavior remains unmeasured |
 
 A retained Stream Deck host preview showed an old extra Codex row even though
 the live daemon roster contained four expected rows. Restarting the host cleared
@@ -168,9 +187,17 @@ setup/pairing and real hardware-shell photographs; historical screenshots are
 not proof of the 1.8.0 appearance, and generated key assets are not device photos.
 The live preview uses canonical renderer frames, including terminal background
 colors and exact half cells, with explicit placeholders if frame data is absent.
-The earlier 39-image store gallery and aquarium movie/GIF are not approved as
-current 1.8.0 media; recapture them before submission. Representative QA proofs
-are prepared, not a completed localized store gallery.
+The earlier 39-image store gallery and aquarium movie/GIF are historical media,
+not proof of current 1.8.0 appearance. The new 36-second native iPad introduction
+and three full-frame screenshots show fictional Hermes and GitHub CI scenarios.
+Twelve localized supplement images (English/Korean/Japanese; two iPad and two
+Mac views per locale) use verified native captures. The iPad views show Hermes
+and GitHub CI; the earlier Mac QA views show four agents with permission/unknown
+CI context, without Hermes. Source and channel limits must be followed when
+selecting submission images; see the
+[media readiness manifest](apple/appstore-submission/media-1.8.0-readiness.json).
+The failed new iPhone
+captures are excluded, and no complete recapture of every store gallery is claimed.
 
 Other follow-ups: IPS10 wake-word 3-to-5-frame candidate needs a new controlled
 false-positive/missed-trigger/latency comparison before firmware inclusion;
