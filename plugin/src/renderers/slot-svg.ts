@@ -15,6 +15,7 @@ import {
   renderStopButton,
   renderOptionButton,
   renderPresetButton,
+  renderStatusCard,
 } from './session-slot-renderer.js';
 import { renderUsageGauge } from './usage-gauge.js';
 import { renderStatusReadout, renderSessionReadout } from './display-tile.js';
@@ -26,7 +27,7 @@ export interface SlotRenderEnv {
   processingStartFrame?: (sessionId: string) => number | undefined;
   isStale: boolean;
   layout?: DeckLayout;
-  detail: { state: State; modelName?: string; effortLevel?: string };
+  detail: { state: State; modelName?: string; effortLevel?: string; mode?: string };
 }
 
 export function renderSlotConfig(config: SessionSlotConfig, env: SlotRenderEnv): string {
@@ -55,6 +56,7 @@ export function renderSlotConfig(config: SessionSlotConfig, env: SlotRenderEnv):
           env.detail.modelName ?? config.session.modelName,
           config.label,
           env.detail.effortLevel ?? config.session.effortLevel,
+          env.detail.mode ?? config.session.permissionMode,
         );
       }
       return renderStatusReadout({
@@ -76,6 +78,16 @@ export function renderSlotConfig(config: SessionSlotConfig, env: SlotRenderEnv):
 
     case 'option':
       return renderOptionButton(config.option!, config.optionIndex ?? 0);
+
+    // A value the agent offers for a session setting (#463) — pressable, so it
+    // uses the raised status card rather than the flat readout.
+    case 'setting-option':
+      return renderStatusCard({
+        icon: config.icon ?? 'model',
+        label: config.label ?? '---',
+        subtitle: config.subtitle,
+        tone: config.tone,
+      });
 
     case 'preset':
       if (config.preset) {

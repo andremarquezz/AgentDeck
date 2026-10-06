@@ -400,6 +400,13 @@ enum CodexRolloutResponseReader {
     private static let maxDayDirs = 30
     private static let tailBytes = 128 * 1024
 
+    /// The rollout's latest `turn_context` payload — Codex's own record of the
+    /// turn's model, effort, sandbox and collaboration mode (#463).
+    static func latestTurnContext(sessionId: String, sessionsRoot: URL? = nil) -> [String: Any]? {
+        guard let file = locateRollout(sessionId: sessionId, sessionsRoot: sessionsRoot) else { return nil }
+        return ObservedAgentSettings.latestTurnContext(inRolloutTail: readTail(file, maxBytes: tailBytes))
+    }
+
     static func lastAgentMessage(sessionId: String, sessionsRoot: URL? = nil) -> String? {
         guard let file = locateRollout(sessionId: sessionId, sessionsRoot: sessionsRoot) else { return nil }
         let text = readTail(file, maxBytes: tailBytes)
@@ -4298,6 +4305,12 @@ final class DaemonServer {
                 return
             }
         }
+        // The catalog is request-scoped and can be large. Reply only on this
+        // authenticated requesting socket, never into every ESP32/serial feed.
+        if cmd["type"] as? String == "query_session_settings" || cmd["type"] as? String == "set_session_setting" {
+            handleSessionSettingsCommand(cmd, from: conn)
+            return
+        }
         // WiFi-WS ESP32 boards self-identify with a spontaneous `device_info`
         // frame on connect (and re-announce on device_info_request). Capture it
         // so the topology can show WiFi-only boards — Node-daemon parity with
@@ -4970,6 +4983,14 @@ final class DaemonServer {
             return !sid.isEmpty && sid != "openclaw-gateway"
         }()
 
+        // Agent-native setting switches (#463) are answered here, never
+        // consumed by the gateway's generic command block below.
+        if type == "query_session_settings" || type == "set_session_setting" {
+            // These commands require a requesting WS identity. Module callers
+            // cannot initiate a settings write or receive the large catalog.
+            return
+        }
+
         // Gateway adapter handles command if alive
         if !sessionScopedCmd, let gw = gatewayAdapter {
             let cmdBox = SendableDict(cmd)
@@ -4984,7 +5005,12 @@ final class DaemonServer {
                 _ = stateMachine.transition(trigger: "interrupt", source: .user); broadcastStateUpdate()
             case "select_option": Task { await gw.resolvePendingApproval(command: cmdBox.value) }
                 _ = stateMachine.transition(trigger: "user_selection", source: .user); broadcastStateUpdate()
-            case "send_prompt": Task { await gw.sendRPC(method: "chat.send", params: cmdBox.value) }
+            // `chat.send` takes `message`; the device command carries `text`
+            // (the wake path already sends it this way). Forwarding the raw
+            // command left `message` out, so a deck prompt never arrived.
+            case "send_prompt":
+                let text = (cmd["text"] as? String) ?? ""
+                Task { await gw.sendRPC(method: "chat.send", params: ["message": text]) }
                 _ = stateMachine.transition(trigger: "user_prompt_submit", source: .hook); broadcastStateUpdate()
             case "escape": Task { await gw.sendRPC(method: "chat.abort", params: [:]) }
                 _ = stateMachine.transition(trigger: "interrupt", source: .user); broadcastStateUpdate()
@@ -6225,6 +6251,9 @@ final class DaemonServer {
                 broadcastSessionsList()
             }
         default: break
+        }
+        if let sessionId, !isOpenCodeEvent {
+            noteObservedAgentSettings(event: event, json: json, sessionId: sessionId, isCodex: isCodexEvent)
         }
         if isOpenCodeEvent, let sessionId {
             applyOpenCodeWait(sessionId: sessionId, event: event,
@@ -7508,6 +7537,79 @@ final class DaemonServer {
     /// Apply a per-session state/tool update coming from a hook event and
     /// broadcast the refreshed sessions list. No-op when the sessionId is
     /// nil or refers to a session we never registered via `session_start`.
+    /// `query_session_settings` / `set_session_setting` (#463). Only an agent
+    /// with a supported write path offers settings — today the OpenClaw Gateway
+    /// (`sessions.patch`). Every other session answers an empty list: its model
+    /// and effort are readouts. Replies remain bound to the requesting socket.
+    private func handleSessionSettingsCommand(_ cmd: [String: Any], from conn: WebSocketConnection) {
+        guard let command = OpenClawSessionSettings.command(cmd) else { return }
+        if let error = command.error {
+            sendSessionSettings(command: command, settings: [], targetSessionKey: command.targetSessionKey, error: error, to: conn)
+            return
+        }
+        guard command.sessionId == "openclaw-gateway", let gw = gatewayAdapter else {
+            sendSessionSettings(command: command, settings: [], targetSessionKey: command.targetSessionKey,
+                error: command.isSet ? "Setting switches are unavailable for this session" : nil, to: conn)
+            return
+        }
+        Task { @DaemonActor [weak self] in
+            var error: String?
+            if command.isSet {
+                error = await gw.setSessionSetting(targetSessionKey: command.targetSessionKey!,
+                    key: command.key!, value: command.value)
+            }
+            let read = await gw.querySessionSettings(targetSessionKey: command.isSet ? command.targetSessionKey : nil)
+            self?.sendSessionSettings(command: command, settings: read.settings,
+                targetSessionKey: read.targetSessionKey, error: error ?? read.error, to: conn)
+        }
+    }
+
+    private func sendSessionSettings(command: OpenClawSessionSettings.Command,
+        settings: [[String: Any]], targetSessionKey: String?, error: String?, to conn: WebSocketConnection) {
+        var event: [String: Any] = ["type": "session_settings", "requestId": command.requestId,
+            "sessionId": command.sessionId, "settings": settings]
+        if let targetSessionKey { event["targetSessionKey"] = targetSessionKey }
+        if let error { event["error"] = error }
+        if activeWSConnectionIds.contains(conn.id), let data = event.jsonData { conn.send(data) }
+    }
+
+    /// Model / effort / permission mode in the agent's own words (#463), from
+    /// the hook payload and — for Codex, whose hooks carry only the model — the
+    /// rollout's latest `turn_context`, read at turn boundaries inside the
+    /// `~/.codex` bookmark scope. Observed rows only: a managed bridge pushes
+    /// its own values.
+    private func noteObservedAgentSettings(event: String, json: [String: Any], sessionId: String, isCodex: Bool) {
+        guard var entry = pushedSessionsById[sessionId], entry.controlMode == "observed" else { return }
+        var reading = isCodex
+            ? ObservedAgentSettings.codex(fromHook: json)
+            : ObservedAgentSettings.claude(fromHook: json)
+        if isCodex, event == "codex_stop" || event == "codex_user_prompt_submit" || event == "codex_session_start",
+           let context = codexRolloutTurnContext(sessionId: sessionId) {
+            // The hook's model is the live slug; the rollout supplies the rest.
+            reading = ObservedAgentSettings.merge(reading, into: ObservedAgentSettings.codex(turnContext: context))
+        }
+        guard !reading.isEmpty else { return }
+        let current = ObservedAgentSettings.Reading(
+            model: entry.modelName, effortLevel: entry.effortLevel, permissionMode: entry.permissionMode)
+        let next = ObservedAgentSettings.merge(reading, into: current)
+        guard next != current else { return }
+        entry.modelName = next.model
+        entry.effortLevel = next.effortLevel
+        entry.permissionMode = next.permissionMode
+        pushedSessionsById[sessionId] = entry
+        upsertIntoCachedSessions(entry)
+        scheduleSessionsListBroadcast()
+    }
+
+    private func codexRolloutTurnContext(sessionId: String) -> [String: Any]? {
+        let bare = Self.codexBareId(sessionId)
+        return AppPreferences.shared.withCodexDirectoryAccess { dir -> [String: Any]? in
+            CodexRolloutResponseReader.latestTurnContext(
+                sessionId: bare,
+                sessionsRoot: dir.appendingPathComponent("sessions", isDirectory: true))
+        } ?? CodexRolloutResponseReader.latestTurnContext(sessionId: bare)
+    }
+
     private func updateSessionHookState(
         sessionId: String?,
         state newState: String,

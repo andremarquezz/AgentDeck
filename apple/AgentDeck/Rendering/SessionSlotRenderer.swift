@@ -33,7 +33,10 @@
 // and taught `renderDetailInfo` to draw the pending prompt, and both live
 // outside this mirror's declared scope below. Recorded so the next reader does
 // not hunt for a missing port — the pin tracks the whole file, not the subset.
-// SYNC-HASH shared/src/svg-renderers/session-slot-renderer.ts e3429591c6c038e47e72e7b11f66530ad843d493
+// Pin moved 2026-10-06 with NO port (#463): `formatModelEffort` now shows every
+// reported effort level (only the literal `default` is omitted) and
+// `renderDetailInfo` bounds the mode word — neither is in this mirror's scope.
+// SYNC-HASH shared/src/svg-renderers/session-slot-renderer.ts ae2ab05433968af3f17dd624c59255fb3c8938c0
 //
 // Scope for this first pass:
 //   - renderSessionSlot (primary session button)

@@ -32,6 +32,7 @@
       "report_suite": "vitest",
       "proves": [
         "Node/Swift daemon policy mirror drift and common turn-boundary vectors; CLI rejects explicit Swift identity as Node readiness (native policy execution also runs on macOS)",
+        "Deck settings preserve conversation targets and request correlation, reject malformed mutation values, and share generated Node/Swift bounds; picker timeout/refusal and D200H activity redraw regressions are covered",
         "bridge, shared, hooks, plugin, plugin-ulanzi, setup and scripts behave as their tests specify (the domain table below counts them)",
         "line/function/branch/statement coverage of bridge, shared, plugin and hooks stays above the floor in vitest.config.ts",
         "generated Swift/Kotlin/C++ mirrors match their TypeScript source of truth (contract tests)",
@@ -610,6 +611,7 @@
       "icon": "◬",
       "match": [
         "bridge/src/__tests__/openclaw-*.test.ts",
+        "bridge/src/__tests__/session-settings-command.test.ts",
         "bridge/src/__tests__/gateway-*.test.ts",
         "shared/src/__tests__/openclaw-*.test.ts",
         "shared/src/__tests__/gateway-*.test.ts",
@@ -680,6 +682,7 @@
       "icon": "▧",
       "match": [
         "plugin/src/__tests__/*.test.ts",
+        "shared/src/__tests__/session-settings*.test.ts",
         "plugin-ulanzi/src/__tests__/*.test.ts",
         "shared/src/__tests__/svg-renderers/*.test.ts",
         "shared/src/__tests__/brand-assets-contract.test.ts",

@@ -3,6 +3,7 @@ export * from './protocol.js';
 export * from './openclaw-approval.js';
 export * from './openclaw-plugin-approval.js';
 export * from './gateway-protocol.js';
+export * from './session-settings.js';
 export * from './command-builders.js';
 export * from './adapter.js';
 export * from './voice-paths.js';
@@ -59,3 +60,5 @@ export { GatewayLiveActivity, GATEWAY_LIVE_RULES, gatewayToolFoldRaw } from './g
 
 export * from './daemon-parity.js';
 export * from './ci-wait.js';
+
+export * from './session-settings-client.js';

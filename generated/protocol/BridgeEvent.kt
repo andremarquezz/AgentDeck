@@ -36,6 +36,7 @@ private val klaxon = Klaxon()
     .convert(CiWaitStatusKind::class,    { CiWaitStatusKind.fromValue(it.string!!) },    { "\"${it.value}\"" })
     .convert(Phase::class,               { Phase.fromValue(it.string!!) },               { "\"${it.value}\"" })
     .convert(Provider::class,            { Provider.fromValue(it.string!!) },            { "\"${it.value}\"" })
+    .convert(Key::class,                 { Key.fromValue(it.string!!) },                 { "\"${it.value}\"" })
     .convert(State::class,               { State.fromValue(it.string!!) },               { "\"${it.value}\"" })
     .convert(BridgeEventStatus::class,   { BridgeEventStatus.fromValue(it.string!!) },   { "\"${it.value}\"" })
     .convert(TokenStatus::class,         { TokenStatus.fromValue(it.string!!) },         { "\"${it.value}\"" })
@@ -50,10 +51,10 @@ private val klaxon = Klaxon()
  *
  * Bridge → clients — model recommendation for the next task (on-demand / context-aware).
  *
- * On-demand independent review lifecycle. Triggered by the REVIEW deck button
- * (ReviewRunCommand) — the daemon reviews the session's latest work with an independent
- * judge model (Node: working-tree diff; Swift: APME trajectory) and reports risk findings.
- * Needs no agent control, so it works for every session type including observed codex.
+ * Answer to `query_session_settings` / `set_session_setting`. Kept off `sessions_list` on
+ * purpose: option lists are large and every board receives that frame. `error` carries the
+ * agent's rejection (e.g. a level the model no longer accepts); `settings` is then the
+ * freshest known state, possibly empty.
  *
  * Additive public-protocol acknowledgement. Legacy WS clients never receive or need this
  * event.
@@ -152,6 +153,8 @@ data class BridgeEvent (
      * Set when the focused session has a gated PreToolUse permission pending device approval —
      * clients reply with `permission_decision { requestId }` instead of `select_option`. See
      * bridge/src/permission-resolver.ts.
+     *
+     * Echoed request identity; clients ignore stale/uncorrelated responses.
      */
     @Json(name = "requestId")
     val requestID: String? = null,
@@ -285,6 +288,13 @@ data class BridgeEvent (
 
     val risk: Risk? = null,
     val summary: String? = null,
+    val settings: List<SessionSetting>? = null,
+
+    /**
+     * Concrete Gateway conversation read or patched, never the virtual row id.
+     */
+    val targetSessionKey: String? = null,
+
     val capabilities: List<String>? = null,
     val profile: String? = null,
 
@@ -1244,6 +1254,12 @@ data class SessionInfo (
      */
     val displayName: String? = null,
 
+    /**
+     * The agent's own reasoning-effort word, verbatim (Claude `effort.level`, Codex
+     * `turn_context.effort`). An open set: each agent and model has its own levels, so surfaces
+     * render it as-is and never assume which one is the default. Absent means the agent has not
+     * reported one.
+     */
     val effortLevel: String? = null,
 
     @Json(name = "elapsedSec")
@@ -1274,6 +1290,14 @@ data class SessionInfo (
 
     val modelName: String? = null,
     val options: List<PromptOption>? = null,
+
+    /**
+     * The agent's own permission-mode word, verbatim — Claude `permission_mode` (default /
+     * acceptEdits / plan / auto / …), Codex `plan` or its `sandbox_policy.type`. Open set,
+     * rendered as-is; absent = not reported.
+     */
+    val permissionMode: String? = null,
+
     val pid: Double? = null,
     val port: Double,
     val projectName: String,
@@ -1552,6 +1576,59 @@ enum class Provider(val value: String) {
 }
 
 /**
+ * A session setting the deck can switch, as the agent itself describes it (#463). Every
+ * value comes from the agent at request time — the deck never invents a level, a list or a
+ * default, so an agent update cannot drift away from it.
+ */
+data class SessionSetting (
+    /**
+     * The value in effect now (an override or the inherited one).
+     */
+    val current: String? = null,
+
+    /**
+     * The agent's own default for this session/model; absent when it gives none.
+     */
+    val default: String? = null,
+
+    val key: Key,
+    val options: List<SessionSettingOption>,
+
+    /**
+     * True when `current` is an explicit session override (clearing returns to `default`).
+     */
+    val overridden: Boolean? = null
+)
+
+enum class Key(val value: String) {
+    Effort("effort"),
+    Model("model");
+
+    companion object {
+        public fun fromValue(value: String): Key = when (value) {
+            "effort" -> Effort
+            "model"  -> Model
+            else     -> throw IllegalArgumentException()
+        }
+    }
+}
+
+/**
+ * One value an agent offers for a session setting, in the agent's own words.
+ */
+data class SessionSettingOption (
+    /**
+     * The id the agent accepts back (OpenClaw thinking id, `provider/model`).
+     */
+    val id: String,
+
+    /**
+     * The agent's own display label when it gives one; render `id` otherwise.
+     */
+    val label: String? = null
+)
+
+/**
  * Voice assistant pipeline state (wake word → STT → LLM → TTS)
  */
 enum class State(val value: String) {
@@ -1644,6 +1721,7 @@ enum class Type(val value: String) {
     PromptOptions("prompt_options"),
     ReviewResult("review_result"),
     ReviewStatus("review_status"),
+    SessionSettings("session_settings"),
     SessionsList("sessions_list"),
     StateUpdate("state_update"),
     SurfaceWelcome("surface_welcome"),
@@ -1672,6 +1750,7 @@ enum class Type(val value: String) {
             "prompt_options"        -> PromptOptions
             "review_result"         -> ReviewResult
             "review_status"         -> ReviewStatus
+            "session_settings"      -> SessionSettings
             "sessions_list"         -> SessionsList
             "state_update"          -> StateUpdate
             "surface_welcome"       -> SurfaceWelcome

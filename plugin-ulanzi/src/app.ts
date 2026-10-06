@@ -166,12 +166,17 @@ function layoutInput(): Record<string, unknown> {
   return store.toLayoutInput(selectedSessionId);
 }
 
+/** The open session's agent-native settings (#463), as the daemon last answered. */
+function openSettings() {
+  return view.mode === 'detail' && view.openSessionId ? store.settingsFor(view.openSessionId) : undefined;
+}
+
 function deckFor(animFrame: number, animated: boolean) {
   // showUsage pins the bottom-row keys left of the D200H clock widget to the
   // quota gauges — this surface has no encoder LCD to carry usage.
   return buildSessionDeck(
     layoutInput(),
-    { ...view, claudeWeeklyMode, zaiPairMode, animFrame, animated, showUsage: true, voiceState: store.voiceState },
+    { ...view, claudeWeeklyMode, zaiPairMode, animFrame, animated, showUsage: true, voiceState: store.voiceState, settings: openSettings() },
     positions(),
   );
 }
@@ -300,7 +305,7 @@ function renderAll(): void {
   // voiceState is part of the signature: the VOICE tile is the only key that
   // changes on a voice_state event, and a sig that omits it swallows exactly
   // that repaint (the recurring deckSignature failure mode).
-  const sig = deckViewSignature(ev, { ...view, claudeWeeklyMode, zaiPairMode, voiceState: store.voiceState }, positions());
+  const sig = deckViewSignature(ev, { ...view, claudeWeeklyMode, zaiPairMode, voiceState: store.voiceState, settings: openSettings() }, positions());
   if (sig === lastDeckSig) return;
   lastDeckSig = sig;
   lastRenderAt = Date.now();
@@ -457,6 +462,7 @@ function onPress(m: UlanziMessage): void {
       renderAll();
       break;
     case 'back':
+      store.cancelSettings();
       view = { mode: 'list', page: 0 };
       renderAll();
       break;
@@ -478,8 +484,28 @@ function onPress(m: UlanziMessage): void {
       view = { ...view, page: (view.page ?? 0) + action.delta };
       renderAll();
       break;
+    // Agent-native setting picker (#463): opening asks the daemon for the
+    // agent's own values; a choice stays open until its matching acknowledgement.
+    case 'picker-open':
+      view = { ...view, picker: action.key, page: 0 };
+      if (view.openSessionId) daemon.send({ ...store.beginSettingsQuery(view.openSessionId) });
+      renderAll();
+      break;
+    case 'picker-close':
+      store.cancelSettings();
+      view = { ...view, picker: undefined, page: 0 };
+      renderAll();
+      break;
+    case 'setting-select': {
+      const command = store.beginSettingMutation(action.sessionId, action.key, action.value);
+      if (command) daemon.send({ ...command });
+      renderAll();
+      break;
+    }
     case 'command':
       dlog(TAG, `press ${inst.key} → ${action.command.type}`);
+      // Settings are local choices until the tracker binds their request and target.
+      if (action.command.type === 'set_session_setting') break;
       daemon.send(action.command);
       // REVIEW must acknowledge the press instantly: flip the tile to
       // REVIEWING locally before the daemon's review_status/sessions_list
@@ -562,8 +588,15 @@ daemon.on('event', (ev) => {
     }
     return;
   }
-  if (store.apply(ev)) scheduleRender();
+  const pending = ev.type === 'session_settings' && view.openSessionId ? store.settingsFor(view.openSessionId)?.pending : undefined;
+  if (store.apply(ev)) {
+    if (ev.type === 'session_settings' && ev.sessionId === view.openSessionId && pending === 'set' && !ev.error) {
+      view = { ...view, picker: undefined, page: 0 };
+    }
+    scheduleRender();
+  }
 });
+store.onSettingsChanged = () => scheduleRender();
 daemon.on('connected', () => {
   dinfo(TAG, 'daemon connected');
   store.setConnected(true);

@@ -51,6 +51,14 @@ bumped, superseded by 1.0.17, and never published, so it exists only in git.
 
 Prepared release candidate; no channel has been published from this entry.
 
+- Stream Deck and D200H show each observed session's reported model, reasoning
+  effort and permission mode separately, using the agent's own vocabulary.
+  Activity cards show available task, subagent and context information without
+  borrowing another session's state.
+- OpenClaw MODEL and THINKING keys open a paged picker of values reported by the
+  Gateway. Changes apply to the conversation whose settings were displayed;
+  clearing an override returns to the reported default. Refusals and unavailable
+  connections stay visible. Claude and Codex remain readout-only.
 - Timeline on Apple and Android keeps ordinary tool activity beneath its
   originating request, alongside the final response. Tool details expand inside
   the turn; approvals, subagent events and activity without a known prompt stay
