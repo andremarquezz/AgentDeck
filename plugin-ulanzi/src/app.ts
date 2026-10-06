@@ -32,6 +32,7 @@ import { UlanziApiCtor, type UlanziApi, type UlanziMessage } from './ulanzi.js';
 import { DaemonClient } from './daemon-client.js';
 import { ReconnectSupervisor } from './reconnect-supervisor.js';
 import { StateStore } from './state-store.js';
+import { settingsPickerAfterResponse } from './setting-picker-state.js';
 import { deckViewSignature } from './deck-signature.js';
 import { svgToBase64Png, GIF_ICON_SIZE, initRaster } from './raster.js';
 import { framesToGifBase64 } from './gif.js';
@@ -590,9 +591,7 @@ daemon.on('event', (ev) => {
   }
   const pending = ev.type === 'session_settings' && view.openSessionId ? store.settingsFor(view.openSessionId)?.pending : undefined;
   if (store.apply(ev)) {
-    if (ev.type === 'session_settings' && ev.sessionId === view.openSessionId && pending === 'set' && !ev.error) {
-      view = { ...view, picker: undefined, page: 0 };
-    }
+    if (ev.type === 'session_settings') view = settingsPickerAfterResponse(view, ev, pending);
     scheduleRender();
   }
 });
