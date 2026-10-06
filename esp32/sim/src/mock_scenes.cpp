@@ -327,6 +327,13 @@ bool SimScenes::apply(const char* name) {
     setStr(g_state.sessions[2].question,sizeof(g_state.sessions[2].question),"Install the tested firmware on the connected boards?");
     return true;
   }
+  if (std::strcmp(name, "ci-wait") == 0) {
+    base(CreatureState::FLOATING);
+    addSession("codex-cli", "idle", "release checks");
+    g_state.sessions[0].ciPhase = 3;
+    setStr(g_state.sessions[0].activity, sizeof(g_state.sessions[0].activity), "CI running #460 - 8/10");
+    return true;
+  }
   if (std::strcmp(name, "working") == 0) {
     base(CreatureState::WORKING);
     addSession("claude-code", "processing", "AgentDeck");
@@ -506,6 +513,6 @@ bool SimScenes::apply(const char* name) {
 }
 
 const char* SimScenes::catalog() {
-  return "quota-colors, usage-all, zai-only, usage-none, usage-zero, usage-stale, codex-only, codex-luna, codex-credits, live-mix, empty, idle, display-off, worktree-glance, working, multi, crowd, crowded, dense, permission, attention, "
+  return "quota-colors, usage-all, zai-only, usage-none, usage-zero, usage-stale, codex-only, codex-luna, codex-credits, live-mix, empty, idle, display-off, worktree-glance, ci-wait, working, multi, crowd, crowded, dense, permission, attention, "
          "demo:<agent>:<state>";
 }

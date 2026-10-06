@@ -58,14 +58,15 @@ struct MonitorScreen: View {
         var rows: [String] = []
         rows.reserveCapacity(stateHolder.state.siblingSessions.count)
         for session in stateHolder.state.siblingSessions {
-            rows.append([
-                session.id,
-                session.agentType ?? "",
-                session.state ?? "",
-                session.projectName ?? "",
-                session.modelName ?? "",
-                "\(session.alive)",
-            ].joined(separator: "|"))
+            var fields: [String] = [session.id]
+            fields.append(session.agentType ?? "")
+            fields.append(session.state ?? "")
+            fields.append(session.projectName ?? "")
+            fields.append(session.modelName ?? "")
+            fields.append(session.waitingOn?.phase ?? "")
+            fields.append(session.activity ?? "")
+            fields.append(String(session.alive))
+            rows.append(fields.joined(separator: "|"))
         }
         rows.sort()
         return "\(primary)::\(rows.joined(separator: ","))::timeline:\(stateHolder.timelineVersion)"
@@ -217,7 +218,7 @@ struct MonitorScreen: View {
         if preferences.showTimeline {
             VStack {
                 Spacer()
-                TimelineStripView()
+                TimelineStripView(usesMetalHabitat: preferences.effectiveDashboardType == .aquarium3D)
                     .frame(height: geo.size.height * MonitorLayout.sandFraction)
             }
             .opacity(disconnected || (preferences.effectiveDashboardType == .aquarium3D && hudHidden) ? 0 : 1)

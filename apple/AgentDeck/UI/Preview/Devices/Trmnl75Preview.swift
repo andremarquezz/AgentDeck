@@ -43,7 +43,7 @@
 // The purchased-credit row the firmware draws once a Codex plan window is
 // exhausted is a data state this schematic's 5H/7D sample never reaches, like
 // the Luna reserve before it; band geometry is unchanged.
-// SYNC-HASH esp32/src/ui/eink/eink_display.cpp 361688d6d7cdf9c18d831db389295fc80a09d61a
+// SYNC-HASH esp32/src/ui/eink/eink_display.cpp 31948d647a7394a80aaf0f19479ebe03ffec1b83
 // SYNC-HASH esp32/src/ui/eink/eink_dashboard_layout.h 97b1d2a6f5c84e9cf733b3e5b3145ad45f3136e7
 
 import SwiftUI
@@ -266,7 +266,7 @@ struct Trmnl75Preview: View {
                 ForEach(quiet) { session in
                     HStack(spacing: 3) {
                         PreviewCreatureGlyph(agent: session.agent, state: session.state,
-                                             size: 12, tintOverride: ink)
+                                             size: 12, tintOverride: ink, monochrome: true)
                         Text(session.projectName)
                             .font(.system(size: 9))
                             .foregroundStyle(ink)
@@ -288,7 +288,8 @@ struct Trmnl75Preview: View {
                 agent: session.agent,
                 state: state,
                 size: 34,
-                tintOverride: cardInk
+                tintOverride: cardInk,
+                monochrome: true
             )
             VStack(alignment: .leading, spacing: 2) {
                 Text(session.projectName)
@@ -299,7 +300,7 @@ struct Trmnl75Preview: View {
                 // longer shares it with the state word, which pushed long text
                 // into the CP437 fallback font); the state word only when there
                 // is no activity or the session waits on the reader.
-                Text(stateLine(for: state))
+                Text(!awaiting && session.ciWait != nil ? (session.activity ?? "CI wait") : stateLine(for: state))
                     .font(.system(size: 8, weight: state == .processing ? .regular : .semibold))
                     .foregroundStyle(cardInk.opacity(0.72))
                     .lineLimit(1)

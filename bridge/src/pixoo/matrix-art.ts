@@ -1,3 +1,4 @@
+import { paintOfficialFeatures } from './official-features.js';
 /** Canonical pixel art for both BLE runtimes. Swift consumes generated RLE frames
  * from this renderer, so eyes, official masks and motion cannot drift by platform. */
 import { Brand, UI, MATRIX_RULES, MATRIX_POLICY, type MatrixKind, type MatrixScene } from '@agentdeck/shared';
@@ -125,6 +126,7 @@ export function renderMatrixBase(size: 11 | 32, kind: MatrixKind, glyph: string,
       if (a < 40 || y0 + y >= 27) continue;
       put(x0 + x, y0 + y, brand[glyph], Math.min(1, a / 255 * 1.15));
     }
+    paintOfficialFeatures(out, size, glyph as OfficialDotGlyphName, x0, y0, side);
   } else {
     // Neutral resident for future/unknown agents, never somebody else's logo.
     for (let y = 12; y <= 21; y++) for (let x = 10; x <= 21; x++) {

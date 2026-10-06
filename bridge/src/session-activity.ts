@@ -13,7 +13,7 @@
 //      unavailable or errors. Cost-free (on-device), see feedback_cost_sensitive_defaults.
 //
 import { callFoundationModelsHelper, probeFoundationModelsHelper } from './foundation-models-helper.js';
-import { stripUnsafeText } from '@agentdeck/shared';
+import { stripUnsafeText, ciWaitDetail } from '@agentdeck/shared';
 import { debug } from './logger.js';
 import type { EnrichedSession } from './session-aggregator.js';
 
@@ -135,6 +135,7 @@ function maybeSummarize(s: EnrichedSession): void {
  * kicks off an async FM summarization whose result surfaces on a later broadcast.
  */
 export function activityFor(s: EnrichedSession): string | undefined {
+  if (s.waitingOn && !s.state?.startsWith('awaiting')) return ciWaitDetail(s.waitingOn) ?? undefined;
   const quick = quickActivity(s);
   const cached = cache.get(s.id);
   maybeSummarize(s);

@@ -244,6 +244,10 @@ never add a third design — no SF Rounded, no serif, no LVGL Montserrat where a
 Plex font is already built for that board. ESP32 boards that render Korean use
 the Plex-derived bitmap fonts in `esp32/src/ui/fonts/`.
 
+Compact native HUD text derives line metrics from its selected font size,
+rather than inheriting another role's fixed leading. Body tracking remains
+normal; explicit mono kicker and tier-badge tracking keeps its own role.
+
 ### 3.4 Rules
 - Use `font-feature-settings: "ss01", "cv11"` on sans body — Plex's stylistic alternates make Korean and Latin sit at consistent x‑height.
 - Use `font-feature-settings: "zero", "ss01"` on mono — slashed zero, single‑story `a`.

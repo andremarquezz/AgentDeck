@@ -2,6 +2,7 @@
 // 17-layer rendering order matching Android ColorRenderer.kt
 
 import SwiftUI
+import simd
 
 final class TerrariumRenderer {
     // MARK: - Creatures
@@ -13,6 +14,10 @@ final class TerrariumRenderer {
     private var kiroCreatures: [String: KiroCreature] = [:]
     private var hermesCreatures: [String: HermesCreature] = [:]
     var animateHermes = true
+    var animateCompanions = true
+    private var ciMotions: [String: CiCompanionMotion] = [:]
+    private var ciCenters: [String: SIMD2<Float>] = [:]
+    private var ciPoints: [String: SIMD2<Float>] = [:]
     private let crayfish = CrayfishCreature()
     private let tetra = DataParticleSystem()
     private let bubbles = BubbleSystem()
@@ -67,7 +72,16 @@ final class TerrariumRenderer {
 
     // MARK: - Update
 
-    func update(dt: Float, state: TerrariumState) {
+    func update(dt: Float, state sourceState: TerrariumState) {
+        var state = sourceState
+        let visibleIDs = Set(AquariumResident.foreground(AquariumResident.project(state), focusedID: state.focusedSessionId).map(\.id))
+        state.creatures = state.creatures.filter { visibleIDs.contains($0.id) }
+        state.cloudCreatures = state.cloudCreatures.filter { visibleIDs.contains($0.id) }
+        state.opencodeCreatures = state.opencodeCreatures.filter { visibleIDs.contains($0.id) }
+        state.antigravityCreatures = state.antigravityCreatures.filter { visibleIDs.contains($0.id) }
+        state.kiroCreatures = state.kiroCreatures.filter { visibleIDs.contains($0.id) }
+        state.hermesCreatures = state.hermesCreatures.filter { visibleIDs.contains($0.id) }
+        state.crayfishVisible = state.crayfishVisible && visibleIDs.contains("crayfish")
         // Environment state propagation
         envState = state.environment
         waterEffect.setState(envState)
@@ -224,6 +238,19 @@ final class TerrariumRenderer {
         }
         crayfish.update(dt: dt, state: state)
 
+        ciCenters = octopuses.mapValues { [ $0.currentX,$0.currentY ] }
+            .merging(clouds.mapValues { [$0.currentX,$0.currentY] }) { a,_ in a }
+            .merging(opencodeCreatures.mapValues { [$0.currentX,$0.currentY] }) { a,_ in a }
+            .merging(antigravityCreatures.mapValues { [$0.currentX,$0.currentY] }) { a,_ in a }
+            .merging(kiroCreatures.mapValues { [$0.currentX,$0.currentY] }) { a,_ in a }
+            .merging(hermesCreatures.mapValues { [$0.currentX,$0.currentY] }) { a,_ in a }
+        for id in ciCenters.keys {
+            guard let wait = state.ciWaits[id] else { ciMotions.removeValue(forKey:id);continue }
+            var motion = ciMotions[id] ?? CiCompanionMotion(id:id)
+            motion.update(wait,dt:animateCompanions ? dt : 0)
+            ciMotions[id] = motion
+        }
+        ciMotions = ciMotions.filter { ciCenters[$0.key] != nil && state.ciWaits[$0.key] != nil }
         lastState = state
     }
 
@@ -322,6 +349,17 @@ final class TerrariumRenderer {
         // Layer 9.46: name tags, resolved together so none hides a resident.
         TerrariumNameTagLayer.active = nil
         nameTags.flush(context: &context)
+        ciPoints.removeAll()
+        if let state = lastState {
+            for (id,motion) in ciMotions {
+                guard let wait=state.ciWaits[id],motion.visible(wait),let center=ciCenters[id] else { continue }
+                let angle=motion.angle
+                let point=CiCompanionPresentation.position(center:center,angle:angle,size:size)
+                ciPoints[id]=point
+                CiCompanionPresentation.draw(context:&context,size:size,center:center,position:point,wait:wait)
+            }
+        }
+
 
         if includeHabitat {
             // Layer 9.5: Front-layer fish
@@ -804,6 +842,14 @@ final class TerrariumRenderer {
             if distance < bestDist { bestId = id; bestDist = distance }
         }
 
+        for (id, k) in kiroCreatures {
+            let distance = hypot(k.currentX-nx, k.currentY-ny)
+            if distance < bestDist { bestId = id; bestDist = distance }
+        }
+        for (id,point) in ciPoints {
+            let distance=hypot(point.x-nx,point.y-ny)
+            if distance<bestDist { bestId=id;bestDist=distance }
+        }
         return bestId
     }
 

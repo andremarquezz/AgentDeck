@@ -51,6 +51,7 @@ void epd_draw_image(LilyEpdRect area, uint8_t* data, int mode);
 #include "net/ws_client.h"
 #include "ui/terrarium/creature_glyphs_generated.h"
 #include "ui/agent_label.h"
+#include "ui/creature_glyph_selection.h"
 #include "ui/eink/eink_dashboard_layout.h"
 #include "ui/eink/epd47_page_policy.h"
 #include "ui/eink/epd47_refresh_policy.h"
@@ -830,27 +831,48 @@ void drawMask64(int16_t x, int16_t y, const uint8_t* a8, int size) {
     }
 }
 
-// Agent creature glyph. OpenClaw uses the full canonical brand mark, with the
-// two eye centers punched back to paper as the documented 1-bit readability reduction.
-void drawAgentGlyph(const char* agentType, int16_t x, int16_t y, int size) {
-    const uint8_t* a8 = CreatureGlyphs::OCTOPUS_A8;  // claude-code + default
-    bool openclaw = false;
-    if (strcmp(agentType, "openclaw") == 0)         { a8 = CreatureGlyphs::OPENCLAW_MARK_A8; openclaw = true; }
-    else if (strncmp(agentType, "codex", 5) == 0)   a8 = CreatureGlyphs::CODEX_A8;
-    else if (strcmp(agentType, "opencode") == 0)    a8 = CreatureGlyphs::OPENCODE_A8;
-    else if (strcmp(agentType, "antigravity") == 0) a8 = CreatureGlyphs::ANTIGRAVITY_A8;
-    else if (strncmp(agentType, "kiro", 4) == 0)    a8 = CreatureGlyphs::KIRO_A8;
-    else if (strcmp(agentType, "hermes") == 0)      a8 = CreatureGlyphs::HERMES_A8;
-    else if (strcmp(agentType, "zai") == 0)         a8 = CreatureGlyphs::ZAI_A8;
-    drawMask64(x, y, a8, size);
-    if (openclaw) {
-        // Eye pupils at viewBox-24 (8.835, 7.843) / (15.165, 7.843), r≈1.26 —
-        // same geometry as shared agentGlyphMono's paper cutouts.
-        float sc = size / 24.0f;
-        int r = max(1, (int)(1.26f * sc));
-        display.fillCircle(x + (int)(8.835f * sc), y + (int)(7.843f * sc), r, paperColor);
-        display.fillCircle(x + (int)(15.165f * sc), y + (int)(7.843f * sc), r, paperColor);
+// Actual paper creatures use a light body and source contour so
+// literal black eyes and white prompt/glints remain distinct on a 1-bit panel.
+static void drawFeatureBody(int16_t x, int16_t y, const uint8_t* a8, int size) {
+    auto covered = [a8, size](int ox, int oy) {
+        return ox >= 0 && oy >= 0 && ox < size && oy < size &&
+               a8[(oy * 64 / size) * 64 + ox * 64 / size] >= 128;
+    };
+    const int outline = max(1, (int)ceilf(size * CreatureGlyphs::MONO_OUTLINE_WIDTH_FRAC));
+    for (int oy = 0; oy < size; ++oy) {
+        for (int ox = 0; ox < size; ++ox) {
+            if (!covered(ox, oy)) continue;
+            const bool contour = !covered(ox - outline, oy) || !covered(ox + outline, oy) ||
+                                 !covered(ox, oy - outline) || !covered(ox, oy + outline);
+            display.drawPixel(x + ox, y + oy, contour ? inkColor : paperColor);
+        }
     }
+}
+static void drawAgentFeatures(int16_t x, int16_t y, const CreatureGlyphs::FeatureLayer* layers,
+                              size_t count, int size, bool actualCreature) {
+    for (size_t i = 0; i < count; ++i) {
+        const auto& layer = layers[i];
+        const int left = layer.x * size / 64;
+        const int top = layer.y * size / 64;
+        const int width = max(1, (layer.x + layer.width) * size / 64 - left);
+        const int height = max(1, (layer.y + layer.height) * size / 64 - top);
+        const bool ink = actualCreature ? layer.creatureMonochromeInk : layer.monochromeInk;
+        const uint16_t color = ink ? inkColor : paperColor;
+        for (int oy = 0; oy < height; ++oy) {
+            for (int ox = 0; ox < width; ++ox) {
+                if (layer.alpha[(oy * layer.height / height) * layer.width + ox * layer.width / width] >= 128)
+                    display.drawPixel(x + left + ox, y + top + oy, color);
+            }
+        }
+    }
+}
+void drawAgentGlyph(const char* agentType, int16_t x, int16_t y, int size) {
+    const auto glyph = CreatureGlyphs::selectAgent(agentType);
+    if (!glyph.alpha || size <= 0) return;
+    const bool actualCreature = size >= CreatureGlyphs::MIN_MONO_CREATURE_SIZE;
+    if (actualCreature && glyph.lightMonoBody) drawFeatureBody(x, y, glyph.alpha, size);
+    else drawMask64(x, y, glyph.alpha, size);
+    drawAgentFeatures(x, y, glyph.features, glyph.featureCount, size, actualCreature);
 }
 
 bool isAwaiting(const char* state) {

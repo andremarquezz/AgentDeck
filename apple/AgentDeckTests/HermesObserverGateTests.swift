@@ -5,6 +5,35 @@ import XCTest
 /// Swift mirror of bridge/src/__tests__/hermes-sessions.test.ts: the same
 /// admission rules and process-lifetime close for the native daemon.
 final class HermesObserverGateTests: XCTestCase {
+    @DaemonActor
+    func testCapturedRealCiInvocationUsesNormalizedEvidenceAndExactEnd() async throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let data = try Data(contentsOf: root.appendingPathComponent("bridge/src/__tests__/fixtures/hermes-live-ci.json"))
+        let capture = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let events = try XCTUnwrap(capture["events"] as? [[String: Any]])
+        var gate = HermesObserverGate()
+        let waits = CiWaitTracker()
+        for row in events {
+            let event = try XCTUnwrap(row["event"] as? String)
+            let payload = try XCTUnwrap(row["payload"] as? [String: Any])
+            let at = try XCTUnwrap(row["afterMs"] as? Int)
+            guard case let .accept(boundary, sessionId) = gate.admit(event: event, payload: payload,
+                now: Date(timeIntervalSince1970: Double(at) / 1000)) else { return XCTFail("Captured hook rejected") }
+            let rawSid = ObservedAgentRules.rawSessionId(sessionId)
+            waits.note(rawSid, event: boundary, json: payload, now: at)
+            if event == "hermes_tool_start" {
+                let wait = try XCTUnwrap(waits.snapshot(rawSid, now: at))
+                XCTAssertEqual(wait["runId"] as? Int, 4242)
+                XCTAssertEqual(wait["phase"] as? String, "unknown")
+                XCTAssertNil(payload["tool_input"])
+                let hook = try XCTUnwrap(DaemonServer.normalizeApmeObservedHook(event: event, json: payload, sessionId: sessionId))
+                XCTAssertNotNil(hook.payload["ci_wait_intent"])
+                XCTAssertEqual(hook.payload["tool_call_id"] as? String, payload["tool_call_id"] as? String)
+            } else { XCTAssertNil(waits.snapshot(rawSid, now: at)) }
+        }
+    }
+
     private let sid = "hermes-" + String(repeating: "a", count: 32)
     private let other = "hermes-" + String(repeating: "b", count: 32)
     private let t0 = Date(timeIntervalSince1970: 1_000)
@@ -29,6 +58,9 @@ final class HermesObserverGateTests: XCTestCase {
             keys.insert(key)
             let normalized = try XCTUnwrap(DaemonServer.normalizeApmeObservedHook(event: event, json: payload, sessionId: key))
             XCTAssertEqual(normalized.event, boundary)
+            if let model = payload["model"] as? String, !model.isEmpty {
+                XCTAssertEqual(normalized.payload["model_name"] as? String, model)
+            }
             if boundary == "stop" { stops += 1 }
             if boundary == "session_end" { finalized += 1 }
         }

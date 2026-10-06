@@ -4,6 +4,42 @@
 import Foundation
 import CoreFoundation
 
+enum CiWaitVisual {
+    static let cycleMs = 6000
+    static let showAfterMs = 3000
+    static let helperRGB: (UInt8, UInt8, UInt8) = (226, 232, 240)
+    static func rgb(_ phase: String) -> (UInt8, UInt8, UInt8) {
+        let colors: [String: UInt32] = ["unknown": 0x9a9aa2, "queued": 0x3ED6E8, "running": 0x3ED6E8, "passed": 0x52D988, "failed": 0xFF6B6B]
+        let value = colors[phase] ?? colors["unknown"]!
+        return (UInt8((value >> 16) & 255), UInt8((value >> 8) & 255), UInt8(value & 255))
+    }
+    static let none = 0
+    static let unknown = 1
+    static let queued = 2
+    static let running = 3
+    static let passed = 4
+    static let failed = 5
+    static let github: [UInt8] = [60, 126, 195, 195, 195, 231, 70, 36]
+    static func phase(_ value: String?) -> Int {
+        switch value {
+        case "unknown": return 1
+        case "queued": return 2
+        case "running": return 3
+        case "passed": return 4
+        case "failed": return 5
+        default: return unknown
+        }
+    }
+    static func compactPhase(_ wait: [String: Any]?) -> Int {
+        guard let wait else { return none }
+        let id = phase(wait["phase"] as? String)
+        if id == passed || id == failed { return id }
+        guard let flag = wait["agentWaiting"] as? NSNumber,
+              CFGetTypeID(flag) == CFBooleanGetTypeID(), flag.boolValue else { return none }
+        return id
+    }
+}
+
 struct CiWaitIntent: Codable, Equatable, Sendable {
     var kind = "ci"
     var provider = "github-actions"
@@ -52,6 +88,30 @@ enum CiWaitRules {
         guard let value, !value.isEmpty, value.utf16.count <= maxIdentityChars,
               match(value, pattern) != nil else { return nil }
         return value
+    }
+    static func normalized(_ value: Any?) -> CiWaitIntent? {
+        guard let v = value as? [String: Any],
+              Set(v.keys).isSubset(of: ["kind", "provider", "mode", "repo", "ref", "pr", "runId"]),
+              v["kind"] as? String == "ci", v["provider"] as? String == "github-actions",
+              let mode = v["mode"] as? String, ["watch", "poll"].contains(mode) else { return nil }
+        var intent = CiWaitIntent(mode: mode)
+        if let raw = v["repo"] {
+            guard let value = raw as? String, let repo = identity(value, repoPattern) else { return nil }
+            intent.repo = repo
+        }
+        if let raw = v["ref"] {
+            guard let value = raw as? String, let ref = identity(value, branchPattern) else { return nil }
+            intent.ref = ref
+        }
+        for key in ["pr", "runId"] {
+            if let raw = v[key] {
+                guard let value = raw as? NSNumber, CFGetTypeID(value) != CFBooleanGetTypeID(),
+                      value.doubleValue >= 1, value.doubleValue <= Double(maxId),
+                      value.doubleValue.rounded() == value.doubleValue else { return nil }
+                if key == "pr" { intent.pr = value.intValue } else { intent.runId = value.intValue }
+            }
+        }
+        return intent
     }
     private static func segments(_ command: String) -> [[Token]]? {
         guard command.utf16.count <= maxCommandChars,
@@ -185,3 +245,93 @@ enum CiWaitRules {
         return first
     }
 }
+
+enum CiWaitAccounting {
+    static func foregroundMs(_ events: [[String: Any]], turnIndex: Int, start: Int, end: Int) -> Int {
+        guard start >= 0, end >= start else { return 0 }
+        var open: [String: Int] = [:], spans: [(Int, Int)] = []
+        for event in events {
+            guard event["kind"] as? String == "relation", event["relation"] as? String == "waiting_on",
+                  event["evidence"] as? String == "ci_wait_foreground", event["turnIndex"] as? Int == turnIndex,
+                  let id = event["relationId"] as? String, let ts = event["ts"] as? Int else { continue }
+            if event["phase"] as? String == "open" { if open[id] == nil { open[id] = ts } }
+            else if let began = open.removeValue(forKey: id), ts >= began { spans.append((began, ts)) }
+        }
+        for began in open.values { spans.append((began, end)) }
+        spans.sort { $0.0 < $1.0 }
+        var total = 0, through = start
+        for span in spans {
+            let left = max(start, span.0), right = min(end, span.1)
+            if right > left { total += max(0, right - max(through, left)); through = max(through, right) }
+        }
+        return total
+    }
+}
+
+#if os(macOS)
+/// Hook-scoped CI waits; generated together with the command classifier.
+@DaemonActor
+final class CiWaitTracker {
+    private struct Wait { var token: Int; var id: String; var background: Bool; var status: [String: Any] }
+    private var sessions: [String: [Wait]] = [:]
+    private var nextToken = 0
+    func waitsFor(_ sid: String, now: Int) -> [(token: Int, background: Bool, openedAt: Int)] {
+        _ = snapshot(sid, now: now)
+        return (sessions[sid] ?? []).map { ($0.token, $0.background, $0.status["openedAt"] as? Int ?? now) }
+    }
+    func tokenFor(_ sid: String) -> Int? { sessions[sid]?.first?.token }
+    func isForeground(_ sid: String) -> Bool { sessions[sid]?.first?.background == false }
+    func snapshot(_ sid: String, now: Int) -> [String: Any]? {
+        let waits = (sessions[sid] ?? []).filter { now - ($0.status["openedAt"] as? Int ?? 0) < 86400000 }
+        if waits.isEmpty { sessions.removeValue(forKey: sid); return nil }
+        sessions[sid] = waits
+        return waits.first?.status
+    }
+    func forget(_ sid: String) { sessions.removeValue(forKey: sid) }
+    private static let hookEvents: [String: String] = ["SessionStart": "session_start", "SessionEnd": "session_end", "UserPromptSubmit": "user_prompt_submit", "PreToolUse": "tool_start", "PostToolUse": "tool_end", "PostToolUseFailure": "tool_failure", "Stop": "stop", "Interrupt": "interrupt", "codex_session_start": "session_start", "codex_session_end": "session_end", "codex_user_prompt_submit": "user_prompt_submit", "codex_tool_start": "tool_start", "codex_tool_end": "tool_end", "codex_tool_failure": "tool_failure", "codex_stop": "stop", "codex_interrupt": "interrupt", "codex_turn_complete": "stop", "opencode_session_start": "session_start", "opencode_session_end": "session_end", "opencode_user_prompt_submit": "user_prompt_submit", "opencode_tool_start": "tool_start", "opencode_tool_end": "tool_end", "opencode_tool_failure": "tool_failure", "opencode_stop": "stop", "opencode_interrupt": "interrupt", "opencode_turn_complete": "stop", "hermes_session_start": "session_start", "hermes_session_end": "session_end", "hermes_user_prompt_submit": "user_prompt_submit", "hermes_tool_start": "tool_start", "hermes_tool_end": "tool_end", "hermes_tool_failure": "tool_failure", "hermes_stop": "stop", "hermes_interrupt": "interrupt", "hermes_turn_complete": "stop"]
+    @discardableResult
+    func note(_ sid: String, event rawEvent: String, json: [String: Any], now: Int) -> Bool {
+        let event = Self.hookEvents[rawEvent] ?? rawEvent
+        guard !sid.isEmpty, sid.utf16.count <= 256, now >= 0, now <= 9007199254740991 else { return false }
+        let before = snapshot(sid, now: now)
+        if ["session_start", "session_end", "user_prompt_submit", "interrupt"].contains(event) {
+            sessions.removeValue(forKey: sid)
+        } else if event == "stop" {
+            sessions[sid] = (sessions[sid] ?? []).filter { $0.background }
+        } else {
+            guard let id = (json["tool_use_id"] ?? json["tool_call_id"] ?? json["call_id"]) as? String,
+                  !id.isEmpty, id.utf16.count <= 255 else { return false }
+            var waits = sessions[sid] ?? []
+            if event == "tool_start" {
+                let tool = json["tool_name"] as? String
+                let normalized = tool == "terminal" ? CiWaitRules.normalized(json["ci_wait_intent"]) : nil
+                let input = json["tool_input"] as? [String: Any]
+                guard normalized != nil || (input != nil && ["Bash", "bash", "shell", "shell_command", "exec_command"].contains(tool ?? "")) else { return false }
+                let flag = (normalized != nil ? json["ci_wait_background"] : input?["run_in_background"]) as? NSNumber
+                let background = flag.map { CFGetTypeID($0) == CFBooleanGetTypeID() && $0.boolValue } ?? false
+                guard let intent = normalized ?? CiWaitRules.classify(command: input?["command"] ?? input?["cmd"], runInBackground: true),
+                      background || intent.mode == "watch" else { return false }
+                if !waits.contains(where: { $0.id == id }) {
+                    guard waits.count < 8,
+                          sessions[sid] != nil || sessions.count < 1024 else { return false }
+                    var status: [String: Any] = ["kind": "ci", "provider": "github-actions", "phase": "unknown",
+                        "agentWaiting": true, "evidence": "tool_input", "openedAt": now]
+                    if let repo = intent.repo { status["repo"] = repo }
+                    if let ref = intent.ref { status["ref"] = ref }
+                    if let pr = intent.pr { status["pr"] = pr }
+                    if let run = intent.runId { status["runId"] = run }
+                    nextToken += 1
+                    waits.append(Wait(token: nextToken, id: id, background: background, status: status))
+                }
+            } else if event == "tool_end" || event == "tool_failure" {
+                let flag = json["is_error"] as? NSNumber
+                let failed = flag.map { CFGetTypeID($0) == CFBooleanGetTypeID() && $0.boolValue } ?? false
+                waits.removeAll { $0.id == id && (!$0.background || event == "tool_failure" || failed) }
+            }
+            if waits.isEmpty { sessions.removeValue(forKey: sid) } else { sessions[sid] = waits }
+        }
+        let after = snapshot(sid, now: now)
+        return !NSDictionary(dictionary: before ?? [:]).isEqual(to: after ?? [:])
+    }
+}
+#endif

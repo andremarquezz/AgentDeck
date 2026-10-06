@@ -515,6 +515,34 @@ a loopback HTTP stub, so daemon replay is separate evidence. This verifies
 callback identity and lifecycle, not external-provider quality or messaging
 transport. Native component tests do not prove physical-device appearance.
 
+CI wait observer acceptance for 1.8 was measured on 2026-10-05 against the
+same installed upstream revision `0a374d167424cdc730ce9761368b62255b551e58`.
+Hermes's actual classic CLI `--oneshot` used a deterministic loopback provider
+and invoked its real `terminal` tool with a local `gh`-named watcher fixture.
+Plugin Doctor registered all nine hooks with no findings. Observer HTTP reached
+an isolated Node daemon: start → prompt → tool start/end → one successful Stop
+→ finalize. `sessions_list` opened `waitingOn` with `runId=4242`, then emitted
+explicit null on that invocation's tool end and removed the finalized row.
+APME stored one closed Hermes run and one `end_source=stop` turn, with one tool
+call, model `agentdeck-ci-fixture`, 2,141 ms wall time, 1,638 ms foreground CI
+wait and 503 ms active time. The custom fixture provider remains unknown in
+APME; no provider identity or usage is invented. The sanitized capture is
+[`hermes-live-ci.json`](../bridge/src/__tests__/fixtures/hermes-live-ci.json).
+This is a real agent/callback receipt with a fixture watcher, not a GitHub
+conclusion or messaging-platform Gateway receipt.
+
+CI evidence is content-minimized at the observer. It sends a session-scoped
+hash of the upstream `tool_call_id`, explicit background/error booleans, and an
+allow-listed `ci_wait_intent` object; arbitrary arguments, raw commands,
+environment, tool results and error text are never exported. Bounds and watch
+option grammar come from generated `ci-wait-rules.json`, which is installed
+with the plugin. The observer currently accepts a single explicit `gh run
+watch` or `gh pr checks --watch` command. Shell chains, substitutions, wrappers,
+redirections and polling loops emit ordinary tool hooks with no CI intent.
+Both daemons validate the normalized object, match exact invocation ends,
+retain background watches across Stop and clear on conversation retirement.
+Foreground time accounting consumes the same bounded tracker.
+
 Further runtime checks on 2026-10-05 used the same pinned Hermes runtime and
 deterministic loopback provider:
 

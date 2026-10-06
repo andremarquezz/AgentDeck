@@ -6,6 +6,56 @@ import { fileURLToPath } from 'node:url';
 export const OUTPUT = 'apple/AgentDeck/Daemon/Session/CiWaitRules.generated.swift';
 const quote = value => JSON.stringify(value).replace(/\\f/g, '\\u{000c}').replace(/\\u([0-9a-f]{4})/gi, '\\u{$1}');
 const list = values => `[${values.map(quote).join(', ')}]`;
+export const KOTLIN_OUTPUT = 'android/app/src/main/kotlin/dev/agentdeck/terrarium/CiWaitVisual.generated.kt';
+export const HERMES_OUTPUT = 'hooks/hermes-agentdeck/ci-wait-rules.json';
+export const emitHermesRules = mod => JSON.stringify(mod.CI_WAIT_RULES, null, 2) + '\n';
+export const CPP_OUTPUT = 'esp32/src/state/ci_wait_generated.h';
+export function emitKotlin(mod) {
+  const r = mod.CI_WAIT_VISUAL;
+  return `// GENERATED from shared/src/ci-wait.ts.
+package dev.agentdeck.terrarium
+
+object CiWaitVisual {
+` +
+    Object.entries(r).filter(([, value]) => typeof value === 'number').map(([k,v]) => `    const val ${k.toUpperCase()} = ${v}
+`).join('') +
+    `    val github = intArrayOf(${r.github.join(', ')})
+}
+`;
+}
+export function emitCpp(mod) {
+  const r = mod.CI_WAIT_VISUAL;
+  return `// GENERATED from shared/src/ci-wait.ts. No heap or mutable storage.
+#pragma once
+#include <stdint.h>
+#include <string.h>
+namespace CiWaitVisual {
+static constexpr unsigned long CYCLE_MS = ${mod.CI_WAIT_CUE.cycleMs};
+static constexpr unsigned long SHOW_AFTER_MS = ${mod.CI_WAIT_CUE.showAfterMs};
+static constexpr uint32_t HELPER_COLOR = 0x${mod.CI_WAIT_CUE.helperColor.slice(1)};
+` +
+    Object.entries(r).filter(([, value]) => typeof value === 'number').map(([k,v]) => `static constexpr uint8_t ${k.toUpperCase()} = ${v};
+`).join('') +
+    `static constexpr uint8_t GITHUB[8] = {${r.github.join(', ')}};
+static constexpr uint8_t GITHUB_ALPHA_SIZE = ${mod.CI_WAIT_CUE.standardGlyphSize};
+static constexpr uint8_t GITHUB_ALPHA[GITHUB_ALPHA_SIZE * GITHUB_ALPHA_SIZE] = {${r.githubAlpha.join(', ')}};
+inline uint8_t phase(const char* value) {
+` +
+    Object.entries(r).filter(([k, value]) => typeof value === 'number' && k !== 'none').map(([k,v]) => `    if (value && !strcmp(value, "${k}")) return ${v};
+`).join('') +
+    `    return UNKNOWN;
+}
+inline uint8_t compactPhase(const char* value, bool agentWaiting) {
+    const uint8_t id = phase(value);
+    return id == PASSED || id == FAILED || agentWaiting ? id : NONE;
+}
+template<typename Wait> inline uint8_t fromJsonWait(const Wait& wait) {
+    return compactPhase(wait["phase"] | "unknown",
+        wait["agentWaiting"].template is<bool>() && wait["agentWaiting"].template as<bool>());
+}
+}
+`;
+}
 export function emitSwift(mod) {
   const r = mod.CI_WAIT_RULES;
   return String.raw`// GENERATED FILE — DO NOT EDIT.
@@ -13,6 +63,33 @@ export function emitSwift(mod) {
 // Byte drift and shared/ci-wait-vectors.json execution are gated by ci-wait-sync.test.ts.
 import Foundation
 import CoreFoundation
+
+enum CiWaitVisual {
+    static let cycleMs = ${mod.CI_WAIT_CUE.cycleMs}
+    static let showAfterMs = ${mod.CI_WAIT_CUE.showAfterMs}
+    static let helperRGB: (UInt8, UInt8, UInt8) = (${[1, 3, 5].map(i => parseInt(mod.CI_WAIT_CUE.helperColor.slice(i, i + 2), 16)).join(', ')})
+    static func rgb(_ phase: String) -> (UInt8, UInt8, UInt8) {
+        let colors: [String: UInt32] = [${Object.entries(mod.CI_WAIT_CUE.colors).map(([k,v]) => `"${k}": 0x${v.slice(1)}`).join(', ')}]
+        let value = colors[phase] ?? colors["unknown"]!
+        return (UInt8((value >> 16) & 255), UInt8((value >> 8) & 255), UInt8(value & 255))
+    }
+${Object.entries(mod.CI_WAIT_VISUAL).filter(([, value]) => typeof value === 'number').map(([k,v]) => `    static let ${k} = ${v}`).join('\n')}
+    static let github: [UInt8] = [${mod.CI_WAIT_VISUAL.github.join(', ')}]
+    static func phase(_ value: String?) -> Int {
+        switch value {
+${Object.entries(mod.CI_WAIT_VISUAL).filter(([k, value]) => typeof value === 'number' && k !== 'none').map(([k,v]) => `        case "${k}": return ${v}`).join('\n')}
+        default: return unknown
+        }
+    }
+    static func compactPhase(_ wait: [String: Any]?) -> Int {
+        guard let wait else { return none }
+        let id = phase(wait["phase"] as? String)
+        if id == passed || id == failed { return id }
+        guard let flag = wait["agentWaiting"] as? NSNumber,
+              CFGetTypeID(flag) == CFBooleanGetTypeID(), flag.boolValue else { return none }
+        return id
+    }
+}
 
 struct CiWaitIntent: Codable, Equatable, Sendable {
     var kind = "ci"
@@ -62,6 +139,30 @@ enum CiWaitRules {
         guard let value, !value.isEmpty, value.utf16.count <= maxIdentityChars,
               match(value, pattern) != nil else { return nil }
         return value
+    }
+    static func normalized(_ value: Any?) -> CiWaitIntent? {
+        guard let v = value as? [String: Any],
+              Set(v.keys).isSubset(of: ["kind", "provider", "mode", "repo", "ref", "pr", "runId"]),
+              v["kind"] as? String == "ci", v["provider"] as? String == "github-actions",
+              let mode = v["mode"] as? String, ["watch", "poll"].contains(mode) else { return nil }
+        var intent = CiWaitIntent(mode: mode)
+        if let raw = v["repo"] {
+            guard let value = raw as? String, let repo = identity(value, repoPattern) else { return nil }
+            intent.repo = repo
+        }
+        if let raw = v["ref"] {
+            guard let value = raw as? String, let ref = identity(value, branchPattern) else { return nil }
+            intent.ref = ref
+        }
+        for key in ["pr", "runId"] {
+            if let raw = v[key] {
+                guard let value = raw as? NSNumber, CFGetTypeID(value) != CFBooleanGetTypeID(),
+                      value.doubleValue >= 1, value.doubleValue <= Double(maxId),
+                      value.doubleValue.rounded() == value.doubleValue else { return nil }
+                if key == "pr" { intent.pr = value.intValue } else { intent.runId = value.intValue }
+            }
+        }
+        return intent
     }
     private static func segments(_ command: String) -> [[Token]]? {
         guard command.utf16.count <= maxCommandChars,
@@ -195,13 +296,105 @@ enum CiWaitRules {
         return first
     }
 }
+
+enum CiWaitAccounting {
+    static func foregroundMs(_ events: [[String: Any]], turnIndex: Int, start: Int, end: Int) -> Int {
+        guard start >= 0, end >= start else { return 0 }
+        var open: [String: Int] = [:], spans: [(Int, Int)] = []
+        for event in events {
+            guard event["kind"] as? String == "relation", event["relation"] as? String == "waiting_on",
+                  event["evidence"] as? String == "ci_wait_foreground", event["turnIndex"] as? Int == turnIndex,
+                  let id = event["relationId"] as? String, let ts = event["ts"] as? Int else { continue }
+            if event["phase"] as? String == "open" { if open[id] == nil { open[id] = ts } }
+            else if let began = open.removeValue(forKey: id), ts >= began { spans.append((began, ts)) }
+        }
+        for began in open.values { spans.append((began, end)) }
+        spans.sort { $0.0 < $1.0 }
+        var total = 0, through = start
+        for span in spans {
+            let left = max(start, span.0), right = min(end, span.1)
+            if right > left { total += max(0, right - max(through, left)); through = max(through, right) }
+        }
+        return total
+    }
+}
+
+#if os(macOS)
+/// Hook-scoped CI waits; generated together with the command classifier.
+@DaemonActor
+final class CiWaitTracker {
+    private struct Wait { var token: Int; var id: String; var background: Bool; var status: [String: Any] }
+    private var sessions: [String: [Wait]] = [:]
+    private var nextToken = 0
+    func waitsFor(_ sid: String, now: Int) -> [(token: Int, background: Bool, openedAt: Int)] {
+        _ = snapshot(sid, now: now)
+        return (sessions[sid] ?? []).map { ($0.token, $0.background, $0.status["openedAt"] as? Int ?? now) }
+    }
+    func tokenFor(_ sid: String) -> Int? { sessions[sid]?.first?.token }
+    func isForeground(_ sid: String) -> Bool { sessions[sid]?.first?.background == false }
+    func snapshot(_ sid: String, now: Int) -> [String: Any]? {
+        let waits = (sessions[sid] ?? []).filter { now - ($0.status["openedAt"] as? Int ?? 0) < ${mod.CI_WAIT_LIFECYCLE.maxAgeMs} }
+        if waits.isEmpty { sessions.removeValue(forKey: sid); return nil }
+        sessions[sid] = waits
+        return waits.first?.status
+    }
+    func forget(_ sid: String) { sessions.removeValue(forKey: sid) }
+    private static let hookEvents: [String: String] = [${Object.entries(mod.CI_WAIT_HOOK_EVENTS).map(([key, value]) => `${quote(key)}: ${quote(value)}`).join(', ')}]
+    @discardableResult
+    func note(_ sid: String, event rawEvent: String, json: [String: Any], now: Int) -> Bool {
+        let event = Self.hookEvents[rawEvent] ?? rawEvent
+        guard !sid.isEmpty, sid.utf16.count <= ${mod.CI_WAIT_LIFECYCLE.maxSessionChars}, now >= 0, now <= ${r.maxId} else { return false }
+        let before = snapshot(sid, now: now)
+        if ["session_start", "session_end", "user_prompt_submit", "interrupt"].contains(event) {
+            sessions.removeValue(forKey: sid)
+        } else if event == "stop" {
+            sessions[sid] = (sessions[sid] ?? []).filter { $0.background }
+        } else {
+            guard let id = (json["tool_use_id"] ?? json["tool_call_id"] ?? json["call_id"]) as? String,
+                  !id.isEmpty, id.utf16.count <= ${mod.CI_WAIT_LIFECYCLE.maxToolIdChars} else { return false }
+            var waits = sessions[sid] ?? []
+            if event == "tool_start" {
+                let tool = json["tool_name"] as? String
+                let normalized = tool == "terminal" ? CiWaitRules.normalized(json["ci_wait_intent"]) : nil
+                let input = json["tool_input"] as? [String: Any]
+                guard normalized != nil || (input != nil && ["Bash", "bash", "shell", "shell_command", "exec_command"].contains(tool ?? "")) else { return false }
+                let flag = (normalized != nil ? json["ci_wait_background"] : input?["run_in_background"]) as? NSNumber
+                let background = flag.map { CFGetTypeID($0) == CFBooleanGetTypeID() && $0.boolValue } ?? false
+                guard let intent = normalized ?? CiWaitRules.classify(command: input?["command"] ?? input?["cmd"], runInBackground: true),
+                      background || intent.mode == "watch" else { return false }
+                if !waits.contains(where: { $0.id == id }) {
+                    guard waits.count < ${mod.CI_WAIT_LIFECYCLE.maxTools},
+                          sessions[sid] != nil || sessions.count < ${mod.CI_WAIT_LIFECYCLE.maxSessions} else { return false }
+                    var status: [String: Any] = ["kind": "ci", "provider": "github-actions", "phase": "unknown",
+                        "agentWaiting": true, "evidence": "tool_input", "openedAt": now]
+                    if let repo = intent.repo { status["repo"] = repo }
+                    if let ref = intent.ref { status["ref"] = ref }
+                    if let pr = intent.pr { status["pr"] = pr }
+                    if let run = intent.runId { status["runId"] = run }
+                    nextToken += 1
+                    waits.append(Wait(token: nextToken, id: id, background: background, status: status))
+                }
+            } else if event == "tool_end" || event == "tool_failure" {
+                let flag = json["is_error"] as? NSNumber
+                let failed = flag.map { CFGetTypeID($0) == CFBooleanGetTypeID() && $0.boolValue } ?? false
+                waits.removeAll { $0.id == id && (!$0.background || event == "tool_failure" || failed) }
+            }
+            if waits.isEmpty { sessions.removeValue(forKey: sid) } else { sessions[sid] = waits }
+        }
+        let after = snapshot(sid, now: now)
+        return !NSDictionary(dictionary: before ?? [:]).isEqual(to: after ?? [:])
+    }
+}
+#endif
 `;
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const mod = await import('../shared/dist/ci-wait.js');
-  const target = fileURLToPath(new URL('../' + OUTPUT, import.meta.url));
-  const next = emitSwift(mod);
-  if (process.argv.includes('--check')) {
-    if (fs.readFileSync(target, 'utf8') !== next) throw new Error('CI wait mirror drifted');
-  } else fs.writeFileSync(target, next);
+  for (const [output, emit] of [[OUTPUT, emitSwift], [KOTLIN_OUTPUT, emitKotlin], [CPP_OUTPUT, emitCpp], [HERMES_OUTPUT, emitHermesRules]]) {
+    const target = fileURLToPath(new URL('../' + output, import.meta.url));
+    const next = emit(mod);
+    if (process.argv.includes('--check')) {
+      if (fs.readFileSync(target, 'utf8') !== next) throw new Error('CI wait mirror drifted: ' + output);
+    } else fs.writeFileSync(target, next);
+  }
 }

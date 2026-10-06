@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { CiWaitTracker } from '@agentdeck/shared';
 import { HermesSessions, HERMES_SILENCE_TTL_MS, hermesPidLiveness, type HermesPidLiveness } from '../hermes-sessions.js';
 const session_id = `hermes-${'a'.repeat(32)}`;
 const payload = { session_id, model: 'custom-model', project_name: 'Hermes (telegram)' };
@@ -18,6 +19,24 @@ describe('Hermes conversation lifetime', () => {
       states.push(roster[0]?.state ?? 'removed');
     }
     expect(states).toEqual(['idle', 'processing', 'processing', 'processing', 'idle', 'removed']);
+  });
+  it('admits captured real Hermes CI invocation and clears only its matching tool end', () => {
+    const capture = JSON.parse(readFileSync(new URL('./fixtures/hermes-live-ci.json', import.meta.url), 'utf8'));
+    const sessions = new HermesSessions(), waits = new CiWaitTracker();
+    let opened = 0;
+    for (const row of capture.events) {
+      expect(sessions.note(row.event, row.payload, row.afterMs)).toBe(true);
+      waits.note(row.payload.session_id, row.event.replace(/^hermes_/, ''), row.payload, row.afterMs);
+      const wait = waits.snapshot(row.payload.session_id, row.afterMs);
+      if (row.event === 'hermes_tool_start') {
+        opened++;
+        expect(wait).toMatchObject({ runId: 4242, repo: 'example/project', phase: 'unknown', agentWaiting: true });
+        expect(row.payload).not.toHaveProperty('args');
+        expect(row.payload).not.toHaveProperty('tool_input');
+      } else expect(wait).toBeNull();
+    }
+    expect(opened).toBe(1);
+    expect(sessions.applyTo([], capture.events.at(-1).afterMs)).toEqual([]);
   });
   it('replays captured real CLI tool work through Stop and finalization', () => {
     const capture = JSON.parse(readFileSync(new URL('./fixtures/hermes-cli-observer.json', import.meta.url), 'utf8'));

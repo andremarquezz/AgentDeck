@@ -32,15 +32,19 @@
       "report_suite": "vitest",
       "proves": [
         "Node/Swift daemon policy mirror drift and common turn-boundary vectors; CLI rejects explicit Swift identity as Node readiness (native policy execution also runs on macOS)",
+        "Deck settings preserve conversation targets and request correlation, reject malformed mutation values, and share generated Node/Swift bounds; picker timeout/refusal and D200H activity redraw regressions are covered",
         "bridge, shared, hooks, plugin, plugin-ulanzi, setup and scripts behave as their tests specify (the domain table below counts them)",
         "line/function/branch/statement coverage of bridge, shared, plugin and hooks stays above the floor in vitest.config.ts",
         "generated Swift/Kotlin/C++ mirrors match their TypeScript source of truth (contract tests)",
-        "CI wait command intent classification and generated Swift drift; identical command vectors execute in both TS and Swift on macOS, including strict JSON booleans, UTF-16 bounds and safe identity extraction; unsupported or ambiguous input is rejected"
+        "CI wait command intent classification and generated Swift drift; identical command vectors execute in both TS and Swift on macOS, including strict JSON booleans, UTF-16 bounds and safe identity extraction; unsupported or ambiguous input is rejected; Hermes normalized CI evidence is allow-listed, bounded and matched by opaque invocation ID in both trackers",
+        "CI compact transport requires explicit agentWaiting=true for pending phases while preserving terminal verdicts; common vectors execute in Node and Swift, plus the firmware ArduinoJson projection when its build dependency is installed",
+        "README/overview 1.8.0 supplement references resolve to real assets, user-controlled captioned video, and Pages assembly paths; WebVTT cues are nonempty and ordered"
       ],
       "does_not_prove": [
         "anything about native apps, firmware or real devices",
         "macOS-only halves (Swift toolchain, launchd) — those cases are marked skipped on Linux and appear as skipped in this report",
-        "CI wait daemon/wire/UI integration or actual GitHub run state; the classifier observes intent only"
+        "CI wait daemon/wire/UI integration or actual GitHub run state; the classifier observes intent only",
+        "public video pixel fidelity, duration, browser subtitle playback, or actual Pages publication"
       ]
     },
     {
@@ -57,6 +61,7 @@
       "evidence": ["tests/e2e/daemon-hub.e2e.test.ts"],
       "proves": [
         "the real agentdeck daemon start process boots in an empty HOME and answers /health",
+        "privacy-scrubbed real Hermes CI terminal callbacks open an unknown foreground wait and clear its matching invocation through actual daemon HTTP/WS; the capture used a local fixture watcher, not a GitHub verdict",
         "Claude hook events posted to /hooks/* drive the WebSocket state stream (idle → processing → idle)",
         "the exact hook shell snippet the installer writes finds the daemon through daemon.json and delivers events",
         "PreToolUse and Stop hooks answer immediately when no device can approve, so Claude never stalls",
@@ -69,6 +74,32 @@
         "a real Claude/Codex process (events are posted with the documented payload shape)",
         "LAN pairing and default-deny from another machine (every same-host address is trusted by design; the gate itself is unit-tested in http-auth-gate.test.ts)",
         "device modules (all disabled with --local)"
+      ]
+    },
+    {
+      "id": "npm-candidate-acceptance",
+      "name": "Clean npm candidate package acceptance",
+      "level": ["integration", "e2e"],
+      "where": "Local POSIX host with Node 22, 24 or 26",
+      "workflow": null,
+      "trigger": "Before npm candidate delivery, after pnpm build",
+      "blocking": false,
+      "command": "pnpm test:packaged --soak-seconds 60 --keep-artifacts",
+      "evidence": ["scripts/verify-packaged-daemon.mjs", "setup/package.json"],
+      "proves": [
+        "all four coordinated npm tarballs install in an empty prefix without workspace links or compiled test payloads",
+        "the installed daemon boots under the exact native-binding executable on an isolated port and temporary data directory",
+        "installed Claude shell hooks discover that daemon through its registry and deliver a turn",
+        "a locally fixtured GitHub API process drives failed CI, explicit re-invocation clear, a repair tool and passed rerun over real HTTP/WebSocket interfaces",
+        "captured Hermes child/cancelled-turn hooks replay correctly and twelve concurrent read-only conversations retain independent labels and identities",
+        "four volunteered device kinds appear in health; dashboard/reader/plugin peers depart, a WiFi board reconnect updates its retained identity, and compact roster frames parse below the smallest firmware JSON guard",
+        "the packaged daemon survives the requested soak and replays persisted timeline and credentials after isolated shutdown/restart"
+      ],
+      "does_not_prove": [
+        "a live GitHub CI run or real agent execution (the subprocess and hook payloads are fixtures)",
+        "physical device rendering, hardware transport or optical acceptance",
+        "Swift/Node ownership handover, store signing or publication",
+        "a long-term production soak (duration is selected by the operator)"
       ]
     },
     {
@@ -194,9 +225,11 @@
       "trigger": "PRs and pushes touching apple/**, shared/** or generated/protocol/**",
       "blocking": true,
       "command": "xcodebuild test -scheme AgentDeck_macOS; xcodebuild build -scheme AgentDeck_iOS; validate-appstore-submission.sh",
+      "evidence": ["apple/AgentDeckTests/AgentDeckPathsTests.swift"],
       "proves": [
         "the macOS app and its in-process Swift daemon build and pass XCTest",
-        "native CI wait command intent classifier replays shared/ci-wait-vectors.json through CiWaitRulesTests",
+        "explicit daemon data-directory overrides avoid legacy user-data migration and own only their temporary paths",
+        "native CI wait intent, lifecycle and foreground accounting replay shared CI fixtures through CiWaitRulesTests",
         "the iOS app builds unsigned",
         "App Store metadata, screenshots and privacy manifest are within submission limits"
       ],
@@ -204,6 +237,21 @@
         "UI flows (there is no UI-test target)",
         "behaviour on a signed build with real TCC grants"
       ]
+    },
+    {
+      "id": "esp32-host-policy",
+      "name": "ESP32 host policy assertions",
+      "level": ["unit", "contract"],
+      "where": "Local host with a C++17 compiler",
+      "workflow": null,
+      "job": null,
+      "trigger": "Optional local firmware verification",
+      "blocking": false,
+      "required": false,
+      "command": "bash esp32/sim/run-tests.sh",
+      "evidence": ["esp32/sim/run-tests.sh", "esp32/sim/tests/creature_glyph_selection_test.cpp", "esp32/sim/tests/ci_companion_ttgo_test.cpp"],
+      "proves": ["firmware policy headers execute on the host, including strict unknown-agent glyph refusal and source feature selection"],
+      "does_not_prove": ["pixel output, physical firmware memory pressure, or an installed board update"]
     },
     {
       "id": "esp32-sim",
@@ -489,7 +537,8 @@
         "shared/src/__tests__/claude-permission-rules*.test.ts",
         "shared/src/__tests__/observed-agent-rules.test.ts",
         "shared/src/__tests__/subagent-activity.test.ts",
-        "shared/src/__tests__/ci-wait*.test.ts"
+        "shared/src/__tests__/ci-wait*.test.ts",
+        "bridge/src/__tests__/ci-wait*.test.ts"
       ]
     },
     {
@@ -562,6 +611,7 @@
       "icon": "◬",
       "match": [
         "bridge/src/__tests__/openclaw-*.test.ts",
+        "bridge/src/__tests__/session-settings-command.test.ts",
         "bridge/src/__tests__/gateway-*.test.ts",
         "shared/src/__tests__/openclaw-*.test.ts",
         "shared/src/__tests__/gateway-*.test.ts",
@@ -632,9 +682,11 @@
       "icon": "▧",
       "match": [
         "plugin/src/__tests__/*.test.ts",
+        "shared/src/__tests__/session-settings*.test.ts",
         "plugin-ulanzi/src/__tests__/*.test.ts",
         "shared/src/__tests__/svg-renderers/*.test.ts",
         "shared/src/__tests__/brand-assets-contract.test.ts",
+        "shared/src/__tests__/brand-features.test.ts",
         "shared/src/__tests__/hermes-brand.test.ts",
         "scripts/__tests__/plugin-deployment.test.ts"
       ]
@@ -644,7 +696,7 @@
       "name": "Terminal dashboard",
       "question": "Does the TUI dashboard render sessions and the terrarium stably?",
       "icon": "▨",
-      "match": ["bridge/src/__tests__/tui-*.test.ts"]
+      "match": ["bridge/src/__tests__/tui-*.test.ts", "scripts/__tests__/tui-demo-frame.test.ts"]
     },
     {
       "id": "release",
@@ -658,7 +710,9 @@
         "scripts/__tests__/npm-registry-visibility.test.ts",
         "scripts/__tests__/native-palette.test.ts",
         "scripts/__tests__/verification-catalog.test.ts",
-        "scripts/__tests__/build-health-report.test.ts"
+        "scripts/__tests__/build-health-report.test.ts",
+        "scripts/__tests__/public-media.test.ts",
+        "scripts/__tests__/aquarium-showcase-story.test.ts"
       ]
     }
   ]

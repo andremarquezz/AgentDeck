@@ -1,3 +1,6 @@
+import { CiWaitProcesses } from './ci-wait-process.js';
+import { probeCiWait } from './ci-wait-probe.js';
+import { CiWaitTracker, ciWaitLabel, CI_WAIT_LIFECYCLE } from '@agentdeck/shared';
 import { resolveZaiApiKey } from './zai-usage.js';
 import { updateDaemonSetting } from './daemon-settings.js';
 import { startPersonalVoiceTurn } from './personal-voice-turn.js';
@@ -237,7 +240,7 @@ import { KiroTimelineFeed } from './kiro-timeline-feed.js';
 import {
   DeviceVoiceReplyRouter, speakableReply, spokenDigest, pcmFromWav, type ReplySink,
 } from './device-voice-reply.js';
-import { rawSessionId, type AgentType, type StateSnapshot } from '@agentdeck/shared';
+import { rawSessionId, isSessionSettingsRequestId, isSessionSettingsTargetKey, isSessionSettingKey, isSessionSettingValue, type AgentType, type SessionSettingsEvent, type StateSnapshot } from '@agentdeck/shared';
 import { codexTurnOutcomeFromRollout, codexTurnOutcomeFromRolloutPath, lastAgentMessageFromCodexRollout } from './codex-rollout-response.js';
 import { callFoundationModelsHelper } from './foundation-models-helper.js';
 import {
@@ -1485,6 +1488,53 @@ function buildNodeModuleHealth(startedModules: DeviceModule[]): Record<string, u
  */
 let startupBuildId: string | null = null;
 
+/** Runtime settings boundary used by the actual device command path. Wire
+ * types are not validators: omitted values must never turn into JSON null. */
+export async function handleSessionSettingsRequest(
+  command: unknown,
+  adapter: Pick<OpenClawAdapter, 'isAlive' | 'querySessionSettings' | 'setSessionSetting'> | null,
+  reply: (event: SessionSettingsEvent) => void,
+): Promise<void> {
+  if (!command || typeof command !== 'object' || Array.isArray(command)) return;
+  const cmd = command as Record<string, unknown>;
+  if (!isSessionSettingsRequestId(cmd.requestId) || !isSessionSettingsTargetKey(cmd.sessionId)) return;
+  const requestId = cmd.requestId, sessionId = cmd.sessionId;
+  const targetSessionKey = isSessionSettingsTargetKey(cmd.targetSessionKey) ? cmd.targetSessionKey : undefined;
+  const respond = (settings: SessionSettingsEvent['settings'], error?: string, target = targetSessionKey): void => reply({
+    type: 'session_settings', sessionId, requestId, settings,
+    ...(target ? { targetSessionKey: target } : {}), ...(error ? { error } : {}),
+  });
+  const isSet = cmd.type === 'set_session_setting';
+  if (!isSet && cmd.type !== 'query_session_settings') { respond([], 'Invalid settings command'); return; }
+  if (isSet) {
+    if (!targetSessionKey) { respond([], 'Invalid settings target'); return; }
+    if (!isSessionSettingKey(cmd.key)) { respond([], 'Unknown session setting'); return; }
+    if (!Object.hasOwn(cmd, 'value') || !isSessionSettingValue(cmd.value)) { respond([], 'Invalid session setting value'); return; }
+  }
+  if (sessionId !== 'openclaw-gateway' || !adapter?.isAlive()) {
+    respond([], isSet ? 'Session settings are unavailable for this session' : undefined);
+    return;
+  }
+  try {
+    if (isSet) await adapter.setSessionSetting(targetSessionKey!, cmd.key as 'model' | 'effort', cmd.value as string | null);
+    const read = await adapter.querySessionSettings(isSet ? targetSessionKey : undefined);
+    respond(read.settings, undefined, read.targetSessionKey);
+  } catch (err) {
+    respond([], err instanceof Error ? err.message : 'Session settings request failed');
+  }
+}
+
+/** Request-scoped WS delivery used by the daemon, excluding board/serial paths. */
+export async function handleSessionSettingsSocketRequest(
+  command: unknown,
+  sender: WebSocket | undefined,
+  adapter: Pick<OpenClawAdapter, 'isAlive' | 'querySessionSettings' | 'setSessionSetting'> | null,
+  server: Pick<BridgeCore['wsServer'], 'isEsp32Client' | 'sendTo'>,
+): Promise<void> {
+  if (!sender || server.isEsp32Client(sender)) return;
+  await handleSessionSettingsRequest(command, adapter, event => server.sendTo(sender, event));
+}
+
 export async function startDaemon(opts: DaemonOptions): Promise<void> {
   startupBuildId = distBuildId();
   if (opts.debug) {
@@ -1920,6 +1970,9 @@ export async function startDaemon(opts: DaemonOptions): Promise<void> {
   // Cross-session coordination (spawned workers, peer messages, background
   // jobs) — the second census axis beside `subagents`. See coordination-evidence.ts.
   const coordination = new CoordinationTracker();
+  const ciWaits = new CiWaitTracker();
+  const ciWaitOwners = new Map<string, number>();
+  const ciWaitProcesses = new CiWaitProcesses();
 
   // The learning pack is immutable for one daemon lifetime. Package upgrades
   // arrive with a new AgentDeck build; validating once keeps every sleeping
@@ -3555,6 +3608,18 @@ export async function startDaemon(opts: DaemonOptions): Promise<void> {
         // (even one persisted before the restart) must not be force-closed.
         hookSessionsSeen.add(hookSid);
         hookSessionLastSeenAt.set(hookSid, Date.now());
+        if (typeof json.agentdeck_pid === 'number' && Number.isSafeInteger(json.agentdeck_pid) && json.agentdeck_pid > 0) {
+          ciWaitOwners.set(hookSid, json.agentdeck_pid);
+        }
+
+        if (ciWaits.note(hookSid, eventName.endsWith('interrupt') ? 'interrupt' : boundary, json, Date.now())) {
+          const wait = ciWaits.snapshot(hookSid, Date.now());
+          core.bridgeTimeline.addEntry({ ts: Date.now(), type: 'scheduled',
+            raw: wait ? 'CI wait requested' : 'CI wait ended · result unconfirmed',
+            sessionId: hookSid, agentType: hookAgentType, summaryKind: 'none' });
+          core.broadcastSessionsList().catch(() => {});
+        }
+
         // Missed-Stop recovery for observed Claude sessions. Fed the raw
         // PascalCase event name — the watchdog's vocabulary is Claude's, and
         // its transcript probe reads Claude's JSONL, so only Claude sessions
@@ -5002,7 +5067,51 @@ export async function startDaemon(opts: DaemonOptions): Promise<void> {
   // the observed PROCESS SET changes, and a background job appearing or a
   // worker finishing changes the process table without changing that set —
   // the same trap the OpenClaw transcript feed fell into.
+  let ciPollingStopped = false;
+  const ciProbeAfter = new Map<string, number>();
+  const ciResultsUntil = new Map<string, number>();
+  const ciProbes = new Set<string>();
+  const pollCiWaits = () => {
+    if (ciPollingStopped) return;
+    const now = Date.now();
+    const entries = ciWaits.entries(now);
+    for (const id of ciWaitProcesses.ended(entries.filter(([, wait]) => wait.agentWaiting), ciWaitOwners, passiveSessionObserver.processSnapshot())) {
+      const previous = entries.find(([sid]) => sid === id)?.[1];
+      if (previous) ciWaits.closeHead(id, previous.openedAt);
+      core.bridgeTimeline.addEntry({ ts: now, type: 'scheduled', raw: 'CI watcher ended · result unconfirmed', sessionId: id, summaryKind: 'none' });
+      core.broadcastSessionsList().catch(() => {});
+    }
+    const active = new Set(entries.map(([id]) => id));
+    for (const id of ciProbeAfter.keys()) if (!active.has(id)) ciProbeAfter.delete(id);
+    for (const id of ciResultsUntil.keys()) if (!active.has(id)) ciResultsUntil.delete(id);
+    for (const [id, wait] of ciWaits.entries(now)) {
+      if (wait.phase === 'passed' || wait.phase === 'failed') {
+        const until = ciResultsUntil.get(id);
+        if (until !== undefined && now >= until) {
+          ciWaits.closeHead(id, wait.openedAt); ciResultsUntil.delete(id);
+          core.broadcastSessionsList().catch(() => {});
+        }
+        continue;
+      }
+      ciResultsUntil.delete(id);
+      if (!wait.repo || ciProbes.has(id) || ciProbes.size >= 4 || now < (ciProbeAfter.get(id) ?? 0)) continue;
+      ciProbeAfter.set(id, now + 30_000);
+      ciProbes.add(id);
+      const token = ciWaits.tokenFor(id);
+      void probeCiWait(wait).then(evidence => {
+        const { phase } = evidence;
+        if (ciPollingStopped || !ciWaits.applyEvidence(id, token, evidence)) return;
+        if (phase === 'passed' || phase === 'failed') {
+          ciResultsUntil.set(id, Date.now() + CI_WAIT_LIFECYCLE.resultAgeMs);
+          core.bridgeTimeline.addEntry({ ts: Date.now(), type: 'scheduled',
+            raw: `CI ${phase}`, sessionId: id, summaryKind: 'none' });
+        }
+        core.broadcastSessionsList().catch(() => {});
+      }).finally(() => ciProbes.delete(id));
+    }
+  };
   const coordinationTick = () => {
+    pollCiWaits();
     const peers = coordination.mergePeers(passiveSessionObserver.collect([])
       .filter((s) => typeof s.pid === 'number' && s.pid > 0)
       .map((s) => ({ sessionId: rawSessionId(s.id), pid: s.pid })));
@@ -5150,6 +5259,8 @@ export async function startDaemon(opts: DaemonOptions): Promise<void> {
     codexOtel.forget(sid);
     subagentTimeline?.forget(sid);
     coordination.forget(sid);
+    ciWaits.forget(sid);
+    ciWaitOwners.delete(sid);
     hookSessionsSeen.delete(sid);
     hookSessionLastSeenAt.delete(sid);
     codexApmeSessions.delete(sid);
@@ -5196,6 +5307,7 @@ export async function startDaemon(opts: DaemonOptions): Promise<void> {
    *  APME run closes, the same close a finalize would have given it. */
   function sweepDepartedHermes(now = Date.now()): void {
     for (const sid of hermesSessions.sweepDeparted(undefined, now)) {
+      ciWaits.forget(sid);
       if (apme?.collector.getRunId(sid)) {
         try { apme.collector.closeRun(sid); }
         catch (err) { debug('APME', `closeRun for departed hermes ${sid.slice(0, 15)} failed: ${String(err)}`); }
@@ -5205,6 +5317,7 @@ export async function startDaemon(opts: DaemonOptions): Promise<void> {
   }
   hookCodexSessions.onChanged = () => core.maybeBroadcastSessionsList();
   hermesSessions.onExpired = (sid) => {
+    ciWaits.forget(sid);
     // Retiring the row must also release the collector's live-run ownership.
     // Otherwise a quiet Gateway chat remains exempt from the abandoned-run reaper.
     core.bridgeTimeline.reapOrphanChatStarts(0, Date.now(), undefined, { onlySessionId: sid });
@@ -5289,7 +5402,11 @@ export async function startDaemon(opts: DaemonOptions): Promise<void> {
       const withSubagents = census ? { ...withReview, subagents: census } : withReview;
       // Same emission rule for the coordination census: zeros once observed.
       const coord = coordinationCensus.get(rawSessionId(withReview.id));
-      const withCensus = coord ? { ...withSubagents, coordination: coord } : withSubagents;
+      const waitingOn = s.controlMode === 'managed' || remote.some(r => r.id === s.id)
+        ? s.waitingOn : ciWaits.snapshot(rawSessionId(s.id), now);
+      const ciLabel = !s.state?.startsWith('awaiting') ? ciWaitLabel(waitingOn) : null;
+      const withCensus = { ...withSubagents, ...(coord ? { coordination: coord } : {}),
+        ...(waitingOn !== undefined ? { waitingOn } : {}), ...(ciLabel ? { activity: ciLabel } : {}) };
       if (withCensus.elapsedSec != null || !withCensus.startedAt) return withCensus;
       const sec = Math.round((now - Date.parse(withCensus.startedAt)) / 1000);
       return Number.isFinite(sec) && sec >= 0 ? { ...withCensus, elapsedSec: sec } : withCensus;
@@ -6068,13 +6185,31 @@ export async function startDaemon(opts: DaemonOptions): Promise<void> {
     debug('daemon', `observed steering: unsupported command ${type} for ${uuid}`);
   }
 
-  const handleDeviceCommand = (cmd: PluginCommand): void => {
+  /**
+   * `query_session_settings` / `set_session_setting` (#463). Only an agent with
+   * a supported write path offers settings — today the OpenClaw Gateway
+   * (`sessions.patch`). Every other session answers an empty list: its model
+   * and effort are readouts, not switches. The answer is broadcast so every
+   * deck showing the session converges on the agent's latest values.
+   */
+  const handleSessionSettingsCommand = (cmd: unknown, sender?: WebSocket): Promise<void> =>
+    handleSessionSettingsSocketRequest(cmd, sender, gatewayAdapter, core.wsServer);
+
+  const handleDeviceCommand = (cmd: PluginCommand, sender?: WebSocket): void => {
     debug('daemon', `cmd: ${cmd.type}`);
     // Host push-to-talk is the daemon's own capability (host mic + speakers),
     // so claim it ahead of the gateway-first-dibs routing below — it must not
     // depend on what any adapter chooses to do with the legacy `voice` shape.
     if (cmd.type === 'voice') {
       handleHostVoicePtt(cmd);
+      return;
+    }
+    // Agent-native setting switches (#463) are answered by the daemon itself,
+    // never consumed by the gateway's generic command handling.
+    if (cmd.type === 'query_session_settings' || cmd.type === 'set_session_setting') {
+      // Option catalogs belong only to the requester, never the broadcast or
+      // serial streams. Boards do not expose this first-party deck control.
+      void handleSessionSettingsCommand(cmd, sender);
       return;
     }
     // Session-scoped commands are NEVER OpenClaw's to consume: a device
@@ -7526,6 +7661,8 @@ export async function startDaemon(opts: DaemonOptions): Promise<void> {
 
   // ===== Shutdown =====
   core.onShutdown(async () => {
+    ciPollingStopped = true;
+    clearInterval(coordinationTimer);
     drainDaemonSockets();
     clearInterval(permissionSweepTimer);
     clearInterval(daemonInfoHealTimer);
