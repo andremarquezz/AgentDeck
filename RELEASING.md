@@ -57,11 +57,11 @@ Distribution signing, uploads and store publication are outside this preparation
 
 | Work | Prepared 1.8.0 scope | Separate or external acceptance |
 | --- | --- | --- |
-| [#463](https://github.com/puritysb/AgentDeck/issues/463) deck settings | #464–#466: per-session model/effort/mode, OpenClaw setting pickers and observed NOW cards, with final-review corrections | Integrated source, fresh affected artifacts and actual device/runtime checks must replace the prior candidate receipts before delivery |
+| [#463](https://github.com/puritysb/AgentDeck/issues/463) deck settings | #464–#466: per-session model/effort/mode, OpenClaw setting pickers and observed NOW cards, with final-review corrections | Integrated in #460 with target binding, strict validation, correlated replies, bounded waits and visible errors; OpenCode steering and physical picker acceptance remain separate |
 | [#433](https://github.com/puritysb/AgentDeck/issues/433) CI waits | Claude/Codex/OpenCode/Hermes lifecycle, explicit clearing, bounded Node evidence/counts, session-bound GitHub companion orbit/result cues, readable Canvas/native cues, firmware activity, foreground APME accounting | Physical fleet/phone acceptance remains distinct from source and fixture tests; unknown evidence never claims a provider verdict |
 | [#449](https://github.com/puritysb/AgentDeck/issues/449) delivery | #451, #452, #459 plus clean installed-tarball acceptance, versioned plugin packages and unsigned Android artifacts | Distribution signing, upload, store review/publication and DRM-processed encoder acceptance are outside this preparation |
 | [#423](https://github.com/puritysb/AgentDeck/issues/423) Hermes umbrella | Observer-only support retained; pinned upstream CLI callbacks and real read-only GitHub watcher captured | Remains open while child acceptance is incomplete |
-| [#425](https://github.com/puritysb/AgentDeck/issues/425) Hermes surfaces | Actual macOS 3D, Lenovo Canvas/Filament CI rendering, iPad native rendering, crowded-profile and package tests | iPhone 14 Pro Max is now installed and launch-verified; physical matrix/firmware optical acceptance is not inferred from compiled images |
+| [#425](https://github.com/puritysb/AgentDeck/issues/425) Hermes surfaces | Actual macOS 3D, Lenovo Canvas/Filament CI rendering, iPad native rendering, crowded-profile and package tests | iPhone 14 Pro Max passed the prior appearance build but is unavailable for the #463 refresh; physical matrix/firmware optical acceptance is not inferred from compiled images |
 | [#426](https://github.com/puritysb/AgentDeck/issues/426) Hermes lifecycle | Pinned CLI tool/Stop/finalization, private CI intent, independent sessions and Swift model attribution | A test-only messaging Gateway channel and permission to send test messages are still needed for real `/new`/reset capture |
 | [#428](https://github.com/puritysb/AgentDeck/issues/428) Hermes model | Existing renderer retained without claiming visual approval; no replacement asset is bundled | Replacement face/rig/export and owner visual acceptance remain a separate artwork task |
 | [#273](https://github.com/puritysb/AgentDeck/issues/273) managed replacement | All managed contracts retained; no PTY removal in 1.8.0 | Remote relay/two-machine and terminal-only replacement gates apply to future removal work |
@@ -101,12 +101,19 @@ eyes and original teal pupils, Codex’s filled white prompt and OpenCode’s ac
 opening. It covers both 2D and 3D rendering, including generated device glyphs
 and canonical terminal cells. Very small LED/terminal samples can average away
 fine details; terminal hues require true-color support.
-Final executable candidate `41803e5c` passed all ten GitHub checks. Local
-verification passed 5,363 Vitest tests (8 skipped), 473 Android tests and 82
-focused Swift tests for the final fixes, in addition to the earlier native QA
-receipts. The four clean-installed npm tarballs passed all ten acceptance checks
-and a 60-second soak. macOS/iOS archive invariant checks used local verification
-signatures only; unsigned Android APK/AAB signature-absence checks passed.
+The prior candidate `41803e5c` passed all ten GitHub checks, 5,363 Vitest tests,
+473 Android tests and 82 focused Swift tests. The integrated #463 stack and final
+Ulanzi pagination correction are now executable candidate `9d0ccf2c` (all ten
+GitHub checks pass): build and
+typecheck pass, with 5,415 Vitest tests (8 skipped), 14 real-daemon E2E tests and
+16 focused Swift tests. Protocol, generated settings rules, tokens and design
+lint remain in sync. Android and ESP32 tracked sources and all 225 measured
+firmware compiler inputs are unchanged, so their prior artifact receipts remain
+applicable. Fresh macOS/iOS archives pass invariant checks; four clean-installed npm
+tarballs pass all ten acceptance checks and a 60-second soak. Affected runtime
+installations are recorded separately below.
+Archive invariant checks use local verification signatures only; no distribution
+signing or store delivery is part of this preparation.
 
 The final fixes include #462/#461 Timeline grouping and Android recency/selection,
 natural Android HUD leading, resolved npm dependency build identity, and bounded
@@ -130,16 +137,22 @@ These are local test-fleet installations, not public release versions:
 
 | Target | Verified candidate installation | Remaining boundary |
 | --- | --- | --- |
-| Node daemon | Four 1.8.0 npm packages; restarted runtime content identity `8d4564002234` | No npm publication or release tag |
-| Apple | macOS 1.8.0/build 5 from final source; iPad Air M2 and iPhone 14 Pro Max installed/launched | Later fixes are macOS-only; compiler evidence proves unchanged iOS-active code. Distribution signing and store delivery excluded |
+| Node daemon | Four fresh 1.8.0 npm packages; restarted runtime content identity `f698eb52c5e1`; real target-bound catalog query succeeds without broadcasting to other clients | No npm publication or release tag |
+| Apple | Fresh #463 macOS 1.8.0/build 5 and iPad Air M2 app installed/launched; both new Release archives pass invariant checks | iPhone 14 Pro Max retains the prior 1.8.0 candidate and is currently unavailable for this refresh. Distribution signing/store delivery excluded |
 | Android | Lenovo and Crema 1.8.0/code 25 installed in place with final Timeline/typography fixes | Pantone unavailable; Play upload excluded |
 | ESP32 | All eleven connected ESP32/TC001 boards updated; twelve-target artifacts prepared | C6 unavailable; final 225 firmware inputs unchanged, so later fixes need no reflash |
-| Stream Deck | 1.8.0.0 installed; final debug/production runtime bytes match validated baseline | DRM-processed encoder acceptance remains before marketplace publication |
-| D200H | Ulanzi 1.8.0 installed; WASM and required fonts validated | Latest bundle adds only an unused policy declaration; remaining renderer/control bytes match. Longer physical acceptance remains distinct |
+| Stream Deck | 1.8.0.0 rebuilt with #463, installed and restarted; loaded runtime hash matches validated package | Physical picker and DRM-processed encoder acceptance remain separate |
+| D200H | Ulanzi 1.8.0 rebuilt with #463 and later-page refusal fix; WASM/fonts validated, installed and restarted | Fresh process launches matching installed bytes; no in-process hash attestation. Physical picker/longer acceptance remains distinct |
+
+A retained Stream Deck host preview showed an old extra Codex row even though
+the live daemon roster contained four expected rows. Restarting the host cleared
+that image and restored matching live usage values; no source regression was
+confirmed.
 
 User data and device preferences were preserved. Five USB firmware updates also
 verified identical NVS before and after installation. The local receipts are
-kept under `diagnostics/pr462-fix/` and `diagnostics/release-180/`; private captures
+kept under `diagnostics/release-463-integration/`, `diagnostics/pr463-integration/`,
+`diagnostics/pr462-fix/` and `diagnostics/release-180/`; private captures
 and credentials are not public release media.
 
 D200H uses the Studio plugin; TC001 uses ESP32 firmware. Pixoo, Timebox and
