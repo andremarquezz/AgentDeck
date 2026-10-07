@@ -381,8 +381,6 @@ export interface UsageEvent {
   codexLastRefreshAt?: string;
   // Legacy single-account Codex usage block.
   codexRateLimits?: CodexRateLimits;
-  // Personal multi-account Codex usage, one live account snapshot per CODEX_HOME.
-  codexAccounts?: CodexAccountUsage[];
   // Z.ai GLM Coding Plan usage limits, fetched directly from the provider
   // account (monitor endpoint). Independent of any harness: the plan serves
   // Claude Code, Codex and other CLIs from one shared quota.
