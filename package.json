@@ -6,8 +6,7 @@
   "description": "Personal Ulanzi D200H monitor for JEY and AMERICANO Codex quotas",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "install:ulanzi": "powershell -ExecutionPolicy Bypass -File .\\scripts\\install.ps1",
-    "login:americano": "powershell -ExecutionPolicy Bypass -File .\\scripts\\login-americano.ps1"
+    "install:ulanzi": "powershell -ExecutionPolicy Bypass -File .\\scripts\\install.ps1"
   },
   "dependencies": {
     "@resvg/resvg-wasm": "2.6.2",
@@ -16,5 +15,7 @@
   "devDependencies": {
     "esbuild": "0.28.2"
   },
-  "engines": { "node": ">=22" }
+  "engines": {
+    "node": ">=22"
+  }
 }
