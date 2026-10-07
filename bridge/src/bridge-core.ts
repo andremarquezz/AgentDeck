@@ -576,7 +576,9 @@ export class BridgeCore {
     // account/rateLimits/read probes against each configured CODEX_HOME.
     // The Ulanzi surface consumes this block instead of guessing account
     // identity from the legacy single-account snapshot.
-    if (this.isDaemon) event.codexAccounts = getCodexAccountsUsage();
+    if (this.isDaemon) {
+      (event as unknown as Record<string, unknown>).codexAccounts = getCodexAccountsUsage();
+    }
     event.mlxModels = this.cachedMlxModels ?? [];
     event.mlxResidency = this.cachedMlxResidency;
     this.lastBuiltCodexRateLimits = event.codexRateLimits ?? null;
