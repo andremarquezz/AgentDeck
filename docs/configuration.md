@@ -40,6 +40,7 @@ stops matching the code or grows a key no loader reads.
 | `calendar.ics` | *(unset)* | Secret-address ICS URL, or a list of them, for the glance schedule. |
 | `peripheralMappings` | `[]` | NFC tag uid → steering action mapping. |
 | `idotmatrixNamePrefixes` | *(built-in list)* | Widens BLE discovery for iDotMatrix-family displays. |
+| `codexAccounts` | JEY = `~/.codex`; AMERICANO = `~/.codex-americano` | Personal D200H Codex profiles. Each row accepts `id`, `label`, `home`, and optional `enabled`. The daemon queries each profile directly through its own `CODEX_HOME`. |
 
 Keys not in this table are not read. `bridgePort`, `autoRestart`,
 `stuckTimeoutMs`, `reconnectIntervalMs`, `voiceLanguage`, `voiceAutoSend`,
@@ -57,6 +58,28 @@ removes both the saved location and that persisted cache. `weather.provider:
 "open-meteo"`, `weather.endpoint`, and `weather.apiKey` remain an explicit custom
 provider compatibility path for existing installations, not the zero-setup
 default. See [Surface Protocol → Seven-day offline weather](surface-protocol.md#seven-day-offline-weather).
+
+## Personal Codex accounts (D200H fork)
+
+This fork treats Codex quota as a personal two-profile surface. By default:
+
+```json
+{
+  "codexAccounts": [
+    { "id": "jey", "label": "JEY", "home": "~/.codex" },
+    { "id": "americano", "label": "AMERICANO", "home": "~/.codex-americano" }
+  ]
+}
+```
+
+A profile is shown only after its `home` contains a Codex `auth.json`. The daemon
+asks that profile's own `codex app-server` for `account/rateLimits/read` every
+30 seconds. Pressing any usage gauge forces an immediate refresh. No rollout-file
+reconciliation is used for these named gauges; the live account response is the
+source of truth.
+
+If the AMERICANO profile lives somewhere else, set the absolute path or a
+`~/...` path in `~/.agentdeck/settings.json`.
 
 ## Stream Deck Property Inspector
 
