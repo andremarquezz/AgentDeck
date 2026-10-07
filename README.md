@@ -17,7 +17,7 @@ Nao existe daemon AgentDeck, servidor separado, Claude, OpenCode, Android, Apple
 
 ## Contas
 
-- JEY: %USERPROFILE%\.codex
+- JEY: %USERPROFILE%\.codex-jey
 - AMERICANO: %USERPROFILE%\.codex-americano
 
 ## Instalar
