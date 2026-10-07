@@ -219,6 +219,21 @@ describe('buildSessionDeck list-view usage tiles', () => {
     expect(high).toContain('height="29"');
   });
 
+  it('does not fall back to anonymous Codex quota when personal account mode is empty', () => {
+    const state = baseState(1, {
+      usageKnown: false,
+      fiveHourPercent: undefined,
+      sevenDayPercent: undefined,
+      codexAccounts: [],
+      codexRateLimits: {
+        primary: { usedPercent: 12, windowMinutes: 300 },
+        secondary: { usedPercent: 8, windowMinutes: 10080 },
+      },
+    });
+    const tiles = usageCells(buildSessionDeck(state, { mode: 'list', showUsage: true }, POS));
+    expect(tiles).toHaveLength(0);
+  });
+
   it('renders JEY and AMERICANO as four clean Codex gauges when there is room', () => {
     const state = baseState(1, {
       usageKnown: false,
