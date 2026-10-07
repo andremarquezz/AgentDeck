@@ -596,7 +596,10 @@ function buildUsageTiles(state: DashState, budget: number = USAGE_PREFERRED_POS.
   // Multi-account mode is intentionally additive: legacy producers can keep
   // sending codexRateLimits, while the custom Windows daemon can publish
   // codexAccounts. Named accounts carry their identity into each gauge.
-  const multiCodex = Array.isArray(state.codexAccounts) && state.codexAccounts.length > 0;
+  // Presence of the array means this personal daemon owns Codex quota, even
+  // when no account is currently authenticated. Never fall back to an anonymous
+  // legacy snapshot just because JEY/AMERICANO are temporarily absent.
+  const multiCodex = Array.isArray(state.codexAccounts);
   const cx = multiCodex ? undefined : state.codexRateLimits;
   const codexAccounts: CodexAccountUsage[] = multiCodex
     ? state.codexAccounts!
