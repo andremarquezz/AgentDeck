@@ -88,7 +88,9 @@ export function getCodexAccountsUsage(): CodexAccountUsage[] {
  */
 export function refreshCodexAccountsUsage(force = false): Promise<CodexAccountUsage[]> {
   const now = Date.now();
-  if (!force && inFlight) return inFlight;
+  // Never run two app-server probes for the same accounts at once. A forced
+  // button refresh bypasses the cadence, not an already-running refresh.
+  if (inFlight) return inFlight;
   if (!force && lastRefreshStartedMs > 0 && now - lastRefreshStartedMs < CODEX_ACCOUNT_REFRESH_MS) {
     return Promise.resolve(getCodexAccountsUsage());
   }
