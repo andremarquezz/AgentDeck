@@ -15,7 +15,6 @@ import { readCodexAuthStatus } from './codex-auth.js';
 import { readCodexRateLimits } from './codex-rate-limits.js';
 import {
   codexLiveFamilyAuthorityExpiry,
-  codexRateLimitsWithLiveRefresh,
   getLiveCodexRateLimits,
 } from './codex-rate-limits-live.js';
 import {
@@ -548,11 +547,12 @@ export class BridgeCore {
     // disagree about which plan this build belongs to.
     const codexAuth = readCodexAuthStatus();
     const codexAccountPlan = codexAuth?.planType;
+    // Personal daemon: do not run AgentDeck's generic single-account live
+    // reconciliation at all. Named JEY / AMERICANO probes below are the only
+    // Codex quota source on the daemon, avoiding duplicate app-server processes
+    // and stale/anonymous values competing with the deck's account-aware data.
     const codexRateLimits = this.isDaemon
-      ? codexRateLimitsWithLiveRefresh(
-          readCodexRateLimits(undefined, codexAccountPlan),
-          codexAccountPlan,
-        )
+      ? null
       : readCodexRateLimits(undefined, codexAccountPlan);
     const event = buildUsageEvent(
       snapshot,
@@ -567,15 +567,8 @@ export class BridgeCore {
       this.cachedAntigravityStatus,
       this.apiUsagePreAdjusted,
       this.isDaemon,
-      // The passive rollout read freezes the moment Codex stops completing turns
-      // — including the moment it hits the wall — so the daemon backs it with a
-      // throttled live query against the user's own `codex app-server`. Session
-      // bridges keep the passive read only (no host-side processes there).
-      // The account tier rides into both readers: a rollout stamped with a plan
-      // the account no longer holds is voided downstream, so it must not win the
-      // selection on recency (a Codex session left open across a plan change
-      // keeps minting exactly such snapshots), and its freshness must not
-      // suppress the live query that carries the only usable number.
+      // Session bridges may still carry their local passive snapshot, but the
+      // daemon intentionally publishes no anonymous single-account block.
       codexRateLimits,
       this.zaiQuotaForWire(),
     );
