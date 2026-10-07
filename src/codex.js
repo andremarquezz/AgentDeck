@@ -95,33 +95,53 @@ async function queryRateLimits(home) {
     let child;
     try {
       child = spawn(target.binary, ['app-server'], {
-        stdio: ['pipe', 'pipe', 'ignore'],
+        stdio: ['pipe', 'pipe', 'pipe'],
         windowsHide: true,
         shell: target.shell,
         env: { ...process.env, CODEX_HOME: home },
       });
-    } catch {
-      resolve(null);
+    } catch (error) {
+      resolve({ limits: null, error: 'spawn failed: ' + String(error) });
       return;
     }
 
     let done = false;
     let buffer = '';
+    let stderr = '';
+    let initialized = false;
 
-    const finish = (value) => {
+    const finish = (limits, error = null) => {
       if (done) return;
       done = true;
       clearTimeout(timer);
       stopTree(child, target.shell);
-      resolve(value);
+      resolve({ limits, error });
     };
 
-    const timer = setTimeout(() => finish(null), TIMEOUT_MS);
+    const timer = setTimeout(() => {
+      const detail = stderr.trim();
+      finish(null, detail ? 'timeout: ' + detail : 'timeout waiting for app-server');
+    }, TIMEOUT_MS);
     if (typeof timer.unref === 'function') timer.unref();
 
-    child.on('error', () => finish(null));
-    child.on('exit', () => finish(null));
-    child.stdin?.on('error', () => finish(null));
+    child.on('error', (error) => finish(null, 'process error: ' + String(error)));
+    child.on('exit', (code) => {
+      if (!done) {
+        const detail = stderr.trim();
+        finish(null, 'app-server exited code=' + String(code) + (detail ? ': ' + detail : ''));
+      }
+    });
+    child.stdin?.on('error', (error) => finish(null, 'stdin error: ' + String(error)));
+
+    child.stderr?.setEncoding('utf8');
+    child.stderr?.on('data', (chunk) => {
+      stderr += chunk;
+      if (stderr.length > 8000) stderr = stderr.slice(-8000);
+    });
+
+    const send = (frame) => {
+      child.stdin?.write(JSON.stringify(frame) + '\n');
+    };
 
     child.stdout?.setEncoding('utf8');
     child.stdout?.on('data', (chunk) => {
@@ -134,28 +154,60 @@ async function queryRateLimits(home) {
 
         let message;
         try { message = JSON.parse(line); } catch { continue; }
-        if (message?.id !== REQUEST_ID) continue;
 
-        finish(normalizeLimits(message.result));
-        return;
+        if (message?.id === 1) {
+          if (message.error) {
+            finish(null, 'initialize failed: ' + JSON.stringify(message.error));
+            return;
+          }
+          if (initialized) continue;
+          initialized = true;
+
+          try {
+            send({ jsonrpc: '2.0', method: 'initialized', params: {} });
+            send({ jsonrpc: '2.0', id: REQUEST_ID, method: 'account/rateLimits/read' });
+          } catch (error) {
+            finish(null, 'request write failed: ' + String(error));
+          }
+          continue;
+        }
+
+        if (message?.id === REQUEST_ID) {
+          if (message.error) {
+            finish(null, 'rate limits failed: ' + JSON.stringify(message.error));
+            return;
+          }
+
+          const limits = normalizeLimits(message.result);
+          if (!limits) {
+            finish(null, 'rate limits response had no 5H/7D windows');
+            return;
+          }
+
+          finish(limits);
+          return;
+        }
       }
     });
 
-    const frames = [
-      {
+    try {
+      send({
         jsonrpc: '2.0',
         id: 1,
         method: 'initialize',
-        params: { clientInfo: { name: 'jey-codex-d200h', title: 'Jey Codex D200H', version: '1.0.0' } },
-      },
-      { jsonrpc: '2.0', method: 'initialized', params: {} },
-      { jsonrpc: '2.0', id: REQUEST_ID, method: 'account/rateLimits/read', params: {} },
-    ];
-
-    try {
-      child.stdin?.write(frames.map((frame) => JSON.stringify(frame)).join('\n') + '\n');
-    } catch {
-      finish(null);
+        params: {
+          clientInfo: {
+            name: 'jey-codex-d200h',
+            title: 'Jey Codex D200H',
+            version: '1.0.0',
+          },
+          capabilities: {
+            experimentalApi: true,
+          },
+        },
+      });
+    } catch (error) {
+      finish(null, 'initialize write failed: ' + String(error));
     }
   });
 }
@@ -165,17 +217,24 @@ export async function queryAccount(account) {
     return { id: account.id, label: account.label, status: 'login', fiveHour: null, sevenDay: null };
   }
 
-  const limits = await queryRateLimits(account.home);
-  if (!limits) {
-    return { id: account.id, label: account.label, status: 'error', fiveHour: null, sevenDay: null };
+  const query = await queryRateLimits(account.home);
+  if (!query.limits) {
+    return {
+      id: account.id,
+      label: account.label,
+      status: 'error',
+      error: query.error ?? 'unknown app-server error',
+      fiveHour: null,
+      sevenDay: null,
+    };
   }
 
   return {
     id: account.id,
     label: account.label,
     status: 'ok',
-    fiveHour: limits.fiveHour,
-    sevenDay: limits.sevenDay,
+    fiveHour: query.limits.fiveHour,
+    sevenDay: query.limits.sevenDay,
   };
 }
 
