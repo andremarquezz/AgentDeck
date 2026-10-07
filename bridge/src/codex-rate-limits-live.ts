@@ -310,7 +310,7 @@ export function codexSpawnPlan(
  * mismatch, timeout) — never rejects, so callers can treat it as best-effort.
  */
 export async function queryCodexRateLimitsLive(
-  opts: { binary?: string; args?: string[]; timeoutMs?: number } = {},
+  opts: { binary?: string; args?: string[]; timeoutMs?: number; codexHome?: string } = {},
 ): Promise<CodexRateLimits | null> {
   const binary = opts.binary ?? codexBinary();
   const args = opts.args ?? ['app-server'];
@@ -329,6 +329,9 @@ export async function queryCodexRateLimitsLive(
         stdio: ['pipe', 'pipe', 'ignore'],
         shell: plan.shell,
         windowsHide: true,
+        env: opts.codexHome
+          ? { ...process.env, CODEX_HOME: opts.codexHome }
+          : process.env,
       });
     } catch {
       resolve(null);
