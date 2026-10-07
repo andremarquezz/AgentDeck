@@ -1153,6 +1153,35 @@ describe('queryCodexRateLimitsLive', () => {
     expect(Date.parse(rl!.capturedAt!)).toBeGreaterThan(0);
   });
 
+  it('passes an explicit CODEX_HOME to the account app-server', async () => {
+    const expectedHome = path.join(dir, 'americano-home');
+    const server = fakeServer(`
+      let buf = '';
+      process.stdin.setEncoding('utf8');
+      process.stdin.on('data', (chunk) => {
+        buf += chunk;
+        let nl;
+        while ((nl = buf.indexOf('\\n')) >= 0) {
+          const line = buf.slice(0, nl); buf = buf.slice(nl + 1);
+          if (!line.trim()) continue;
+          const msg = JSON.parse(line);
+          if (msg.method === 'account/rateLimits/read') {
+            if (process.env.CODEX_HOME !== ${JSON.stringify(expectedHome)}) process.exit(9);
+            process.stdout.write(JSON.stringify({ id: msg.id, result: ${JSON.stringify(liveResult)} }) + '\\n');
+          }
+        }
+      });
+      setTimeout(() => {}, 60000);
+    `);
+    const rl = await queryCodexRateLimitsLive({
+      binary: process.execPath,
+      args: [server],
+      timeoutMs: 10000,
+      codexHome: expectedHome,
+    });
+    expect(rl).not.toBeNull();
+  });
+
   it('resolves null when the server never answers, without hanging', async () => {
     const server = fakeServer(`setTimeout(() => {}, 60000);`);
     const started = Date.now();
