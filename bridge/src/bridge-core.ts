@@ -18,6 +18,11 @@ import {
   codexRateLimitsWithLiveRefresh,
   getLiveCodexRateLimits,
 } from './codex-rate-limits-live.js';
+import {
+  CODEX_ACCOUNT_REFRESH_MS,
+  getCodexAccountsUsage,
+  refreshCodexAccountsUsage as refreshPersonalCodexAccountsUsage,
+} from './codex-account-usage.js';
 import { fetchMlxModels, fetchMlxResidency } from './mlx-probe.js';
 import { buildDisplayStateEvent } from './display-dim.js';
 import { foldCodexSessionsForDisplay, loadMlxSettings, sortSessions } from '@agentdeck/shared';
@@ -574,6 +579,11 @@ export class BridgeCore {
       codexRateLimits,
       this.zaiQuotaForWire(),
     );
+    // Personal fork: named Codex accounts are sourced only from direct
+    // account/rateLimits/read probes against each configured CODEX_HOME.
+    // The Ulanzi surface consumes this block instead of guessing account
+    // identity from the legacy single-account snapshot.
+    if (this.isDaemon) event.codexAccounts = getCodexAccountsUsage();
     event.mlxModels = this.cachedMlxModels ?? [];
     event.mlxResidency = this.cachedMlxResidency;
     this.lastBuiltCodexRateLimits = event.codexRateLimits ?? null;
@@ -596,6 +606,13 @@ export class BridgeCore {
   /** Broadcast current usage to all clients */
   broadcastUsage(): void {
     this.broadcast(this.buildUsage());
+  }
+
+  /** Refresh JEY / AMERICANO directly from their own CODEX_HOME profiles. */
+  async refreshCodexAccountsUsage(force = false): Promise<void> {
+    if (!this.isDaemon) return;
+    await refreshPersonalCodexAccountsUsage(force);
+    this.broadcastUsage();
   }
 
   // ===== API Usage helpers =====
@@ -832,6 +849,17 @@ export class BridgeCore {
    * Also retires displayed quota after USAGE_STALE_TTL.
    */
   startUsageTick(intervalMs = 5000): void {
+    if (this.isDaemon) {
+      // Prime the deck immediately, then keep both accounts fresh. This is
+      // intentionally much faster than upstream AgentDeck's five-minute live
+      // probe because the quota gauges are the primary purpose of this fork.
+      void this.refreshCodexAccountsUsage(true).catch(() => {});
+      this.addInterval(setInterval(() => {
+        if (!this.hasClients()) return;
+        void this.refreshCodexAccountsUsage(false).catch(() => {});
+      }, CODEX_ACCOUNT_REFRESH_MS));
+    }
+
     this.addInterval(setInterval(() => {
       if (!this.hasClients()) return;
       // TTL: keep last good cache, but mark it stale
