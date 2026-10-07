@@ -219,7 +219,7 @@ describe('buildSessionDeck list-view usage tiles', () => {
     expect(high).toContain('height="29"');
   });
 
-  it('renders JEY and USA as four clean Codex gauges when there is room', () => {
+  it('renders JEY and AMERICANO as four clean Codex gauges when there is room', () => {
     const state = baseState(1, {
       usageKnown: false,
       fiveHourPercent: undefined,
@@ -234,8 +234,8 @@ describe('buildSessionDeck list-view usage tiles', () => {
           },
         },
         {
-          id: 'usa',
-          label: 'USA',
+          id: 'americano',
+          label: 'AMERICANO',
           rateLimits: {
             primary: { usedPercent: 10, windowMinutes: 300, resetsAt: '2099-01-01T03:20:00Z' },
             secondary: { usedPercent: 35, windowMinutes: 10080, resetsAt: '2099-01-05T12:00:00Z' },
@@ -246,7 +246,7 @@ describe('buildSessionDeck list-view usage tiles', () => {
     const tiles = usageCells(buildSessionDeck(state, { mode: 'list', showUsage: true }, POS)).map((cell) => cell.svg);
     expect(tiles).toHaveLength(4);
     expect(tiles.filter((svg) => svg.includes('JEY'))).toHaveLength(2);
-    expect(tiles.filter((svg) => svg.includes('USA'))).toHaveLength(2);
+    expect(tiles.filter((svg) => svg.includes('AMERICANO'))).toHaveLength(2);
     expect(tiles.join('')).toContain('>58<tspan');
     expect(tiles.join('')).toContain('>78<tspan');
     expect(tiles.join('')).toContain('>90<tspan');
@@ -272,8 +272,8 @@ describe('buildSessionDeck list-view usage tiles', () => {
           },
         },
         {
-          id: 'usa',
-          label: 'USA',
+          id: 'americano',
+          label: 'AMERICANO',
           rateLimits: {
             primary: { usedPercent: 10, windowMinutes: 300 },
             secondary: { usedPercent: 35, windowMinutes: 10080 },
@@ -288,7 +288,7 @@ describe('buildSessionDeck list-view usage tiles', () => {
     expect(tiles[0]).toContain('7D');
     expect(tiles[0]).toContain('>58<');
     expect(tiles[0]).toContain('>78<');
-    expect(tiles[1]).toContain('USA');
+    expect(tiles[1]).toContain('AMERICANO');
     expect(tiles[1]).toContain('5H');
     expect(tiles[1]).toContain('7D');
     expect(tiles[1]).toContain('>90<');
