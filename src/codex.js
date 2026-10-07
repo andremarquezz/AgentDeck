@@ -7,7 +7,7 @@ const REQUEST_ID = 2;
 const TIMEOUT_MS = 7000;
 
 export const ACCOUNTS = [
-  { id: 'jey', label: 'JEY', home: path.join(os.homedir(), '.codex') },
+  { id: 'jey', label: 'JEY', home: path.join(os.homedir(), '.codex-jey') },
   { id: 'americano', label: 'AMERICANO', home: path.join(os.homedir(), '.codex-americano') },
 ];
 
