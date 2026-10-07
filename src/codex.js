@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 
 const REQUEST_ID = 2;
 const TIMEOUT_MS = 7000;
@@ -68,11 +68,92 @@ function normalizeLimits(result) {
   return { fiveHour, sevenDay };
 }
 
+function existingFile(file) {
+  try { return file && fs.existsSync(file) ? file : null; } catch { return null; }
+}
+
+function resolveCodexBinary() {
+  if (process.env.JEY_CODEX_BIN) return process.env.JEY_CODEX_BIN;
+
+  if (process.platform !== 'win32') return 'codex';
+
+  try {
+    const found = spawnSync('where.exe', ['codex'], {
+      encoding: 'utf8',
+      windowsHide: true,
+    });
+    if (found.status === 0 && found.stdout) {
+      const paths = found.stdout
+        .split(/\r?\n/)
+        .map((value) => value.trim())
+        .filter(Boolean);
+      const executable = paths.find((value) => /\.exe$/i.test(value));
+      if (executable) return executable;
+      const cmd = paths.find((value) => /\.(cmd|bat)$/i.test(value));
+      if (cmd) return cmd;
+    }
+  } catch {}
+
+  const extensionRoots = [
+    path.join(os.homedir(), '.vscode', 'extensions'),
+    path.join(os.homedir(), '.vscode-insiders', 'extensions'),
+  ];
+
+  for (const root of extensionRoots) {
+    let dirs = [];
+    try { dirs = fs.readdirSync(root, { withFileTypes: true }); } catch { continue; }
+
+    const openaiDirs = dirs
+      .filter((entry) => entry.isDirectory() && /openai|chatgpt|codex/i.test(entry.name))
+      .map((entry) => path.join(root, entry.name));
+
+    for (const dir of openaiDirs) {
+      for (const relative of [
+        path.join('bin', 'windows-x86_64', 'codex.exe'),
+        path.join('bin', 'windows-arm64', 'codex.exe'),
+        path.join('bin', 'codex.exe'),
+      ]) {
+        const hit = existingFile(path.join(dir, relative));
+        if (hit) return hit;
+      }
+    }
+  }
+
+  return 'codex';
+}
+
 function codexSpawnTarget() {
-  const custom = process.env.JEY_CODEX_BIN;
-  const binary = custom || (process.platform === 'win32' ? 'codex.cmd' : 'codex');
-  const shell = process.platform === 'win32' && /\.(cmd|bat)$/i.test(binary);
-  return { binary: shell && /\s/.test(binary) ? '"' + binary + '"' : binary, shell };
+  const binary = resolveCodexBinary();
+
+  if (process.platform === 'win32' && /\.(cmd|bat)$/i.test(binary)) {
+    const comspec = process.env.ComSpec || process.env.COMSPEC || 'cmd.exe';
+    return {
+      command: comspec,
+      argsPrefix: ['/d', '/s', '/c'],
+      commandLine: '"' + binary + '" app-server',
+      shell: false,
+      display: binary,
+    };
+  }
+
+  if (process.platform === 'win32' && !/\.exe$/i.test(binary) && !path.isAbsolute(binary)) {
+    const comspec = process.env.ComSpec || process.env.COMSPEC || 'cmd.exe';
+    return {
+      command: comspec,
+      argsPrefix: ['/d', '/s', '/c'],
+      commandLine: binary + ' app-server',
+      shell: false,
+      display: binary,
+    };
+  }
+
+  return {
+    command: binary,
+    argsPrefix: [],
+    commandLine: null,
+    shell: false,
+    display: binary,
+  };
 }
 
 function stopTree(child, shell) {
@@ -94,14 +175,17 @@ async function queryRateLimits(home) {
   return new Promise((resolve) => {
     let child;
     try {
-      child = spawn(target.binary, ['app-server'], {
+      const args = target.commandLine
+        ? [...target.argsPrefix, target.commandLine]
+        : ['app-server'];
+      child = spawn(target.command, args, {
         stdio: ['pipe', 'pipe', 'pipe'],
         windowsHide: true,
-        shell: target.shell,
+        shell: false,
         env: { ...process.env, CODEX_HOME: home },
       });
     } catch (error) {
-      resolve({ limits: null, error: 'spawn failed: ' + String(error) });
+      resolve({ limits: null, error: 'spawn failed (' + target.display + '): ' + String(error) });
       return;
     }
 
@@ -114,7 +198,7 @@ async function queryRateLimits(home) {
       if (done) return;
       done = true;
       clearTimeout(timer);
-      stopTree(child, target.shell);
+      stopTree(child, target.commandLine !== null);
       resolve({ limits, error });
     };
 
