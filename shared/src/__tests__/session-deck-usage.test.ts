@@ -196,11 +196,27 @@ describe('buildSessionDeck list-view usage tiles', () => {
     expect(claude7).toContain('7D');
     expect(claude7).toContain(CLAUDE_MARK);
     expect(codexPair).toContain('5H');
-    expect(codexPair).toContain('>30<');
+    expect(codexPair).toContain('>70<');
     expect(codexPair).toContain('7D');
-    expect(codexPair).toContain('>10<');
+    expect(codexPair).toContain('>90<');
     expect(codexPair).toContain(CODEX_MARK);
     expect(codexPair).toContain('M8.086.457'); // Codex provider logo path
+  });
+
+  it('renders Codex as remaining capacity so the tank shrinks as usage grows', () => {
+    const lowUsage = {
+      codexRateLimits: { primary: { usedPercent: 20, windowMinutes: 300 } },
+    };
+    const highUsage = {
+      codexRateLimits: { primary: { usedPercent: 80, windowMinutes: 300 } },
+    };
+    const low = buildSessionDeck(baseState(12, lowUsage), { mode: 'list', showUsage: true }, POS).get(STRIP_R)!.svg;
+    const high = buildSessionDeck(baseState(12, highUsage), { mode: 'list', showUsage: true }, POS).get(STRIP_R)!.svg;
+    expect(low).toContain('>80<tspan');
+    expect(high).toContain('>20<tspan');
+    // Full-bleed fill height follows REMAINING quota: 80% left is taller than 20% left.
+    expect(low).toContain('height="115"');
+    expect(high).toContain('height="29"');
   });
 
   it('renders only the Codex window whose datum exists', () => {
@@ -210,7 +226,7 @@ describe('buildSessionDeck list-view usage tiles', () => {
     const deck = buildSessionDeck(baseState(12, onlyPrimary), { mode: 'list', showUsage: true }, POS);
     // 3 tiles (Claude 5H/7D + Codex 5H) → the strip fills exactly.
     expect(deck.get(STRIP_R)!.svg).toContain(CODEX_MARK);
-    expect(deck.get(STRIP_R)!.svg).toContain('>25<');
+    expect(deck.get(STRIP_R)!.svg).toContain('>75<');
     const codexTiles = usageCells(deck).filter((c) => c.svg.includes(CODEX_MARK));
     expect(codexTiles).toHaveLength(1); // only the Codex 5H window
   });
@@ -233,7 +249,7 @@ describe('buildSessionDeck list-view usage tiles', () => {
     const codexTile = deck.get(STRIP_R)!.svg;         // Codex weekly, flush to the clock
     expect(codexTile).toContain('7D');       // labelled by length, not slot
     expect(codexTile).not.toContain('5H');
-    expect(codexTile).toContain('>4<');      // used 4%
+    expect(codexTile).toContain('>96<');     // 96% remaining
     expect(codexTile).toContain(CODEX_MARK);
     // Exactly one Codex gauge (no phantom secondary tile).
     expect(usageCells(deck).filter((c) => c.svg.includes(CODEX_MARK))).toHaveLength(1);
@@ -306,8 +322,8 @@ describe('buildSessionDeck list-view usage tiles', () => {
     };
     const restored = buildSessionDeck(baseState(12, withoutLuna), { mode: 'list', showUsage: true }, POS);
     expect(usageCells(restored)).toHaveLength(3);
-    expect(usageCells(restored)[2].svg).toContain('>30<');
-    expect(usageCells(restored)[2].svg).toContain('>100<');
+    expect(usageCells(restored)[2].svg).toContain('>70<');
+    expect(usageCells(restored)[2].svg).toContain('>0<');
   });
 
   it('shows the purchased-credit balance in place of an exhausted Codex window', () => {
@@ -331,14 +347,14 @@ describe('buildSessionDeck list-view usage tiles', () => {
       codexRateLimits: { ...exhausted.codexRateLimits, secondary: { ...exhausted.codexRateLimits.secondary, usedPercent: 94 } },
     }), { mode: 'list', showUsage: true }, POS);
     expect(usageCells(inside).map((c) => c.svg).join('')).not.toContain('CREDITS LEFT');
-    expect(usageCells(inside).map((c) => c.svg).join('')).toContain('>94<');
+    expect(usageCells(inside).map((c) => c.svg).join('')).toContain('>6<');
 
     // Exhausted with nothing to spend: no credit tile, the exhausted window stays.
     const broke = buildSessionDeck(baseState(12, {
       codexRateLimits: { ...exhausted.codexRateLimits, credits: { hasCredits: false, unlimited: false, balance: '0' } },
     }), { mode: 'list', showUsage: true }, POS);
     expect(usageCells(broke).map((c) => c.svg).join('')).not.toContain('CREDITS LEFT');
-    expect(usageCells(broke).map((c) => c.svg).join('')).toContain('>100<');
+    expect(usageCells(broke).map((c) => c.svg).join('')).toContain('>0<');
   });
 
   it('keeps credits and the Luna reserve as separate keys, yielding the reserve when full', () => {
@@ -426,7 +442,7 @@ describe('buildSessionDeck scoped cap within the fixed usage strip', () => {
     expect(tiles[1]).toContain('FABLE');
     expect(tiles[1]).toContain('>98<');
     expect(tiles[2]).toContain(CODEX_MARK);
-    expect(tiles[2]).toContain('>10<');
+    expect(tiles[2]).toContain('>90<');
   });
 
   const bothWindows = {
@@ -446,8 +462,8 @@ describe('buildSessionDeck scoped cap within the fixed usage strip', () => {
     expect(tiles[1]).toContain('FABLE');
     expect(tiles[1]).toContain('>98<');
     expect(tiles[2]).toContain(CODEX_MARK);
-    expect(tiles[2]).toContain('>30<');
-    expect(tiles[2]).toContain('>10<');
+    expect(tiles[2]).toContain('>70<');
+    expect(tiles[2]).toContain('>90<');
   });
 
   it('seats the cap identically whether or not it is binding', () => {
@@ -474,7 +490,7 @@ describe('buildSessionDeck scoped cap within the fixed usage strip', () => {
     expect(tiles[1]).toContain('FABLE');
     expect(tiles[1]).toContain('>17<');
     expect(tiles[2]).toContain(CODEX_MARK);
-    expect(tiles[2]).toContain('>10<');
+    expect(tiles[2]).toContain('>90<');
   });
 
   it('draws no tile for a window the API did not report — but still draws a real 0%', () => {
