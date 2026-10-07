@@ -67,6 +67,7 @@ export function gaugeSvg(options) {
   const reading = options.reading;
   const status = options.status || 'ok';
   const stale = options.stale === true;
+  const syncing = options.syncing === true;
   const W = 144;
   const H = 144;
   const remaining = reading ? Math.max(0, Math.min(100, 100 - reading.usedPercent)) : 0;
@@ -75,18 +76,20 @@ export function gaugeSvg(options) {
   const fillY = H - fillH;
   const value = reading ? String(Math.round(remaining)) : '—';
   const footer =
-    status === 'login' ? 'LOGIN'
-      : status === 'error' ? 'OFFLINE'
-        : stale ? 'STALE'
-          : formatReset(reading?.resetsAt);
+    syncing ? 'SYNC'
+      : status === 'login' ? 'LOGIN'
+        : status === 'error' ? 'OFFLINE'
+          : stale ? 'STALE'
+            : formatReset(reading?.resetsAt);
   const valueColor = reading ? '#ffffff' : '#64748b';
-  const footerColor = stale || status !== 'ok' ? '#94a3b8' : '#ffffff';
+  const footerColor = syncing ? '#38bdf8' : (stale || status !== 'ok' ? '#94a3b8' : '#ffffff');
   const accountSize = account.length > 6 ? 9 : 11;
 
   let svg = '';
   svg += '<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">';
   svg += '<defs><clipPath id="clip"><rect width="144" height="144" rx="12"/></clipPath></defs>';
   svg += '<rect width="144" height="144" rx="12" fill="#0f172a"/>';
+  if (syncing) svg += '<rect x="2" y="2" width="140" height="140" rx="10" fill="none" stroke="#38bdf8" stroke-width="3" opacity="0.95"/>';
   if (reading) {
     svg += '<g clip-path="url(#clip)">';
     svg += '<rect x="0" y="' + fillY + '" width="144" height="' + fillH + '" fill="' + color + '" opacity="0.14"/>';
