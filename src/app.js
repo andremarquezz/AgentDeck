@@ -35,7 +35,7 @@ try {
 }
 
 function specFor(message) {
-  return ACTIONS[message.actionid] || null;
+  return ACTIONS[message.uuid] || null;
 }
 
 function accountFor(spec) {
@@ -49,7 +49,7 @@ function accountFor(spec) {
 }
 
 function renderInstance(instance) {
-  const spec = ACTIONS[instance.actionid];
+  const spec = ACTIONS[instance.uuid];
   if (!spec) return;
 
   const current = accountFor(spec);
@@ -105,18 +105,19 @@ async function refresh() {
 }
 
 api.onAdd((message) => {
-  log('onAdd ' + message.actionid + ' ' + message.key);
+  log('onAdd uuid=' + message.uuid + ' actionid=' + message.actionid + ' key=' + message.key);
   if (!specFor(message)) return;
 
   instances.set(message.context, {
     context: message.context,
+    uuid: message.uuid,
     actionid: message.actionid,
     key: message.key,
   });
 
   try {
     renderInstance(instances.get(message.context));
-    log('initial render ok ' + message.actionid);
+    log('initial render ok ' + message.uuid);
   } catch (error) {
     log('initial render failed: ' + String(error));
   }
