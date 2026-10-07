@@ -219,6 +219,83 @@ describe('buildSessionDeck list-view usage tiles', () => {
     expect(high).toContain('height="29"');
   });
 
+  it('renders JEY and USA as four clean Codex gauges when there is room', () => {
+    const state = baseState(1, {
+      usageKnown: false,
+      fiveHourPercent: undefined,
+      sevenDayPercent: undefined,
+      codexAccounts: [
+        {
+          id: 'jey',
+          label: 'JEY',
+          rateLimits: {
+            primary: { usedPercent: 42, windowMinutes: 300, resetsAt: '2099-01-01T04:51:00Z' },
+            secondary: { usedPercent: 22, windowMinutes: 10080, resetsAt: '2099-01-07T18:00:00Z' },
+          },
+        },
+        {
+          id: 'usa',
+          label: 'USA',
+          rateLimits: {
+            primary: { usedPercent: 10, windowMinutes: 300, resetsAt: '2099-01-01T03:20:00Z' },
+            secondary: { usedPercent: 35, windowMinutes: 10080, resetsAt: '2099-01-05T12:00:00Z' },
+          },
+        },
+      ],
+    });
+    const tiles = usageCells(buildSessionDeck(state, { mode: 'list', showUsage: true }, POS)).map((cell) => cell.svg);
+    expect(tiles).toHaveLength(4);
+    expect(tiles.filter((svg) => svg.includes('JEY'))).toHaveLength(2);
+    expect(tiles.filter((svg) => svg.includes('USA'))).toHaveLength(2);
+    expect(tiles.join('')).toContain('>58<tspan');
+    expect(tiles.join('')).toContain('>78<tspan');
+    expect(tiles.join('')).toContain('>90<tspan');
+    expect(tiles.join('')).toContain('>65<tspan');
+    // Named accounts use the upper-right text identity instead of the Codex
+    // glyph, preserving the original gauge geometry.
+    expect(tiles.join('')).not.toContain(CODEX_MARK);
+    expect(tiles.join('')).toContain('x="130" y="22" text-anchor="end"');
+  });
+
+  it('compacts each Codex account with itself when the strip is tight', () => {
+    const state = baseState(12, {
+      usageKnown: false,
+      fiveHourPercent: undefined,
+      sevenDayPercent: undefined,
+      codexAccounts: [
+        {
+          id: 'jey',
+          label: 'JEY',
+          rateLimits: {
+            primary: { usedPercent: 42, windowMinutes: 300 },
+            secondary: { usedPercent: 22, windowMinutes: 10080 },
+          },
+        },
+        {
+          id: 'usa',
+          label: 'USA',
+          rateLimits: {
+            primary: { usedPercent: 10, windowMinutes: 300 },
+            secondary: { usedPercent: 35, windowMinutes: 10080 },
+          },
+        },
+      ],
+    });
+    const tiles = usageCells(buildSessionDeck(state, { mode: 'list', showUsage: true }, POS)).map((cell) => cell.svg);
+    expect(tiles).toHaveLength(2);
+    expect(tiles[0]).toContain('JEY');
+    expect(tiles[0]).toContain('5H');
+    expect(tiles[0]).toContain('7D');
+    expect(tiles[0]).toContain('>58<');
+    expect(tiles[0]).toContain('>78<');
+    expect(tiles[1]).toContain('USA');
+    expect(tiles[1]).toContain('5H');
+    expect(tiles[1]).toContain('7D');
+    expect(tiles[1]).toContain('>90<');
+    expect(tiles[1]).toContain('>65<');
+    expect(tiles.join('')).not.toContain(CODEX_MARK);
+  });
+
   it('renders only the Codex window whose datum exists', () => {
     const onlyPrimary = {
       codexRateLimits: { primary: { usedPercent: 25, windowMinutes: 300 } },
