@@ -24,6 +24,7 @@ const api = new UlanziApi();
 const instances = new Map();
 let accounts = new Map();
 let refreshing = null;
+let manualSync = false;
 const lastGood = new Map();
 
 try {
@@ -64,6 +65,7 @@ function renderInstance(instance) {
     reading,
     status,
     stale,
+    syncing: manualSync,
   });
 
   api.setBaseDataIcon(instance.context, svgToDataUri(svg));
@@ -77,10 +79,30 @@ function renderAll() {
   }
 }
 
-async function refresh() {
-  if (refreshing) return refreshing;
+async function refresh(showFeedback = false) {
+  if (refreshing) {
+    if (showFeedback) {
+      manualSync = true;
+      log('manual sync joined active refresh');
+      renderAll();
+      try {
+        await refreshing;
+      } finally {
+        manualSync = false;
+        renderAll();
+        log('manual sync end');
+      }
+    }
+    return refreshing;
+  }
 
-  refreshing = (async () => {
+  if (showFeedback) {
+    manualSync = true;
+    log('manual sync start');
+    renderAll();
+  }
+
+  const task = (async () => {
     log('refresh start');
     const fresh = await queryAllAccounts();
     for (const [id, result] of fresh) log('account ' + id + ' status=' + result.status);
@@ -97,11 +119,20 @@ async function refresh() {
 
     renderAll();
     log('refresh rendered');
-  })().finally(() => {
-    refreshing = null;
-  });
+  })();
 
-  return refreshing;
+  refreshing = task;
+
+  try {
+    await task;
+  } finally {
+    if (refreshing === task) refreshing = null;
+    if (showFeedback) {
+      manualSync = false;
+      renderAll();
+      log('manual sync end');
+    }
+  }
 }
 
 api.onAdd((message) => {
@@ -135,7 +166,7 @@ api.onClear((message) => {
 });
 
 api.onRun(() => {
-  void refresh();
+  void refresh(true);
 });
 
 api.onConnected(() => {
