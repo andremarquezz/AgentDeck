@@ -193,6 +193,17 @@ export interface CodexRateLimits {
   capturedAt?: string;
 }
 
+
+export interface CodexAccountUsage {
+  /** Stable local key used to associate this reading with one CODEX_HOME. */
+  id: string;
+  /** Short human label rendered on compact devices, e.g. "JEY" or "USA". */
+  label: string;
+  /** Quota snapshot for this account. */
+  rateLimits: CodexRateLimits;
+}
+
+
 /** Z.ai (GLM Coding Plan) usage limits, fetched directly from the provider's
  *  monitor endpoint with the account's coding-plan key — an active account
  *  query like the Claude OAuth usage read, not a passive local-file snapshot.
