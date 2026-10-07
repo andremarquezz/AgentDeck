@@ -414,7 +414,7 @@ export interface UsageTankData {
   window: '5h' | '7d';
   /** Tile label, e.g. "5H", "7D". Agent identity rides the brand dot, not a prefix. */
   label: string;
-  /** Optional short account identity for multi-account Codex surfaces (e.g. "JEY", "USA"). */
+  /** Optional short account identity for multi-account Codex surfaces (e.g. "JEY", "AMERICANO"). */
   accountLabel?: string;
   /** Percent of the window already CONSUMED (0–100). */
   usedPercent: number;
@@ -448,14 +448,14 @@ export function renderUsageGauge(data: UsageTankData): string {
   const clip = `<defs><clipPath id="${clipId}"><rect x="0" y="0" width="${W}" height="${H}" rx="${RX}"/></clipPath></defs>`;
   const bg = `<rect width="${W}" height="${H}" rx="${RX}" fill="${BG}"/>`;
   // On named Codex accounts the account label is the identity. Dropping the
-  // provider mark buys enough top-right space to keep JEY/USA readable without
+  // provider mark buys enough top-right space to keep JEY/AMERICANO readable without
   // disturbing the proven 5H/7D layout.
   const logo = agent === 'codex' && accountLabel ? '' : usageBrandLogo(agent, 124, 22, 26, !known);
 
   if (!known) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`
       + clip + bg
-      + (accountLabel ? `<text x="130" y="22" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="11" font-weight="bold" fill="${LABEL_DIM}">${escXml(truncateLabel(accountLabel, 8))}</text>` : '')
+      + (accountLabel ? `<text x="130" y="22" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="11" font-weight="bold" fill="${LABEL_DIM}">${escXml(truncateLabel(accountLabel, 10))}</text>` : '')
       + `<text x="14" y="36" font-family="JetBrains Mono, monospace" font-size="26" font-weight="bold" fill="${LABEL_DIM}">${escXml(label)}</text>`
       + logo
       + `<text x="72" y="94" text-anchor="middle" font-family="Arial,sans-serif" font-size="44" font-weight="bold" fill="${TEXT_DIM}">—</text></svg>`;
@@ -491,7 +491,7 @@ export function renderUsageGauge(data: UsageTankData): string {
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`
     + clip + bg + fill
-    + (accountLabel ? `<text x="130" y="22" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="11" font-weight="bold" fill="${dim ? LABEL_DIM : Tide.s400}">${escXml(truncateLabel(accountLabel, 8))}</text>` : '')
+    + (accountLabel ? `<text x="130" y="22" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="11" font-weight="bold" fill="${dim ? LABEL_DIM : Tide.s400}">${escXml(truncateLabel(accountLabel, 10))}</text>` : '')
     + `<text x="14" y="36" font-family="JetBrains Mono, monospace" font-size="26" font-weight="bold" fill="${dim ? LABEL_DIM : HEADLINE}">${escXml(label)}</text>`
     + logo
     + `<text x="72" y="92" text-anchor="middle" font-family="Arial,sans-serif" font-size="46" font-weight="bold" fill="${pctColor}">${Math.round(displayPercent)}<tspan font-size="24">%</tspan></text>`
@@ -538,7 +538,7 @@ export function renderUsagePairGauge(agent: 'claude' | 'codex' | 'zai', windows:
   }).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`
     + bg + windows.slice(1).map((_, i) => `<rect x="8" y="${(i + 1) * H / windows.length - 1}" width="128" height="1" fill="${UI.ttyFaint}"/>`).join('') + rows
-    + (accountLabel ? `<text x="132" y="15" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" font-weight="bold" fill="${Tide.s400}">${escXml(truncateLabel(accountLabel, 8))}</text>` : '')
+    + (accountLabel ? `<text x="132" y="15" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" font-weight="bold" fill="${Tide.s400}">${escXml(truncateLabel(accountLabel, 10))}</text>` : '')
     + logo + `</svg>`;
 }
 
@@ -691,7 +691,7 @@ function buildUsageTiles(state: DashState, budget: number = USAGE_PREFERRED_POS.
   if (spendingTile && lunaTile && baseCount + 1 > budget) lunaTile = undefined;
   const logicalCount = baseCount + (lunaTile ? 1 : 0);
   // Compact within each account, never across accounts. JEY 5H+7D may share a
-  // key under pressure, but JEY and USA are never mixed into one tile.
+  // key under pressure, but JEY and AMERICANO are never mixed into one tile.
   const codexPairSavings = codexAccountWindowData.reduce(
     (sum, group) => sum + (group.windows.length === 2 ? 1 : 0),
     0,
