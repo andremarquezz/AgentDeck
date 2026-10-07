@@ -220,6 +220,9 @@ export class StateStore {
       // Pass it straight through so the layout engine can draw CX 5H/7D tiles
       // alongside Claude's, mirroring how fiveHourPercent is surfaced.
       codexRateLimits: this.usage.codexRateLimits,
+      // Custom multi-profile Codex usage. Kept separate from the legacy single
+      // block so upstream AgentDeck compatibility remains intact.
+      codexAccounts: this.usage.codexAccounts,
       // z.ai GLM Coding Plan quota rides the same event (#348). Without this
       // the D200H deck's z.ai tiles never receive data, no matter what the
       // shared layout engine supports — the exact defect that hid Codex tiles
