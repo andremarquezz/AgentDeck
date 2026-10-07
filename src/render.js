@@ -56,9 +56,10 @@ function formatReset(resetsAt) {
 }
 
 function gaugeColor(remaining) {
-  if (remaining > 50) return '#34d399';
-  if (remaining > 20) return '#fbbf24';
-  return '#fb7185';
+  if (remaining >= 60) return '#34d399';
+  if (remaining >= 35) return '#facc15';
+  if (remaining >= 15) return '#fb923c';
+  return '#f43f5e';
 }
 
 export function gaugeSvg(options) {
@@ -81,7 +82,7 @@ export function gaugeSvg(options) {
         : status === 'error' ? 'OFFLINE'
           : stale ? 'STALE'
             : formatReset(reading?.resetsAt);
-  const valueColor = reading ? '#ffffff' : '#64748b';
+  const valueColor = reading ? color : '#64748b';
   const footerColor = syncing ? '#38bdf8' : (stale || status !== 'ok' ? '#94a3b8' : '#ffffff');
   const accountSize = account.length > 6 ? 9 : 11;
 
@@ -89,6 +90,9 @@ export function gaugeSvg(options) {
   svg += '<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">';
   svg += '<defs><clipPath id="clip"><rect width="144" height="144" rx="12"/></clipPath></defs>';
   svg += '<rect width="144" height="144" rx="12" fill="#0f172a"/>';
+  if (reading && !syncing) {
+    svg += '<rect x="2" y="2" width="140" height="140" rx="10" fill="none" stroke="' + color + '" stroke-width="2" opacity="0.55"/>';
+  }
   if (syncing) svg += '<rect x="2" y="2" width="140" height="140" rx="10" fill="none" stroke="#38bdf8" stroke-width="3" opacity="0.95"/>';
   if (reading) {
     svg += '<g clip-path="url(#clip)">';
