@@ -6508,6 +6508,9 @@ export async function startDaemon(opts: DaemonOptions): Promise<void> {
       return;
     }
     if (cmd.type === 'query_usage') {
+      // Gauge press = immediate JEY / AMERICANO refresh instead of waiting for
+      // the 30-second background cadence.
+      void core.refreshCodexAccountsUsage(true).catch(() => {});
       void core.refreshZaiUsage().catch(() => {});
       fetchUsageRelayed(port).then((result) => core.applyUsageResult(result));
     }
