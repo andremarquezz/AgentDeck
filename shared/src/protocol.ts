@@ -197,7 +197,7 @@ export interface CodexRateLimits {
 export interface CodexAccountUsage {
   /** Stable local key used to associate this reading with one CODEX_HOME. */
   id: string;
-  /** Short human label rendered on compact devices, e.g. "JEY" or "USA". */
+  /** Short human label rendered on compact devices, e.g. "JEY" or "AMERICANO". */
   label: string;
   /** Quota snapshot for this account. */
   rateLimits: CodexRateLimits;
@@ -379,8 +379,10 @@ export interface UsageEvent {
   codexAccountId?: string;
   codexSubscriptionActiveUntil?: string;
   codexLastRefreshAt?: string;
-  // Codex usage limits (5h/7d-style) parsed from local rollout files
+  // Legacy single-account Codex usage block.
   codexRateLimits?: CodexRateLimits;
+  // Personal multi-account Codex usage, one live account snapshot per CODEX_HOME.
+  codexAccounts?: CodexAccountUsage[];
   // Z.ai GLM Coding Plan usage limits, fetched directly from the provider
   // account (monitor endpoint). Independent of any harness: the plan serves
   // Claude Code, Codex and other CLIs from one shared quota.
