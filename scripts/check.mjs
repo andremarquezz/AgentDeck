@@ -12,4 +12,5 @@ for (const account of ACCOUNTS) {
   }
   const fmt = (window) => window ? Math.round(100 - window.usedPercent) + '% restante' : '-';
   console.log(account.label + ': ' + result.status + ' | 5H ' + fmt(result.fiveHour) + ' | 7D ' + fmt(result.sevenDay));
+  if (result.error) console.log('  erro: ' + result.error);
 }
