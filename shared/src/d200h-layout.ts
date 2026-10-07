@@ -403,8 +403,12 @@ export interface UsageTankData {
   window: '5h' | '7d';
   /** Tile label, e.g. "5H", "7D". Agent identity rides the brand dot, not a prefix. */
   label: string;
-  /** Percent of the window already CONSUMED (0–100). Fill rises with this. */
+  /** Optional short account identity for multi-account Codex surfaces (e.g. "JEY", "USA"). */
+  accountLabel?: string;
+  /** Percent of the window already CONSUMED (0–100). */
   usedPercent: number;
+  /** Display/fill direction. "remaining" makes the tank shrink as quota is consumed. */
+  displayMode?: 'used' | 'remaining';
   /** ISO-8601 reset instant for the countdown. */
   resetsAt?: string;
   /** False → no live quota: dark tile + dim label + "—" instead of a gauge. */
@@ -426,6 +430,7 @@ export function renderUsageGauge(data: UsageTankData): string {
   const known = data.known !== false;
   const agent = data.agent;
   const label = data.label || data.window.toUpperCase();
+  const accountLabel = data.accountLabel?.trim().toUpperCase();
   const BG = '#0f172a', LABEL_DIM = '#64748b', TEXT_DIM = '#475569';
   const HEADLINE = '#ffffff', COUNTDOWN = '#ffffff';
   const clipId = `ugauge-${agent}-${data.window}`;
@@ -436,6 +441,7 @@ export function renderUsageGauge(data: UsageTankData): string {
   if (!known) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`
       + clip + bg
+      + (accountLabel ? `<text x="14" y="16" font-family="JetBrains Mono, monospace" font-size="10" font-weight="bold" fill="${LABEL_DIM}">${escXml(truncateLabel(accountLabel, 8))}</text>` : '')
       + `<text x="14" y="36" font-family="JetBrains Mono, monospace" font-size="26" font-weight="bold" fill="${LABEL_DIM}">${escXml(label)}</text>`
       + logo
       + `<text x="72" y="94" text-anchor="middle" font-family="Arial,sans-serif" font-size="44" font-weight="bold" fill="${TEXT_DIM}">—</text></svg>`;
@@ -447,8 +453,12 @@ export function renderUsageGauge(data: UsageTankData): string {
   // claiming the window ended, and it is never dropped by the caller.
   const dim = stale || (data.footnote != null && data.footnote !== '');
   const used = Math.max(0, Math.min(100, data.usedPercent));
+  const displayPercent = data.displayMode === 'remaining' ? 100 - used : used;
+  // Severity still follows CONSUMED usage, while the visible tank can show
+  // remaining capacity. This keeps low remaining quota amber/red while the
+  // liquid level itself shrinks toward zero.
   const ramp = usageRampColor(used, dim, data.inactive === true);
-  const fillH = Math.round((H * used) / 100);
+  const fillH = Math.round((H * displayPercent) / 100);
   const fillY = H - fillH;
   // Subtle level tint (low opacity) + crisp 3px level line — no dark overlay.
   // Stale = extra-faint tint so it reads as "not current".
@@ -467,9 +477,10 @@ export function renderUsageGauge(data: UsageTankData): string {
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`
     + clip + bg + fill
+    + (accountLabel ? `<text x="14" y="16" font-family="JetBrains Mono, monospace" font-size="10" font-weight="bold" fill="${dim ? LABEL_DIM : Tide.s400}">${escXml(truncateLabel(accountLabel, 8))}</text>` : '')
     + `<text x="14" y="36" font-family="JetBrains Mono, monospace" font-size="26" font-weight="bold" fill="${dim ? LABEL_DIM : HEADLINE}">${escXml(label)}</text>`
     + logo
-    + `<text x="72" y="92" text-anchor="middle" font-family="Arial,sans-serif" font-size="46" font-weight="bold" fill="${pctColor}">${Math.round(used)}<tspan font-size="24">%</tspan></text>`
+    + `<text x="72" y="92" text-anchor="middle" font-family="Arial,sans-serif" font-size="46" font-weight="bold" fill="${pctColor}">${Math.round(displayPercent)}<tspan font-size="24">%</tspan></text>`
     + (reset ? `<text x="72" y="122" text-anchor="middle" font-family="Arial,sans-serif" font-size="17" font-weight="bold" fill="${resetColor}">${escXml(reset)}</text>` : '')
     + `</svg>`;
 }
@@ -484,8 +495,10 @@ export function renderUsagePairGauge(agent: 'claude' | 'codex' | 'zai', windows:
   const W = 144, H = 144, RX = 12;
   const bg = `<rect width="${W}" height="${H}" rx="${RX}" fill="${UI.popupBgMid}"/>`;
   const logo = usageBrandLogo(agent, 128, 16, 16, false);
+  const accountLabel = windows.find((window) => window.accountLabel)?.accountLabel?.trim().toUpperCase();
   const rows = windows.map((window, index) => {
     const used = Math.max(0, Math.min(100, window.usedPercent));
+    const displayPercent = window.displayMode === 'remaining' ? 100 - used : used;
     const dim = window.stale === true || Boolean(window.footnote);
     const ramp = usageRampColor(used, dim, window.inactive === true);
     const dense = windows.length === 3;
@@ -495,7 +508,7 @@ export function renderUsagePairGauge(agent: 'claude' | 'codex' | 'zai', windows:
     const barY = dense ? 41 : 62;
     const reset = window.footnote || (window.stale ? 'stale' : formatResetCountdown(window.resetsAt));
     const textColor = dim ? UI.ttyDim : Tide.s50;
-    const barW = Math.round(120 * used / 100);
+    const barW = Math.round(120 * displayPercent / 100);
     // The label and the right-aligned value share one 144px row, so a long label
     // beside a 3-digit percent collides ("FABLE100%"). Window labels are 2 chars
     // ("5H"/"7D") and never hit this; a scoped cap's name (up to 6) does, and it
@@ -503,14 +516,16 @@ export function renderUsagePairGauge(agent: 'claude' | 'codex' | 'zai', windows:
     // than truncate a name the user has to recognise.
     const labelSize = window.label.length >= 5 ? 14 : (dense ? 16 : 18);
     return `<text x="12" y="${y + headlineY}" font-family="JetBrains Mono, monospace" font-size="${labelSize}" font-weight="bold" fill="${textColor}">${escXml(window.label)}</text>`
-      + `<text x="100" y="${y + headlineY}" text-anchor="end" font-family="IBM Plex Sans, sans-serif" font-size="20" font-weight="bold" fill="${textColor}">${Math.round(used)}</text>`
+      + `<text x="100" y="${y + headlineY}" text-anchor="end" font-family="IBM Plex Sans, sans-serif" font-size="20" font-weight="bold" fill="${textColor}">${Math.round(displayPercent)}</text>`
       + `<text x="102" y="${y + headlineY}" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="bold" fill="${textColor}">%</text>`
       + (reset ? `<text x="12" y="${y + resetY}" font-family="JetBrains Mono, monospace" font-size="11" font-weight="bold" fill="${textColor}">${escXml(reset)}</text>` : '')
       + `<rect x="12" y="${y + barY}" width="120" height="3" rx="1.5" fill="${UI.ttyFaint}"/>`
       + (barW > 0 ? `<rect x="12" y="${y + barY}" width="${barW}" height="3" rx="1.5" fill="${ramp.fill}" opacity="${dim ? 0.55 : 1}"/>` : '');
   }).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`
-    + bg + windows.slice(1).map((_, i) => `<rect x="8" y="${(i + 1) * H / windows.length - 1}" width="128" height="1" fill="${UI.ttyFaint}"/>`).join('') + rows + logo + `</svg>`;
+    + bg + windows.slice(1).map((_, i) => `<rect x="8" y="${(i + 1) * H / windows.length - 1}" width="128" height="1" fill="${UI.ttyFaint}"/>`).join('') + rows
+    + (accountLabel ? `<text x="108" y="14" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" font-weight="bold" fill="${Tide.s400}">${escXml(truncateLabel(accountLabel, 8))}</text>` : '')
+    + logo + `</svg>`;
 }
 
 /**
@@ -597,6 +612,7 @@ function buildUsageTiles(state: DashState, budget: number = USAGE_PREFERRED_POS.
     window: usageWindowKind(w.windowMinutes),
     label: usageWindowLabel(w.windowMinutes) || '5H',
     usedPercent: w.usedPercent,
+    displayMode: 'remaining',
     resetsAt: w.resetsAt,
     known: true,
     stale: w.stale === true,
