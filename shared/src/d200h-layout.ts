@@ -35,7 +35,7 @@ import {
 import { sessionNowSummary, sessionSettingOptionLabel } from './session-settings.js';
 import { State, type PromptOption } from './states.js';
 import { sortSessions, foldCodexSessionsForDisplay } from './session-utils.js';
-import type { SessionInfo, SessionSetting, SubscriptionInfo, CodexRateLimits, CodexRateLimitWindow, CodexLunaReserve, ScopedUsageLimit, ZaiRateLimits, ZaiWindow } from './protocol.js';
+import type { SessionInfo, SessionSetting, SubscriptionInfo, CodexRateLimits, CodexRateLimitWindow, CodexLunaReserve, CodexAccountUsage, ScopedUsageLimit, ZaiRateLimits, ZaiWindow } from './protocol.js';
 import { Brand, Tide, UI } from './design-tokens.js';
 import { PASSIVE_OFFLINE_LABEL, OPEN_AGENTDECK_LABEL } from './connection-status.js';
 import { CLAUDE_LOGO_PATH, CODEX_LOGO_PATH, ZAI_LOGO_PATHS, ZAI_LOGO_VIEWBOX } from './svg-renderers/agent-logos.js';
@@ -129,6 +129,11 @@ export interface DashState {
    */
   codexRateLimits?: CodexRateLimits;
   /**
+   * Named Codex accounts for multi-profile setups. When present, these replace
+   * the anonymous single-account Codex gauge on compact deck surfaces.
+   */
+  codexAccounts?: CodexAccountUsage[];
+  /**
    * z.ai GLM Coding Plan usage, fetched directly from the provider account.
    * Same slot grammar as `codexRateLimits`; the long window is whatever the
    * plan reports (weekly credits or the monthly MCP quota — labeled by its own
@@ -175,6 +180,12 @@ export function parseState(evt: any): DashState {
     codexRateLimits:
       evt?.codexRateLimits && typeof evt.codexRateLimits === 'object'
         ? (evt.codexRateLimits as CodexRateLimits)
+        : undefined,
+    codexAccounts:
+      Array.isArray(evt?.codexAccounts)
+        ? (evt.codexAccounts as CodexAccountUsage[]).filter((account) =>
+            account && typeof account.id === 'string' && typeof account.label === 'string'
+            && account.rateLimits && typeof account.rateLimits === 'object')
         : undefined,
     zaiRateLimits:
       evt?.zaiRateLimits && typeof evt.zaiRateLimits === 'object'
@@ -436,12 +447,15 @@ export function renderUsageGauge(data: UsageTankData): string {
   const clipId = `ugauge-${agent}-${data.window}`;
   const clip = `<defs><clipPath id="${clipId}"><rect x="0" y="0" width="${W}" height="${H}" rx="${RX}"/></clipPath></defs>`;
   const bg = `<rect width="${W}" height="${H}" rx="${RX}" fill="${BG}"/>`;
-  const logo = usageBrandLogo(agent, 124, 22, 26, !known);
+  // On named Codex accounts the account label is the identity. Dropping the
+  // provider mark buys enough top-right space to keep JEY/USA readable without
+  // disturbing the proven 5H/7D layout.
+  const logo = agent === 'codex' && accountLabel ? '' : usageBrandLogo(agent, 124, 22, 26, !known);
 
   if (!known) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`
       + clip + bg
-      + (accountLabel ? `<text x="14" y="16" font-family="JetBrains Mono, monospace" font-size="10" font-weight="bold" fill="${LABEL_DIM}">${escXml(truncateLabel(accountLabel, 8))}</text>` : '')
+      + (accountLabel ? `<text x="130" y="22" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="11" font-weight="bold" fill="${LABEL_DIM}">${escXml(truncateLabel(accountLabel, 8))}</text>` : '')
       + `<text x="14" y="36" font-family="JetBrains Mono, monospace" font-size="26" font-weight="bold" fill="${LABEL_DIM}">${escXml(label)}</text>`
       + logo
       + `<text x="72" y="94" text-anchor="middle" font-family="Arial,sans-serif" font-size="44" font-weight="bold" fill="${TEXT_DIM}">—</text></svg>`;
@@ -477,7 +491,7 @@ export function renderUsageGauge(data: UsageTankData): string {
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`
     + clip + bg + fill
-    + (accountLabel ? `<text x="14" y="16" font-family="JetBrains Mono, monospace" font-size="10" font-weight="bold" fill="${dim ? LABEL_DIM : Tide.s400}">${escXml(truncateLabel(accountLabel, 8))}</text>` : '')
+    + (accountLabel ? `<text x="130" y="22" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="11" font-weight="bold" fill="${dim ? LABEL_DIM : Tide.s400}">${escXml(truncateLabel(accountLabel, 8))}</text>` : '')
     + `<text x="14" y="36" font-family="JetBrains Mono, monospace" font-size="26" font-weight="bold" fill="${dim ? LABEL_DIM : HEADLINE}">${escXml(label)}</text>`
     + logo
     + `<text x="72" y="92" text-anchor="middle" font-family="Arial,sans-serif" font-size="46" font-weight="bold" fill="${pctColor}">${Math.round(displayPercent)}<tspan font-size="24">%</tspan></text>`
@@ -494,8 +508,8 @@ export function renderUsageGauge(data: UsageTankData): string {
 export function renderUsagePairGauge(agent: 'claude' | 'codex' | 'zai', windows: [UsageTankData, UsageTankData] | [UsageTankData, UsageTankData, UsageTankData]): string {
   const W = 144, H = 144, RX = 12;
   const bg = `<rect width="${W}" height="${H}" rx="${RX}" fill="${UI.popupBgMid}"/>`;
-  const logo = usageBrandLogo(agent, 128, 16, 16, false);
   const accountLabel = windows.find((window) => window.accountLabel)?.accountLabel?.trim().toUpperCase();
+  const logo = agent === 'codex' && accountLabel ? '' : usageBrandLogo(agent, 128, 16, 16, false);
   const rows = windows.map((window, index) => {
     const used = Math.max(0, Math.min(100, window.usedPercent));
     const displayPercent = window.displayMode === 'remaining' ? 100 - used : used;
@@ -524,7 +538,7 @@ export function renderUsagePairGauge(agent: 'claude' | 'codex' | 'zai', windows:
   }).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`
     + bg + windows.slice(1).map((_, i) => `<rect x="8" y="${(i + 1) * H / windows.length - 1}" width="128" height="1" fill="${UI.ttyFaint}"/>`).join('') + rows
-    + (accountLabel ? `<text x="108" y="14" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" font-weight="bold" fill="${Tide.s400}">${escXml(truncateLabel(accountLabel, 8))}</text>` : '')
+    + (accountLabel ? `<text x="132" y="15" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" font-weight="bold" fill="${Tide.s400}">${escXml(truncateLabel(accountLabel, 8))}</text>` : '')
     + logo + `</svg>`;
 }
 
@@ -578,22 +592,37 @@ function buildUsageTiles(state: DashState, budget: number = USAGE_PREFERRED_POS.
   }
   // Only the worst scoped cap reaches the keypad. It always shares the weekly
   // key; the SD+ encoder can zoom into additional scoped caps separately.
-  const cx = state.codexRateLimits;
-  const luna = selectedLunaReserve(cx);
-  // Purchased credits being spent once a plan window is exhausted. Like the
-  // Luna reserve it replaces the Codex windows; when both are live they are
-  // separate keys, and the reserve is the one that yields if the strip is full.
-  const spending = selectedCodexCredits(cx);
+  //
+  // Multi-account mode is intentionally additive: legacy producers can keep
+  // sending codexRateLimits, while the custom Windows daemon can publish
+  // codexAccounts. Named accounts carry their identity into each gauge.
+  const multiCodex = Array.isArray(state.codexAccounts) && state.codexAccounts.length > 0;
+  const cx = multiCodex ? undefined : state.codexRateLimits;
+  const codexAccounts: CodexAccountUsage[] = multiCodex
+    ? state.codexAccounts!
+    : cx
+      ? [{ id: 'default', label: '', rateLimits: cx }]
+      : [];
+
+  // The legacy single-account path keeps every advanced Codex behavior
+  // (Luna reserve / purchased credits). Named profiles focus on the two rolling
+  // windows for now; account-specific reserve/credit presentation can be added
+  // independently without changing the multi-account wire shape.
+  const luna = multiCodex ? undefined : selectedLunaReserve(cx);
+  const spending = multiCodex ? undefined : selectedCodexCredits(cx);
   const spendingTile: SessionDeckCell | undefined = spending
     ? { svg: renderCodexCreditsTile(spending), action }
     : undefined;
   let lunaTile: SessionDeckCell | undefined = luna
     ? { svg: renderLunaReserveTile(luna), action }
     : undefined;
-  const allCodexWindows = [cx?.primary, cx?.secondary].filter((w): w is CodexRateLimitWindow => w != null);
+
+  const allCodexWindows = codexAccounts.flatMap((account) =>
+    [account.rateLimits.primary, account.rateLimits.secondary]
+      .filter((w): w is CodexRateLimitWindow => w != null));
   const worstScoped = known ? state.scopedLimits?.[0] : undefined;
   const scopedClaims = scopedLimitClaimsUsageKey(worstScoped, allCodexWindows.length);
-  const codexWindows = luna || spending ? [] : codexWindowsBeside(allCodexWindows, scopedClaims);
+
   // Keep the cap as data so every mode uses the same renderer and severity.
   const scopedTank: UsageTankData | undefined = scopedClaims && worstScoped
     ? {
@@ -602,22 +631,34 @@ function buildUsageTiles(state: DashState, budget: number = USAGE_PREFERRED_POS.
         inactive: worstScoped.active !== true,
       }
     : undefined;
-  // Codex windows carry the same short "5H"/"7D" labels — the brand dot conveys
-  // the agent, not a "CX " prefix. Label each present window by its own length
-  // (windowMinutes), never by slot: Codex now sometimes reports the weekly
-  // (10080-min) window as `primary` with `secondary` null, so a slot-based "7D
-  // = secondary" would drop the gauge entirely.
-  const codexWindowData: UsageTankData[] = codexWindows.map((w) => ({
-    agent: 'codex',
-    window: usageWindowKind(w.windowMinutes),
-    label: usageWindowLabel(w.windowMinutes) || '5H',
-    usedPercent: w.usedPercent,
-    displayMode: 'remaining',
-    resetsAt: w.resetsAt,
-    known: true,
-    stale: w.stale === true,
-    footnote: codexUsageFootnote(w, cx?.capturedAt)?.text,
-  }));
+
+  // Each account owns its own 5H/7D pair. The account label is kept separate
+  // from the window label so the proven layout stays "5H / 58% / reset" and the
+  // identity can sit quietly in the upper-right corner.
+  const codexAccountWindowData = codexAccounts
+    .map((account) => {
+      const limits = account.rateLimits;
+      const rawWindows = [limits.primary, limits.secondary]
+        .filter((w): w is CodexRateLimitWindow => w != null);
+      const visibleWindows = multiCodex
+        ? rawWindows
+        : (luna || spending ? [] : codexWindowsBeside(rawWindows, scopedClaims));
+      const windows: UsageTankData[] = visibleWindows.map((w) => ({
+        agent: 'codex',
+        window: usageWindowKind(w.windowMinutes),
+        label: usageWindowLabel(w.windowMinutes) || '5H',
+        accountLabel: multiCodex ? account.label : undefined,
+        usedPercent: w.usedPercent,
+        displayMode: 'remaining',
+        resetsAt: w.resetsAt,
+        known: true,
+        stale: w.stale === true,
+        footnote: codexUsageFootnote(w, limits.capturedAt)?.text,
+      }));
+      return { account, windows };
+    })
+    .filter((group) => group.windows.length > 0);
+  const codexWindowData = codexAccountWindowData.flatMap((group) => group.windows);
 
   // z.ai windows ride the same tank grammar — the MCP tool-call quota is
   // labeled by its QUANTITY ("MCP"), never by its length, so it can never
@@ -649,8 +690,14 @@ function buildUsageTiles(state: DashState, budget: number = USAGE_PREFERRED_POS.
   // Credits outrank the reserve: they are what the account is spending.
   if (spendingTile && lunaTile && baseCount + 1 > budget) lunaTile = undefined;
   const logicalCount = baseCount + (lunaTile ? 1 : 0);
-  const compactCodex = logicalCount > budget && codexWindowData.length === 2;
-  const afterCodex = logicalCount - (compactCodex ? 1 : 0);
+  // Compact within each account, never across accounts. JEY 5H+7D may share a
+  // key under pressure, but JEY and USA are never mixed into one tile.
+  const codexPairSavings = codexAccountWindowData.reduce(
+    (sum, group) => sum + (group.windows.length === 2 ? 1 : 0),
+    0,
+  );
+  const compactCodex = logicalCount > budget && codexPairSavings > 0;
+  const afterCodex = logicalCount - (compactCodex ? codexPairSavings : 0);
   // z.ai folds next, ahead of Claude: Claude's 5H is the reading a user
   // glances at mid-session, while z.ai's 5H and MCP quota read fine on one
   // key whose press cycles both → 5H → MCP (like the weekly key below).
@@ -700,7 +747,13 @@ function buildUsageTiles(state: DashState, budget: number = USAGE_PREFERRED_POS.
     if (five) tiles.push({ svg: renderUsageGauge(five), action });
     if (selectedWeekly.length) tiles.push(renderReadings(selectedWeekly, weeklyAction));
   }
-  tiles.push(...cellsFor('codex', codexWindowData, compactCodex));
+  const codexCells: SessionDeckCell[] = compactCodex
+    ? codexAccountWindowData.flatMap((group) =>
+        group.windows.length === 2
+          ? [{ svg: renderUsagePairGauge('codex', [group.windows[0], group.windows[1]]), action }]
+          : group.windows.map((window) => ({ svg: renderUsageGauge(window), action })))
+    : codexWindowData.map((window) => ({ svg: renderUsageGauge(window), action }));
+  tiles.push(...codexCells);
   if (compactZai) {
     const readings = zaiPairReadings(zaiWindowData[0], zaiWindowData[1], zaiMode);
     tiles.push({
