@@ -33,9 +33,9 @@ No Ulanzi Studio aparecem quatro acoes separadas. Arraste cada uma para a tecla 
 
 ## Configurar AMERICANO
 
-    npm run login:americano
+A conta AMERICANO e gerenciada pelo seu switch/configurador de Codex. Este projeto nao faz login e nao altera credenciais.
 
-Isso executa o login usando CODEX_HOME=~/.codex-americano e nao altera o login JEY.
+Assim que o switch criar/atualizar `%USERPROFILE%\\.codex-americano\\auth.json`, o plugin detecta automaticamente no proximo refresh (ate 30 segundos) ou imediatamente ao pressionar qualquer gauge.
 
 ## Atualizacao
 
