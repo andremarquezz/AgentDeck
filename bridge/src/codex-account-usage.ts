@@ -74,10 +74,12 @@ function configuredAccountHasAuth(account: CodexAccountConfig): boolean {
 }
 
 export function getCodexAccountsUsage(): CodexAccountUsage[] {
-  const configured = new Set(loadCodexAccountConfigs().map((account) => account.id));
-  return [...cache.entries()]
-    .filter(([id]) => configured.has(id))
-    .map(([, entry]) => entry.usage);
+  // Render order follows settings/default order, never whichever app-server
+  // happened to answer first. Without this, JEY and AMERICANO could swap keys
+  // after a daemon restart because the two live probes run concurrently.
+  return loadCodexAccountConfigs()
+    .map((account) => cache.get(account.id)?.usage)
+    .filter((usage): usage is CodexAccountUsage => usage != null);
 }
 
 /**
