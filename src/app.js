@@ -1,9 +1,17 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import UlanziApi from './vendor/ulanzi-api/index.js';
 import { queryAllAccounts } from './codex.js';
 import { gaugeSvg, initRenderer, svgToDataUri } from './render.js';
 
 const PLUGIN_UUID = 'com.ulanzi.ulanzistudio.jeycodex';
 const REFRESH_MS = 30000;
+const LOG_FILE = path.join(os.tmpdir(), 'jey-codex-d200h.log');
+function log(message) {
+  try { fs.appendFileSync(LOG_FILE, new Date().toISOString() + ' ' + message + '\n'); } catch {}
+}
+log('plugin boot');
 
 const ACTIONS = {
   'com.ulanzi.ulanzistudio.jeycodex.jey5h': { account: 'jey', window: 'fiveHour', label: '5H' },
@@ -18,7 +26,13 @@ let accounts = new Map();
 let refreshing = null;
 const lastGood = new Map();
 
-await initRenderer();
+try {
+  await initRenderer();
+  log('renderer ready');
+} catch (error) {
+  log('renderer failed: ' + String(error));
+  throw error;
+}
 
 function specFor(message) {
   return ACTIONS[message.actionid] || null;
@@ -67,7 +81,9 @@ async function refresh() {
   if (refreshing) return refreshing;
 
   refreshing = (async () => {
+    log('refresh start');
     const fresh = await queryAllAccounts();
+    for (const [id, result] of fresh) log('account ' + id + ' status=' + result.status);
 
     for (const [id, result] of fresh) {
       if (result.status === 'ok') lastGood.set(id, result);
@@ -80,6 +96,7 @@ async function refresh() {
     }
 
     renderAll();
+    log('refresh rendered');
   })().finally(() => {
     refreshing = null;
   });
@@ -88,6 +105,7 @@ async function refresh() {
 }
 
 api.onAdd((message) => {
+  log('onAdd ' + message.actionid + ' ' + message.key);
   if (!specFor(message)) return;
 
   instances.set(message.context, {
@@ -96,7 +114,12 @@ api.onAdd((message) => {
     key: message.key,
   });
 
-  renderInstance(instances.get(message.context));
+  try {
+    renderInstance(instances.get(message.context));
+    log('initial render ok ' + message.actionid);
+  } catch (error) {
+    log('initial render failed: ' + String(error));
+  }
   void refresh();
 });
 
@@ -115,12 +138,14 @@ api.onRun(() => {
 });
 
 api.onConnected(() => {
+  log('studio connected');
   void refresh();
 });
 
-api.onError(() => {});
-api.onClose(() => {});
+api.onError((error) => { log('studio error: ' + String(error)); });
+api.onClose(() => { log('studio closed'); });
 
+log('connecting to studio');
 api.connect(PLUGIN_UUID);
 
 setInterval(() => {
