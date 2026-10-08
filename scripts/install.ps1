@@ -37,6 +37,11 @@ try {
   Write-Host ''
   Write-Host 'Feche COMPLETAMENTE o Ulanzi Studio, inclusive o icone da bandeja, e abra novamente.' -ForegroundColor Yellow
   Write-Host 'Depois procure por Codex Limits e arraste as 4 acoes para as teclas.'
+  Write-Host ''
+  Write-Host 'PAINEL NO CELULAR' -ForegroundColor Cyan
+  Write-Host 'Depois que o Ulanzi Studio abrir, rode:' -ForegroundColor Gray
+  Write-Host 'Get-Content "$env:TEMP\jey-codex-d200h.log" -Tail 100 | Select-String "mobile url"' -ForegroundColor White
+  Write-Host 'Abra a URL exibida no Safari do iPhone.' -ForegroundColor Gray
 } finally {
   Pop-Location
 }
