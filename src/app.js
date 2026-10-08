@@ -4,13 +4,17 @@ import path from 'node:path';
 import UlanziApi from './vendor/ulanzi-api/index.js';
 import { queryAllAccounts } from './codex.js';
 import { gaugeSvg, initRenderer, svgToDataUri } from './render.js';
+import { startMobileServer } from './mobile.js';
+import { activeAccount, switchCodexAccount } from './switch.js';
 
 const PLUGIN_UUID = 'com.ulanzi.ulanzistudio.jeycodex';
 const REFRESH_MS = 30000;
 const LOG_FILE = path.join(os.tmpdir(), 'jey-codex-d200h.log');
+
 function log(message) {
   try { fs.appendFileSync(LOG_FILE, new Date().toISOString() + ' ' + message + '\n'); } catch {}
 }
+
 log('plugin boot');
 
 const ACTIONS = {
@@ -25,6 +29,7 @@ const instances = new Map();
 let accounts = new Map();
 let refreshing = null;
 let manualSync = false;
+let lastUpdatedAt = null;
 const lastGood = new Map();
 
 try {
@@ -46,6 +51,35 @@ function accountFor(spec) {
     status: 'loading',
     fiveHour: null,
     sevenDay: null,
+  };
+}
+
+function mobileAccount(id) {
+  const current = accounts.get(id) || lastGood.get(id) || {
+    id,
+    label: id === 'jey' ? 'JEY' : 'AMERICANO',
+    status: 'loading',
+    fiveHour: null,
+    sevenDay: null,
+  };
+
+  return {
+    ...current,
+    stale: !accounts.has(id) && lastGood.has(id),
+  };
+}
+
+function mobileState(port = Number(process.env.JEY_MOBILE_PORT || 3333)) {
+  return {
+    host: os.hostname(),
+    port,
+    syncing: manualSync || Boolean(refreshing),
+    lastUpdatedAt,
+    activeAccount: activeAccount(),
+    accounts: [
+      mobileAccount('jey'),
+      mobileAccount('americano'),
+    ],
   };
 }
 
@@ -73,9 +107,7 @@ function renderInstance(instance) {
 
 function renderAll() {
   for (const instance of instances.values()) {
-    try {
-      renderInstance(instance);
-    } catch {}
+    try { renderInstance(instance); } catch {}
   }
 }
 
@@ -117,6 +149,7 @@ async function refresh(showFeedback = false) {
       accounts.set(id, result);
     }
 
+    lastUpdatedAt = new Date().toISOString();
     renderAll();
     log('refresh rendered');
   })();
@@ -152,6 +185,7 @@ api.onAdd((message) => {
   } catch (error) {
     log('initial render failed: ' + String(error));
   }
+
   void refresh();
 });
 
@@ -162,6 +196,7 @@ api.onClear((message) => {
     }
     return;
   }
+
   if (message.context) instances.delete(message.context);
 });
 
@@ -180,6 +215,26 @@ api.onClose(() => { log('studio closed'); });
 log('connecting to studio');
 api.connect(PLUGIN_UUID);
 
+const mobile = startMobileServer({
+  getState: () => mobileState(),
+  refresh,
+  switchAccount: async (id) => {
+    log('mobile switch requested account=' + id);
+    const result = await switchCodexAccount(id);
+    await refresh(true);
+    log('mobile switch finished account=' + id + ' restarted=' + result.vscodeRestarted);
+    return {
+      ...result,
+      state: mobileState(),
+    };
+  },
+  log,
+});
+
+for (const url of mobile.urls()) log('open on phone ' + url);
+
+void refresh();
+
 setInterval(() => {
-  if (instances.size > 0) void refresh();
+  void refresh();
 }, REFRESH_MS);
