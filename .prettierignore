@@ -1,9 +1,0 @@
-dist/
-node_modules/
-coverage/
-bound.serendipity.agentdeck.sdPlugin/
-android/
-apple/
-esp32/
-pnpm-lock.yaml
-*.json
